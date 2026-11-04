@@ -5,6 +5,9 @@ pub const Capabilities = @import("capabilities.zig").Capabilities;
 pub const StyleRef = @import("style_ref.zig").StyleRef;
 pub const Backend = @import("backend.zig").Backend;
 
+pub const ast = @import("ast.zig");
+pub const parse = @import("parser.zig").parse;
+
 test "Feature enum" {
     const f: Feature = .background;
     try std.testing.expect(f == .background);
