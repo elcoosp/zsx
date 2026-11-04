@@ -1,1 +1,10 @@
-wr.sh
+.zig-cache/
+zig-out/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
