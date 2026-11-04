@@ -1,0 +1,11 @@
+.{
+    .name = .zsx,
+    .version = "0.0.1",
+    .fingerprint = 0xfcebe7afe7650afb,
+    .minimum_zig_version = "0.17.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

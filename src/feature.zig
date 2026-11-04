@@ -1,0 +1,16 @@
+pub const Feature = enum {
+    background,
+    hover_background,
+    foreground,
+    padding,
+    margin,
+    border,
+    radius,
+    gap,
+    flex_direction,
+    font,
+    shadow,
+    width,
+    height,
+    grow,
+};
