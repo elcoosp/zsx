@@ -15,6 +15,7 @@ pub fn build(b: *std.Build) void {
         "src/views/onclick_demo.zsx",
         "src/views/struct_loop_demo.zsx",
         "src/views/card_if_demo.zsx",
+        "src/views/else_if_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
@@ -291,6 +292,15 @@ fn emitChildren(comptime children: []const ast.Child, comptime start_level: usiz
                     stack[stack_depth] = 'f';
                     stack_depth += 1;
                     level += 1;
+                } else if (comptime std.mem.startsWith(u8, e, "else if ")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {else if} without {if}");
+                    const top = comptime stack[stack_depth - 1];
+                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {else if} unmatched");
+                    const ei_cond = comptime std.mem.trim(u8, e[8..], " \t\n\r");
+                    if (comptime ei_cond.len == 0) @compileError("zsx: {else if} empty condition");
+                    level -= 1;
+                    code = code ++ makeIndent(level) ++ "} else if (" ++ ei_cond ++ ") {\n";
+                    level += 1;
                 } else if (comptime std.mem.eql(u8, e, "else")) {
                     if (comptime stack_depth == 0) @compileError("zsx: {else} without {if}");
                     if (comptime stack[stack_depth - 1] != 'i') @compileError("zsx: {else} unmatched");
@@ -361,6 +371,15 @@ fn emitContentChildren(comptime children: []const ast.Child, comptime start_leve
                     code = code ++ makeIndent(level) ++ "for (" ++ items ++ ") |" ++ binding ++ "| {\n";
                     stack[stack_depth] = 'f';
                     stack_depth += 1;
+                    level += 1;
+                } else if (comptime std.mem.startsWith(u8, e, "else if ")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {else if} without {if}");
+                    const top = comptime stack[stack_depth - 1];
+                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {else if} unmatched");
+                    const ei_cond = comptime std.mem.trim(u8, e[8..], " \t\n\r");
+                    if (comptime ei_cond.len == 0) @compileError("zsx: {else if} empty condition");
+                    level -= 1;
+                    code = code ++ makeIndent(level) ++ "} else if (" ++ ei_cond ++ ") {\n";
                     level += 1;
                 } else if (comptime std.mem.eql(u8, e, "else")) {
                     if (comptime stack_depth == 0) @compileError("zsx: {else} without {if}");
