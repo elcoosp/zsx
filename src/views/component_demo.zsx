@@ -1,4 +1,7 @@
-<column padding={8} class="gap-2">
-  <Button>Hello</Button>
-  <Badge>New</Badge>
+<column padding={8}>
+  <Card>
+    <label>Title</label>
+    <label>Subtitle</label>
+  </Card>
+  <Button>Click</Button>
 </column>
