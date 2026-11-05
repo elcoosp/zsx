@@ -86,6 +86,14 @@ fn applyToken(style: *Style, comptime token: []const u8) void {
         style.gap = 8;
     } else if (std.mem.eql(u8, token, "text-lg")) {
         style.font_size = 18;
+    } else if (std.mem.eql(u8, token, "font-normal")) {
+        style.font_weight = .regular;
+    } else if (std.mem.eql(u8, token, "font-semibold")) {
+        style.font_weight = .semibold;
+    } else if (std.mem.eql(u8, token, "font-normal")) {
+        style.font_weight = .regular;
+    } else if (std.mem.eql(u8, token, "font-semibold")) {
+        style.font_weight = .semibold;
     } else if (std.mem.eql(u8, token, "font-bold")) {
         style.font_weight = .bold;
     } else {
