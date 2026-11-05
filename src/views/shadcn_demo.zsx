@@ -1,0 +1,5 @@
+<column padding={8} class="gap-2">
+  <Button variant="primary">Save</Button>
+  <Button variant="ghost">Cancel</Button>
+  <Badge color="green">new</Badge>
+</column>
