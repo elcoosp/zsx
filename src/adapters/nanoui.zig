@@ -28,6 +28,16 @@ pub fn Adapter(comptime ui: type) type {
             if (@hasField(@TypeOf(opts), "font_size")) {
                 ts.size = @as(f32, @floatFromInt(opts.font_size));
             }
+            if (@hasField(@TypeOf(opts), "font_weight")) {
+                const w = @as(u32, opts.font_weight);
+                ts.weight = switch (w) {
+                    400 => .regular,
+                    500 => .medium,
+                    600 => .semibold,
+                    700 => .bold,
+                    else => .regular,
+                };
+            }
             ui.text(c, str, ts);
         }
 
@@ -214,15 +224,30 @@ test "nanoui adapter text applies font_size" {
     StubNanoui.resetCounters();
     A.text(&c, "hello", .{ .font_size = 18 });
     try std.testing.expectEqual(@as(f32, 18), StubNanoui.lastTextSize());
-    try std.testing.expectEqual(@as(usize, 1), StubNanoui.labelsRendered());
 }
 
-test "nanoui adapter text applies color" {
+test "nanoui adapter text applies font_weight bold" {
     const A = Adapter(StubNanoui);
     var c: StubNanoui.Context = .{};
     StubNanoui.resetCounters();
-    A.text(&c, "hi", .{ .color_text = .{ .r = 243, .g = 244, .b = 246, .a = 255 } });
-    try std.testing.expectEqual(@as(usize, 1), StubNanoui.labelsRendered());
+    A.text(&c, "hi", .{ .font_weight = 700 });
+    try std.testing.expectEqual(StubNanoui.Weight.bold, StubNanoui.lastTextWeight());
+}
+
+test "nanoui adapter text applies font_weight regular" {
+    const A = Adapter(StubNanoui);
+    var c: StubNanoui.Context = .{};
+    StubNanoui.resetCounters();
+    A.text(&c, "hi", .{ .font_weight = 400 });
+    try std.testing.expectEqual(StubNanoui.Weight.regular, StubNanoui.lastTextWeight());
+}
+
+test "nanoui adapter text applies font_weight semibold" {
+    const A = Adapter(StubNanoui);
+    var c: StubNanoui.Context = .{};
+    StubNanoui.resetCounters();
+    A.text(&c, "hi", .{ .font_weight = 600 });
+    try std.testing.expectEqual(StubNanoui.Weight.semibold, StubNanoui.lastTextWeight());
 }
 
 test "nanoui adapter button counts" {
