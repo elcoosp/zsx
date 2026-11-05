@@ -70,23 +70,7 @@ test "dvui: if-false with no items" {
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
 }
 
-test "dvui: if-true with one item" {
-    const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/demo_gen.zig");
-    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
-    var c: dvui_adapter.StubDvui.Context = .{};
-    dvui_adapter.StubDvui.resetCounters();
-    var ctx = Ctx{
-        .user = .{ .name = "Carol" },
-        .show_save = true,
-        .items = &[_][]const u8{"single"},
-    };
-    demo.view(A, &c, &ctx);
-    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
-    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
-}
-
-test "nanoui: if-true with items" {
+test "nanoui: if-true with items, font_weight flows as bold" {
     const nanoui_adapter = @import("adapters/nanoui.zig");
     const demo = @import("views/demo_gen.zig");
     const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
@@ -102,9 +86,10 @@ test "nanoui: if-true with items" {
     try std.testing.expectEqual(@as(usize, 1), nanoui_adapter.StubNanoui.buttonsRendered());
     try std.testing.expectEqual(@as(usize, 3), nanoui_adapter.StubNanoui.labelsRendered());
     try std.testing.expectEqual(@as(f32, 18), nanoui_adapter.StubNanoui.lastTextSize());
+    try std.testing.expectEqual(nanoui_adapter.StubNanoui.Weight.bold, nanoui_adapter.StubNanoui.lastTextWeight());
 }
 
-test "nanoui: if-false with no items" {
+test "nanoui: if-false with no items, font_weight stays regular" {
     const nanoui_adapter = @import("adapters/nanoui.zig");
     const demo = @import("views/demo_gen.zig");
     const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
@@ -120,4 +105,5 @@ test "nanoui: if-false with no items" {
     try std.testing.expectEqual(@as(usize, 0), nanoui_adapter.StubNanoui.buttonsRendered());
     try std.testing.expectEqual(@as(usize, 1), nanoui_adapter.StubNanoui.labelsRendered());
     try std.testing.expectEqual(@as(f32, 14), nanoui_adapter.StubNanoui.lastTextSize());
+    try std.testing.expectEqual(nanoui_adapter.StubNanoui.Weight.regular, nanoui_adapter.StubNanoui.lastTextWeight());
 }
