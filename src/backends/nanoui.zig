@@ -23,7 +23,7 @@ pub fn Backend(comptime ui: type) type {
             shadow: bool = true,
             width: bool = true,
             height: bool = true,
-            grow: bool = true,
+            grow: bool = false,
 
             pub fn supports(self: @This(), feature: Feature) bool {
                 return switch (feature) {
@@ -306,6 +306,15 @@ test "nanoui backend emits label with text classes" {
     Backend(StubNanoui).emit(el, &ctx);
 }
 
+test "nanoui backend shape matches contract" {
+    const Impl = Backend(StubNanoui);
+    var inner: StubNanoui.Context = .{};
+    const ctx: Impl.Context = .{ .c = &inner };
+    _ = ctx;
+    const caps: Impl.Capabilities = .{};
+    try std.testing.expect(caps.supports(.background));
+}
+
 test "nanoui backend capabilities report" {
     const caps = Backend(StubNanoui).Capabilities{};
     try std.testing.expect(caps.supports(.background));
@@ -314,4 +323,5 @@ test "nanoui backend capabilities report" {
     try std.testing.expect(!caps.supports(.margin));
     try std.testing.expect(!caps.supports(.border));
     try std.testing.expect(!caps.supports(.hover_background));
+    try std.testing.expect(!caps.supports(.grow));
 }
