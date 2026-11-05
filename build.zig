@@ -267,6 +267,10 @@ fn optsLiteral(comptime el: ast.Element) []const u8 {
         out = out ++ sep ++ ".expand = " ++ mapped;
         sep = ", ";
     }
+    if (style.font_size) |fs| {
+        out = out ++ sep ++ ".font_size = " ++ fmtF32(fs);
+        sep = ", ";
+    }
     return out ++ "}";
 }
 
