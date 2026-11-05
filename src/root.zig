@@ -61,6 +61,10 @@ test {
     _ = @import("views/class_override_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/nested_card_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -621,4 +625,19 @@ test "class-override: default Button gets 16x8 padding, p-4 override gets 16x16"
     try std.testing.expectEqual(@as(f32, 16), final_padding.?.y);
     try std.testing.expectEqual(@as(f32, 16), final_padding.?.w);
     try std.testing.expectEqual(@as(f32, 16), final_padding.?.h);
+}
+
+const NestedCardCtx = struct {
+    pub const Card = @import("lib/shadcn.zig").Card;
+};
+
+test "nested-card: three cards produce distinct render fns and three labels" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/nested_card_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = NestedCardCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 3), dvui_adapter.StubDvui.labelsRendered());
 }
