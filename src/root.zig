@@ -18,6 +18,10 @@ test {
 }
 
 test {
+    _ = @import("adapters/nanoui.zig");
+}
+
+test {
     _ = @import("views/demo_gen.zig");
 }
 
@@ -32,7 +36,7 @@ const Ctx = struct {
     }
 };
 
-test "demo if-true with items" {
+test "dvui: if-true with items" {
     const dvui_adapter = @import("adapters/dvui.zig");
     const demo = @import("views/demo_gen.zig");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
@@ -49,7 +53,7 @@ test "demo if-true with items" {
     try std.testing.expectEqual(@as(usize, 3), dvui_adapter.StubDvui.labelsRendered());
 }
 
-test "demo if-false with no items" {
+test "dvui: if-false with no items" {
     const dvui_adapter = @import("adapters/dvui.zig");
     const demo = @import("views/demo_gen.zig");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
@@ -66,7 +70,7 @@ test "demo if-false with no items" {
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
 }
 
-test "demo if-true with one item" {
+test "dvui: if-true with one item" {
     const dvui_adapter = @import("adapters/dvui.zig");
     const demo = @import("views/demo_gen.zig");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
@@ -80,4 +84,40 @@ test "demo if-true with one item" {
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "nanoui: if-true with items" {
+    const nanoui_adapter = @import("adapters/nanoui.zig");
+    const demo = @import("views/demo_gen.zig");
+    const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
+    var c: nanoui_adapter.StubNanoui.Context = .{};
+    nanoui_adapter.StubNanoui.resetCounters();
+    var ctx = Ctx{
+        .user = .{ .name = "Alice" },
+        .show_save = true,
+        .items = &[_][]const u8{ "one", "two", "three" },
+    };
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(!ctx.save_called);
+    try std.testing.expectEqual(@as(usize, 1), nanoui_adapter.StubNanoui.buttonsRendered());
+    try std.testing.expectEqual(@as(usize, 3), nanoui_adapter.StubNanoui.labelsRendered());
+    try std.testing.expectEqual(@as(f32, 18), nanoui_adapter.StubNanoui.lastTextSize());
+}
+
+test "nanoui: if-false with no items" {
+    const nanoui_adapter = @import("adapters/nanoui.zig");
+    const demo = @import("views/demo_gen.zig");
+    const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
+    var c: nanoui_adapter.StubNanoui.Context = .{};
+    nanoui_adapter.StubNanoui.resetCounters();
+    var ctx = Ctx{
+        .user = .{ .name = "Bob" },
+        .show_save = false,
+        .items = &[_][]const u8{},
+    };
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(!ctx.save_called);
+    try std.testing.expectEqual(@as(usize, 0), nanoui_adapter.StubNanoui.buttonsRendered());
+    try std.testing.expectEqual(@as(usize, 1), nanoui_adapter.StubNanoui.labelsRendered());
+    try std.testing.expectEqual(@as(f32, 14), nanoui_adapter.StubNanoui.lastTextSize());
 }
