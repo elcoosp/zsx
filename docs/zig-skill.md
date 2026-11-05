@@ -1,6 +1,6 @@
 ---
-name: zig-build-0-17
-description: Zig 0.17.0 build-system pitfalls and fixes discovered while setting up the zsx project. Use this when writing or debugging build.zig and build.zig.zon on Zig 0.17.x.
+name: zig-0-17
+description: Zig 0.17.0 build-system, comptime, and test-harness pitfalls. Use when writing or debugging Zig 0.17.x code. Each entry is a real compiler error followed by the minimal fix.
 license: MIT
 compatibility:
   - opencode
@@ -8,143 +8,338 @@ compatibility:
 metadata:
   version: "0.17.0"
   language: "zig"
-  category: "build-system"
+  category: "programming-language"
 ---
 
-# Zig 0.17.0 Build System Skill
+# Zig 0.17.0 Skill
 
-> **Version Scope**: Pinned to **Zig 0.17.0** / **0.17.1**.
-> **Release Notes**: https://ziglang.org/download/0.17.0/release-notes.html
+Version scope: 0.17.0 / 0.17.1. Every entry is a compiler error you can hit, followed by the minimal fix.
 
-This skill captures the exact compile errors hit while bringing up a fresh Zig 0.17.0 project from an empty directory. Each entry is a real error message followed by the minimal fix. It complements the language-level `SKILL.md` with build-system specific knowledge.
+## Quick reference: 0.16 to 0.17
 
----
+| Old | New |
+|---|---|
+| `.name = "foo"` | `.name = .foo` |
+| no `fingerprint` | `.fingerprint = 0x...` required |
+| `addTest(.{ .root_source_file = ... })` | `addTest(.{ .root_module = mod })` |
+| `std.fs.cwd()` | `std.Io.Dir.cwd()` with explicit `io` |
+| `readFileAlloc(a, path, max)` | `readFileAlloc(io, path, a, .limited(max))` |
+| `writeFile(.{ .sub_path, .data })` | `writeFile(io, .{ .sub_path, .data, .flags })` |
+| `b.build_root` | `b.root` |
+| `b.findProgram` | `b.findProgramLazy` |
+| `run.addArgs(b.args)` | `run.addPassthruArgs()` |
+| `@intFromEnum` / `@enumFromInt` | `@backingInt` / `@fromBackingInt` |
+| `[1]T{v} ** n` | `@splat(v)` |
+| `i0` | `u0` |
+| `@cImport` | external `translate_c` package |
 
-## Critical: `build.zig.zon` Requires Enum Literal Name
+## Build system
 
-The `name` field is an **enum literal**, not a string. Zig 0.17.0 removed string names entirely.
+### `build.zig.zon`: name is an enum literal
 
 ```
-build.zig.zon:2:13: error: expected enum literal
-    .name = "zsx",
+error: expected enum literal
+    .name = "foo",
             ^~~~~
 ```
 
-**Fix**: replace `"zsx"` with `.zsx`.
+Fix: `.name = .foo`.
+
+### `build.zig.zon`: fingerprint is required
+
+```
+error: missing top-level 'fingerprint' field; suggested value: 0xfcebe7afe7650afb
+```
+
+Fix: paste the suggested value. `zig build` does not insert it automatically. The fingerprint derives from the package name; renaming invalidates it.
 
 ```zig
 .{
-    .name = .zsx,
-}
-```
-
-The enum literal must be a valid Zig identifier. It becomes the canonical package name used in dependency resolution, fingerprinting, and cache keys.
-
----
-
-## Critical: `build.zig.zon` Requires `fingerprint`
-
-`build.zig.zon` now requires a top-level `fingerprint` field. Missing it triggers an error that **suggests the exact value** to use.
-
-```
-build.zig.zon:1:2: error: missing top-level 'fingerprint' field; suggested value: 0xfcebe7afe7650afb
-.{
- ^
-```
-
-**Fix**: add the suggested fingerprint verbatim.
-
-```zig
-.{
-    .name = .zsx,
-    .version = "0.0.1",
+    .name = .foo,
+    .version = "0.1.0",
     .fingerprint = 0xfcebe7afe7650afb,
     .minimum_zig_version = "0.17.0",
-    .paths = .{
-        "build.zig",
-        "build.zig.zon",
-        "src",
-    },
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
 }
 ```
 
-**Key behaviors**:
-
-- The fingerprint is **content-derived** from the package name. Renaming the package or restructuring the manifest will produce a new suggested value.
-- The suggested value appears in the error message — no need to compute it manually.
-- `zig build` will **not** auto-insert the fingerprint. You must edit `build.zig.zon` yourself with the suggested value.
-- Keep the fingerprint stable across versions of the package. It is a package identity, not a checksum of source.
-
----
-
-## Critical: `addTest` Uses `root_module`, Not `root_source_file`
-
-`Build.TestOptions` in 0.17.0 does not accept `root_source_file`, `target`, or `optimize` directly. It requires a pre-constructed `*Module`.
+### `addTest` / `addExecutable` / `addLibrary` take `.root_module`
 
 ```
-build.zig:15:10: error: no field named 'root_source_file' in struct 'Build.TestOptions'
-        .root_source_file = b.path("src/root.zig"),
-         ^~~~~~
-/opt/homebrew/Cellar/zig/0.17.1/lib/zig/std/Build.zig:653:25: note: struct declared here
-pub const TestOptions = struct {
+error: no field named 'root_source_file' in struct 'Build.TestOptions'
 ```
 
-**Fix**: construct a module with `b.addModule` (or `b.createModule`), then pass it as `root_module`.
+Fix: build a module first, pass it as `.root_module`.
 
 ```zig
-const zsx_mod = b.addModule("zsx", .{
+const lib_mod = b.addModule("mylib", .{
     .root_source_file = b.path("src/root.zig"),
     .target = target,
     .optimize = optimize,
 });
+const tests = b.addTest(.{ .root_module = lib_mod });
+```
 
-const tests = b.addTest(.{
-    .root_module = zsx_mod,
+Same for `addExecutable`, `addLibrary`, `addStaticLibrary`, `addSharedLibrary`.
+
+### Unused local constants and function parameters are errors
+
+```
+error: unused local constant
+    const unused_thing = b.addModule(...);
+
+error: unused function parameter
+    pub fn f(x: anytype) void { ... }
+```
+
+Fix: reference them, inline them, or `_ = x;` at the top of the function body.
+
+```zig
+pub fn column(c: anytype, opts: anytype) Box {
+    _ = c;  // unused in this adapter body
+    return openBox(opts);
+}
+```
+
+### Filesystem in `build.zig`: `std.Io.Dir.cwd()` + `b.graph.io`
+
+`std.fs.cwd()` does not exist in 0.17. `std.fs` moved to `std.Io`; every operation takes an `io` instance.
+
+```zig
+const io = b.graph.io;
+const dir = std.Io.Dir.cwd();
+
+// read — limit is mandatory
+if (dir.readFileAlloc(io, path, allocator, .limited(1 << 20))) |bytes| {
+    defer allocator.free(bytes);
+} else |_| {}
+
+// write
+try dir.writeFile(io, .{
+    .sub_path = path,
+    .data = bytes,
+    .flags = .{ .truncate = true },
 });
+
+// file handle form
+const f = try dir.createFile(io, path, .{ .truncate = true });
+defer f.close(io);
+try f.writeStreamingAll(io, bytes);
 ```
 
-The same pattern applies to `addExecutable`, `addLibrary`, `addStaticLibrary`, and `addSharedLibrary` — they all take `.root_module = <*Module>` now. The flat `root_source_file` / `target` / `optimize` fields were removed from options structs in favor of module-level configuration.
+`error.FileTooBig` is now `error.StreamTooLong`.
 
----
+## Test harness
 
-## Critical: Unused Local Constants Are Hard Errors
-
-Zig treats unused local `const` bindings as compile errors, not warnings. This bit us when a module was declared for use in tests but only referenced later.
+### `zig test <file>` sets module root to the file's parent
 
 ```
-build.zig:7:11: error: unused local constant
-    const zsx_mod = b.addModule("zsx", .{
-          ^~~~~~~
+error: import of file outside module path
+    const ast = @import("../ast.zig");
 ```
 
-**Fix options**:
+`zig test src/subdir/file.zig` uses `src/subdir/` as module root. Any `../` import leaves the module and is illegal. Not a bug; it is the module boundary rule.
 
-1. **Reference it** — pass it to `addTest` as `root_module` (preferred, since the module was created to be used).
-2. **Discard it explicitly** — `_ = zsx_mod;` at end of scope (only if genuinely unused).
-3. **Inline the expression** — remove the binding entirely.
+For files with `../` imports, the only valid gate is `zig build test` **after** wiring the file through `root.zig` (or a file at a high-enough root).
 
-The first option is nearly always correct in `build.zig`: if you create a module, you probably want to install it or wire it into a test/executable. If neither, delete the binding.
+### `zig build test` only traverses files reachable from `.root_module`
 
----
+If `src/root.zig` does not import `src/backends/foo.zig`, its tests never run. `zig build test` still reports success. This is a **false positive** for tests in unimported files.
 
-## Quick Reference: 0.16 to 0.17 Build API Migrations
+Add an aggregator in `root.zig`:
 
-| Old (0.16.x) | New (0.17.0) | Notes |
-|---|---|---|
-| `.name = "foo"` | `.name = .foo` | Enum literal, not string |
-| `.fingerprint` absent | `.fingerprint = 0x...` | Required; value suggested by compiler |
-| `addTest(.{ .root_source_file = ..., .target = ..., .optimize = ... })` | `addTest(.{ .root_module = mod })` | Module-first API |
-| `addExecutable(.{ .root_source_file = ... })` | `addExecutable(.{ .root_module = mod })` | Same shift |
-| `addModule` return unused | Must be referenced or discarded | Zig unused-local rule |
-| `b.build_root` | `b.root` | Returns `Cache.Path` |
-| `b.findProgram(...)` | `b.findProgramLazy(...)` | Avoids configure cache poisoning |
-| `run_cmd.addArgs(args)` from `b.args` | `run_cmd.addPassthruArgs()` | Keeps configure cache pure |
+```zig
+test { _ = @import("backends/foo.zig"); }
+test { _ = @import("adapters/bar.zig"); }
+```
 
----
+### Verification checklist for adding tests
 
-## Canonical `build.zig` Template for Zig 0.17.0
+1. File is imported (directly or transitively) from `root.zig`.
+2. `zig build test` passes.
+3. The commit adding the test also adds (or confirms) the import in `root.zig`.
 
-Use this as the starting point for any new Zig 0.17.0 library or executable. It compiles cleanly with zero warnings on a fresh directory.
+Without step 3, "tests pass" does not mean "the tests you added ran."
+
+## Comptime
+
+### Comptime var pointers cannot escape to runtime
+
+```
+error: runtime value contains reference to comptime var
+    return comptime blk: { ... };
+note: comptime var pointers are not available at runtime
+```
+
+A parser that mutates `var buf: [N]T` inside `comptime blk:` and returns `buf[0..n]` produces slices pointing to comptime-var storage. That is fine if the result is consumed entirely at comptime. The moment any caller materializes it as a runtime value, Zig rejects the whole chain — including callers that previously compiled.
+
+Three fixes:
+
+1. **Consume entirely at comptime.** Caller wraps usage in `comptime { ... }`. Value never becomes runtime-typed.
+2. **Build `comptime Elem{ ... }` literals** from `&.{...}` array literals (comptime const, not var). Safe to materialize.
+3. **Codegen.** Emit a `.zig` file with literal AST nodes; those are comptime-const and materialize cleanly.
+
+```zig
+// WRONG: parse returns slices into comptime var buffer
+const el = comptime parse("...");  // el has runtime type -> materialize -> error
+
+// OK: literal built from comptime-const arrays
+const el = comptime Elem{
+    .tag = "div",
+    .attributes = &.{ .{ .name = "class", .value = .{ .string = "p-4" } } },
+    .children = &.{},
+};
+```
+
+### `@compileError` fires during analysis, not just execution
+
+A `@compileError` in an `if` or `switch` arm fires whenever the arm is analyzed, even if the branch would never be taken at runtime.
+
+```zig
+// WRONG: fires for every element whose child is .element
+for (el.children) |c| {
+    switch (c) {
+        .element => |el| emit(el),
+        .text => @compileError("no bare text"),  // analyzed even when c is .element
+    }
+}
+```
+
+Fixes:
+
+- Use `inline for` so each iteration's binding is comptime-known.
+- Use `comptime std.mem.eql(u8, tag, "column")` for tag checks so the `if`-chain prunes.
+- Use `comptime` on call arguments where the branch depends on them.
+
+### `inline for` for comptime-bound switch iteration
+
+For `switch (c)` where each arm must resolve per-iteration at comptime, `for` is not enough — the loop variable is not comptime-bound. `inline for` unrolls and each `c` is comptime.
+
+```zig
+inline for (el.children) |c| {
+    switch (c) {
+        .text => |t| return t,
+        .element => continue,
+    }
+}
+```
+
+### `orelse` does not propagate wrapped type
+
+```
+error: incompatible types: 'Rect' and 'struct_1064'
+    const cur = opts.padding orelse .{ .x = 0, .y = 0, .w = 0, .h = 0 };
+```
+
+`orelse` does not inject the payload type into its right operand. The anonymous struct infers its own type. Fix: annotate either side.
+
+```zig
+const cur: dvui.Rect = opts.padding orelse dvui.Rect{};
+// or
+const cur: dvui.Rect = opts.padding orelse .{};
+```
+
+### `std.fmt.parseFloat` unreliable at comptime
+
+`parseFloat` can fail or error at comptime for inputs that succeed at runtime. Do not use it in code paths that must be comptime-evaluated (numeric attribute parsing, config constants).
+
+```zig
+fn parseNumeric(comptime s: []const u8) f32 {
+    if (s.len == 0) @compileError("empty numeric value");
+    var result: f32 = 0;
+    inline for (s) |ch| {
+        if (ch < '0' or ch > '9') @compileError("non-numeric: " ++ s);
+        result = result * 10.0 + @as(f32, @floatFromInt(ch - '0'));
+    }
+    return result;
+}
+```
+
+Handles non-negative integers only. Extend with sign/decimal scanners if needed.
+
+### `std.fmt.comptimePrint` branch quota explosion
+
+```
+error: evaluation exceeded 3000 backwards branches
+    _ = mem.print(&buf, fmt, args) catch unreachable;
+note: use @setEvalBranchQuota() to raise the limit
+```
+
+`comptimePrint` runs `mem.print`, a general format interpreter. Each `{d}` uses dozens of branches. Concatenating ~20 formats exhausts the default 3000-branch budget.
+
+Fix: dedicated integer formatter for `u8`/`u32`/`f32-to-int`.
+
+```zig
+fn fmtInt(comptime n: u32) []const u8 {
+    return comptime blk: {
+        if (n == 0) break :blk "0";
+        var tmp: [12]u8 = undefined;
+        var len: usize = 0;
+        var v = n;
+        while (v > 0) {
+            tmp[len] = '0' + @as(u8, @intCast(v % 10));
+            v /= 10;
+            len += 1;
+        }
+        var out: [12]u8 = undefined;
+        for (0..len) |i| out[i] = tmp[len - 1 - i];
+        const result: [len]u8 = out[0..len].*;
+        break :blk &result;
+    };
+}
+```
+
+~2 branches per digit instead of hundreds. `@setEvalBranchQuota(100_000)` at the top of any comptime function is cheap insurance even with `fmtInt`.
+
+### `comptime blk: { ... break :blk &array; }` for comptime strings
+
+`const result: [len]u8 = out[0..len].*;` converts a runtime-length slice to a fixed-size array. `&result` is a comptime-const pointer, coerces to `[]const u8`. No comptime-var escape, no branch blowup.
+
+This is the pattern for comptime string building:
+
+```zig
+fn escapeString(comptime s: []const u8) []const u8 {
+    var out: []const u8 = "";
+    for (s) |ch| {
+        if (ch == '"' or ch == '\\') out = out ++ "\\";
+        out = out ++ [_]u8{ch};
+    }
+    return out;
+}
+```
+
+`out = out ++ "..."` inside a comptime function is fine — each concat produces a new comptime string literal, not a mutable buffer.
+
+### Comptime utility with comptime-var return: do not import into runtime tests
+
+A function that returns a value backed by `comptime var` storage cannot appear in a runtime test suite. Importing the file from `root.zig` (which becomes the runtime test root) triggers the escape error.
+
+Two options:
+
+1. Test only at comptime: `comptime { _ = @import("util.zig"); }` or drop the test block and rely on caller tests.
+2. Exercise via callers that consume the result entirely at comptime — codegen, macro expansion, etc.
+
+## External dependency workflow
+
+### Discover real API from `zig-pkg/` before writing a stub
+
+`zig fetch --save git+https://...` populates `zig-pkg/<name>-<version>-<hash>/`. Read the real signatures before writing any stub or adapter.
+
+```bash
+find zig-pkg/<name>-*/src -maxdepth 1 -name '*.zig'
+grep -n 'pub fn (text|button|div)' zig-pkg/<name>-*/src/*.zig
+sed -n '1,80p' zig-pkg/<name>-*/src/types.zig
+```
+
+Stub tests prove internal consistency, not API compatibility. Fabricated stub types (`Color{r,g,b,a:u8}` when real is `f32`, `opts:anytype` when real takes a concrete struct) produce a green suite that fails the moment real types are wired in.
+
+### Pin minor versions
+
+`#main` resolves to whatever HEAD is at fetch time. Pin a tag: `git+https://...#v0.12.0`. `0.x` libraries break across minor releases.
+
+## Canonical templates
+
+### `build.zig`
 
 ```zig
 const std = @import("std");
@@ -160,35 +355,25 @@ pub fn build(b: *std.Build) void {
     });
 
     const test_step = b.step("test", "Run unit tests");
-    const tests = b.addTest(.{
-        .root_module = lib_mod,
-    });
+    const tests = b.addTest(.{ .root_module = lib_mod });
     test_step.dependOn(&b.addRunArtifact(tests).step);
 }
 ```
 
-For executables, add:
+For executables:
 
 ```zig
-    const exe_mod = b.createModule(.{
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "mylib", .module = lib_mod },
-        },
-    });
-
-    const exe = b.addExecutable(.{
-        .name = "myapp",
-        .root_module = exe_mod,
-    });
-    b.installArtifact(exe);
+const exe_mod = b.createModule(.{
+    .root_source_file = b.path("src/main.zig"),
+    .target = target,
+    .optimize = optimize,
+    .imports = &.{ .{ .name = "mylib", .module = lib_mod } },
+});
+const exe = b.addExecutable(.{ .name = "myapp", .root_module = exe_mod });
+b.installArtifact(exe);
 ```
 
----
-
-## Canonical `build.zig.zon` Template for Zig 0.17.0
+### `build.zig.zon`
 
 ```zig
 .{
@@ -196,514 +381,20 @@ For executables, add:
     .version = "0.1.0",
     .fingerprint = 0x0000000000000000,
     .minimum_zig_version = "0.17.0",
-    .paths = .{
-        "build.zig",
-        "build.zig.zon",
-        "src",
-    },
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
 }
 ```
 
-**Workflow for the fingerprint**:
+Fingerprint workflow: write `0x0000000000000000`, run `zig build`, copy suggested value from error.
 
-1. Write the manifest with a placeholder `0x0000000000000000`.
-2. Run `zig build`.
-3. Copy the suggested value from the error message.
-4. Paste it into `.fingerprint`.
+## Verification checklist
 
-The fingerprint is a **64-bit integer**, not a string, and must be written as a hex literal `0x...`.
-
----
-
-## Common Error Message Reference
-
-| Error Message | Root Cause | Fix |
-|---|---|---|
-| `expected enum literal` | `.name` is a string | Use `.name = .foo` |
-| `missing top-level 'fingerprint' field` | Manifest lacks fingerprint | Add the suggested value verbatim |
-| `no field named 'root_source_file' in struct 'Build.TestOptions'` | Old flat options API | Use `.root_module = mod` |
-| `no field named 'root_source_file' in struct 'Build.ExecutableOptions'` | Same | Same |
-| `unused local constant` | Binding never referenced | Pass to addTest/addExecutable, or `_ = x;` |
-| `no field named 'build_root'` | Field renamed | Use `b.root` |
-| `no member named 'pathList' in ...` | Path list API changed | Use `b.pathList(&.{ ... })` |
-
----
-
-## Verification Checklist
-
-Before committing any `build.zig` change on Zig 0.17.0:
+Before committing any Zig change on 0.17:
 
 1. `zig build` succeeds with zero warnings.
-2. `zig build test` runs and all tests pass.
-3. `build.zig.zon` has `.name` as enum literal, `.fingerprint` populated, `.minimum_zig_version = "0.17.0"`.
-4. No unused local constants in `build.zig` — every `const` binding is referenced.
-5. `addTest`, `addExecutable`, `addLibrary` all use `.root_module`.
-6. `zig build --help` lists your custom steps (confirms `b.step` registration).
-
----
-
-## Changelog
-
-- **2026-11-04**: Initial curation after bringing up `zsx` from an empty directory. Captured four hard errors: enum-literal name, required fingerprint, `root_module` shift in test options, and unused-local-constant rule.
-
----
-
-## `zig test <file>` Sets Module Root to the File's Parent
-
-Running `zig test src/backends/dvui.zig` fails when that file contains `@import("../ast.zig")`:
-
-```
-error: import of file outside module path
-const ast = @import("../ast.zig");
-```
-
-**Cause**: `zig test <file>` uses `<file>`'s **parent directory** as the module root. Relative imports that climb (`../`) are illegal because they leave the module. This is not a bug — it is the module boundary rule.
-
-**Wrong gate**: `zig test src/backends/dvui.zig` — false signal, the backend's imports are illegal from that root.
-
-**Correct gate**: route the file through `root.zig` (or any file at a high-enough module root) and run `zig build test`. In ZSX, `src/root.zig` contains:
-
-```zig
-test {
-    _ = @import("backends/dvui.zig");
-}
-```
-
-That forces the backend tests to be collected and executed by `zig build test`, with the module root at `src/`, where `../ast.zig` is `src/ast.zig` and resolves legally.
-
-**Corollary**: any file with new tests must be reachable from `root.zig` before `zig build test` will execute those tests. A commit that adds tests to an unimported file passes compilation but runs zero tests — this is how a false positive happened during ZSX Phase 2.
-
-## False Positive from `zig build test` Without Import
-
-When a file with tests is not imported from `root.zig`, `zig build test` still reports success. The tests are silently skipped because they are not reachable from the module root.
-
-Symptom: a commit passes `zig build test` but a subsequent change reveals the file's tests were never executed (they may have contained latent `@compileError` or `@import` errors).
-
-Verification before committing any file with new tests:
-
-1. The file is imported (directly or transitively) from `src/root.zig`.
 2. `zig build test` passes.
-3. `git diff` of `src/root.zig` at that commit includes the new import (or the import was already present).
-
-Without (3), "tests pass" does not mean "the tests you added ran".
-
-## Multiple `@compileError` Arms Fire in Non-Comptime Switch
-
-When switching on a runtime-typed value, every arm is analyzed. A `@compileError` in a non-taken arm still fires.
-
-```zig
-for (el.children) |c| {
-    switch (c) {
-        .text => |t| return t,
-        .element => continue,
-        .expression => return null,
-    }
-}
-```
-
-If `c` is not comptime-known, the compiler analyzes `.text => return t` even when `c` is actually `.element`. That is fine if the arm has no `@compileError`. But if the arm is:
-
-```zig
-switch (c) {
-    .element => |el| emitElement(el),
-    .text => @compileError("text cannot be a direct child"),
-    .expression => @compileError("expression children unsupported"),
-}
-```
-
-the switch fires both `@compileError`s regardless of `c`'s actual tag.
-
-**Fix**: force the switch value to be comptime-known.
-
-- Use `inline for` for iteration so each `c` is comptime-bound.
-- Use `comptime std.mem.eql(u8, el.tag, "column")` for tag checks so the `if`-chain prunes branches at analysis.
-- Use `comptime` on function call arguments where the value must be known.
-
-The rule: `@compileError` in a `switch` or `if` arm fires only if the arm is **analyzed**. Comptime-known control flow prunes unreachable arms; runtime control flow analyzes all of them.
-
-## `orelse` Does Not Inject the Wrapped Type
-
-Given `opts.padding: ?Rect`, this fails:
-
-```zig
-const cur = opts.padding orelse .{ .x = 0, .y = 0, .w = 0, .h = 0 };
-```
-
-```
-error: incompatible types: 'Rect' and 'struct_1064'
-```
-
-`orelse` does not propagate the optional's payload type into the right operand. The anonymous struct infers as its own type.
-
-**Fix**: annotate either side.
-
-```zig
-const cur: dvui.Rect = opts.padding orelse dvui.Rect{};
-```
-
-or
-
-```zig
-const cur: dvui.Rect = opts.padding orelse .{};
-```
-
-Both give the struct literal the expected type.
-
-## `std.fmt.parseFloat` Is Unreliable at Comptime
-
-`parseFloat` can fail or error at comptime for inputs that succeed at runtime. Do not rely on it for values that must be comptime-known (numeric attributes in a markup parser, for example).
-
-**Fix**: write a manual digit scanner for non-negative integers:
-
-```zig
-fn parseNumeric(comptime s: []const u8) f32 {
-    if (s.len == 0) @compileError("empty numeric attribute value");
-    var result: f32 = 0;
-    inline for (s) |ch| {
-        if (ch < '0' or ch > '9') @compileError("non-numeric attribute value: '" ++ s ++ "'");
-        result = result * 10.0 + @as(f32, @floatFromInt(ch - '0'));
-    }
-    return result;
-}
-```
-
-The `inline for` makes each `ch` comptime-bound. The `if` bounds check is comptime-resolvable. `@compileError` fires only for genuinely non-numeric input. Extend with sign and decimal handling if the target attribute set requires it.
-
-## Comptime String Tokenization via `inline while`
-
-`std.mem.tokenizeScalar` returns a runtime iterator. Inside a comptime function it usually works, but only when the input is comptime-known and the function is forced to comptime. To make the intent explicit and the failure mode obvious, hand-roll a tokenizer with `comptime var` index and `inline while`:
-
-```zig
-fn applyClasses(opts: *Options, comptime class: []const u8) void {
-    comptime var i: usize = 0;
-    inline while (i < class.len) {
-        while (i < class.len and class[i] == ' ') i += 1;
-        if (i >= class.len) break;
-        const start = i;
-        while (i < class.len and class[i] != ' ') i += 1;
-        const token = class[start..i];
-        // compare token against known classes
-    }
-}
-```
-
-`comptime var` + `inline while` + runtime `while` for inner scans evaluate at comptime because the outer loop is unrolled. No dependence on `parseFloat`, `tokenizeScalar`, or any std API whose comptime behavior is undefined.
-
----
-
-## Nanoui Backend Notes
-
-Confirmed against the stub used in `src/backends/nanoui.zig`. Real Nanoui API may differ. If the stub tests pass but a real integration fails, adjust the stub to match the real API and re-run the emitter.
-
-### Backend Contract Divergence (Load-Bearing Finding)
-
-DVUI's signature: `pub fn emit(comptime element: ast.Element) void`. Self-contained.
-
-Nanoui's signature: `pub fn emit(comptime element: ast.Element, ctx: *Context) void`. Requires a context because `ui.div(c)` and `ui.text(c, ...)` all take `*ui.Context`.
-
-**These are incompatible.** The aspirational `Backend(Impl)` in `src/backend.zig` cannot assume a context-free `emit`. Two options for Phase 3.5:
-
-1. Universal contract takes `*Context` that DVUI wraps as an empty struct.
-2. Two contract variants: `BackendStateless` and `BackendStateful`.
-
-The current state is that each backend defines its own signature. That is honest but not unified. The unification is Phase 3.5.
-
-### Per-Tag Capabilities (Load-Bearing Finding)
-
-Nanoui's `ui.button` is variant-driven: `opts.variant = .primary | .danger | .ghost`. There is no `opts.bg` or `opts.color`. DVUI's `button` accepts `Options` with `color_fill` and `color_text` directly.
-
-**Capabilities are per-tag, not per-backend.** "Background is supported" is not a meaningful claim when it is true for `div` but false for `button` within the same backend. The flat `Capabilities` struct in `src/capabilities.zig` is inadequate. Phase 3.5 needs a per-tag capability table.
-
-### Stub-Driven Development
-
-The Nanoui backend was implemented against a `StubNanoui` with a minimal API surface — `div`, `text`, `button`, and a `Div` with `.column()`, `.row()`, `.gap()`, `.p()`, `.px()`, `.py()`, `.rounded()`, `.bg()`, `.w()`, `.h()`, `.end()`.
-
-Stub tests prove:
-
-- The emitter recurses through nested elements correctly.
-- Class strings route through `style_mod.styleFrom` and reach the builder chain.
-- Capability table is coherent.
-- Tag dispatch is correct.
-
-Stub tests do **not** prove:
-
-- The builder methods exist on real Nanoui's `Div` with those exact names.
-- The `Context` struct has the shape the stub assumes.
-- `.end()` is required.
-
-If real Nanoui diverges, the fix is: update `StubNanoui` to match real API, re-run tests, adjust emitter until tests pass, then test against real Nanoui. The stub is the contract.
-
-### Shared Style Module (src/style.zig)
-
-`src/style.zig` is now the canonical home of:
-
-- `Color`, `Spacing`, `FontWeight`, `Style` structs.
-- `parseClasses(comptime []const u8) Style` — class-string parser.
-- `parseNumeric(comptime []const u8) f32` — attribute expression parser.
-- `firstText(comptime Element) ?[]const u8` — text extraction.
-- `styleFrom(comptime Element) Style` — attribute + class merge.
-
-DVUI backend still has local copies. **Tech debt**. Migrating DVUI to `style.zig` is Phase 3.5.
-
-The `Style` struct is the prototype for the `StylePlan` IR. It has the right shape: flat, framework-agnostic, optional fields. Aeolus integration will extend it, not replace it.
-
-### Nanoui Stub API Surface
-
-For reference when writing similar backends, the minimal stub is:
-
-```zig
-pub const Context = struct {};
-pub const Color = struct { r, g, b, a: u8 };
-pub const Div = struct {
-    pub fn column(self) Div;
-    pub fn row(self) Div;
-    pub fn gap(self, v: f32) Div;
-    pub fn p(self, v: f32) Div;
-    pub fn px(self, v: f32) Div;
-    pub fn py(self, v: f32) Div;
-    pub fn rounded(self, v: f32) Div;
-    pub fn bg(self, c: Color) Div;
-    pub fn w(self, v: f32) Div;
-    pub fn h(self, v: f32) Div;
-    pub fn end(self) void;
-};
-pub fn div(c: *Context) Div;
-pub fn text(c: *Context, str: []const u8, opts: anytype) void;
-pub fn button(c: *Context, label: []const u8, opts: anytype) ButtonResult;
-```
-
-This is the surface a "shadcn for Nanoui" would need to target. Confirm against real Nanoui before depending on it.
-
----
----
----
-
-## Nanoui 0.12.0 Real API (Verified from Source)
-
-Confirmed by reading `zig-pkg/nanoui-0.12.0-*/src/ui/` after `zig fetch --save git+https://github.com/justrach/nanoui#main`. This supersedes the earlier stub-based Nanoui section. The prior section described a guessed API; this one describes the actual one.
-
-### What justrach/nanoui Actually Is
-
-It is a webview desktop-app framework (Electron/Tauri-shaped): `src/window.zig`, `src/page_webview2.zig`, `src/page_webkit.zig`, `src/tray.zig`, `src/ipc.zig`, `src/update.zig`, iOS/Android/Linux/Windows backends. That is the primary product.
-
-It also ships a full native immediate-mode UI toolkit under `src/ui/` (135 files: `div.zig`, `widgets.zig`, `text_tt.zig`, `shaper.zig`, `panes.zig`, `scrollbar.zig`, `types.zig`, `motion/`, `gpu.zig`, Metal/OpenGL/CPU renderers). This toolkit is what a `ui.zig` consumer uses. For ZSX, the Nanoui backend targets `src/ui/ui.zig`, not `nanoui.zig`.
-
-### Import Path
-
-    const ui = @import("nanoui/ui/ui.zig");
-
-Not `@import("nanoui")` -- that pulls in the webview app framework, not the UI toolkit.
-
-### Color -- f32 in [0, 1]
-
-    pub const Color = struct {
-        r: f32 = 0,
-        g: f32 = 0,
-        b: f32 = 0,
-        a: f32 = 1,
-    };
-
-Not u8. The backend converts `style_mod.Color` (u8 in [0,255]) to `ui.Color` (f32 in [0,1]) via `@floatFromInt(r) / 255.0`. The `toUiColor` helper does this.
-
-### Weight -- 4 variants
-
-    pub const Weight = enum { regular, medium, semibold, bold };
-
-`style_mod.FontWeight` has 3 (regular, semibold, bold). The `textStyle` switch maps the 3 that overlap.
-
-### TextStyle -- full struct
-
-    pub const TextStyle = struct {
-        size: f32 = 14,
-        weight: Weight = .regular,
-        color: ?Color = null,
-        wrap: bool = false,
-        mono: bool = false,
-        italic: bool = false,
-        leading: f32 = 1,
-        line_height: f32 = 0,
-        truncate: Truncate = .none,
-        max_lines: u8 = 0,
-        tabular: bool = false,
-        tracking: f32 = 0,
-        rounded: bool = false,
-        serif: bool = false,
-    };
-
-The backend returns `ui.TextStyle` directly from `textStyle(el)` -- no local TextOpts struct.
-
-### Widget Signatures
-
-    pub fn text(c: *Context, str: []const u8, style: types.TextStyle) void;
-    pub fn button(c: *Context, title: []const u8, opts: ButtonOptions) Interaction;
-
-`text` takes TextStyle by value, not anytype. `button` takes ButtonOptions by value and returns Interaction, not ButtonResult.
-
-### Div -- fully verified
-
-Every method the stub assumed exists with the matching signature: `row(d: Div) Div`, `column(d: Div) Div`, `gap(d: Div, v: f32) Div`, `p(d: Div, v: f32) Div`, `px(d: Div, v: f32) Div`, `py(d: Div, v: f32) Div`, `rounded(d: Div, v: f32) Div`, `bg(d: Div, color: Color) Div`, `w(d: Div, v: f32) Div`, `h(d: Div, v: f32) Div`, `end(d: Div) void`.
-
-Additional methods available later: `pt`, `pb`, `pl`, `pr`, `size`, `wFull`, `hFull`, `sizeFull`, `grow`, `minW`, `maxW`, `maxH`, `itemsStart`, `itemsCenter`, `itemsEnd`, `itemsStretch`, `justifyCenter`, `justifyEnd`, `justifyBetween`, `center`, `border`, `borderW`, `roundedFull`, `circular`, `shadow`, `shadows`, `dashed`, `safeArea`.
-
-### Context
-
-    pub const Context = struct {
-        gpa: std.mem.Allocator,
-        arena: std.heap.ArenaAllocator,
-        text: *text.TextSystem,
-        theme: Theme = .light,
-        ...
-    };
-
-The Context is created by the framework event loop, not the user. The Backend.Context wrapper holds `*ui.Context`, passed by the app at every emit call.
-
-### The Lesson
-
-The prior stub passed tests with fabricated types because the stub and emitter shared the same wrong assumptions. Stub tests prove internal consistency; they do not prove API compatibility with the real library.
-
-Rule: before writing a stub for a third-party API, dump the real API surface to disk first (grep, awk on `zig-pkg/<dep>-*/src/`), read it, then write both the stub and the emitter against it.
-
-## Unified Backend Contract (Phase 3.5)
-
-Phase 3 revealed that DVUI used `emit(comptime Element) void` while Nanoui used `emit(comptime Element, *Context) void`. The contract is now unified as:
-
-    pub fn emit(comptime element: ast.Element, ctx: *Context) void
-
-Every backend defines a `Context` type (may be empty `struct {}`). Backends that need no context `_ = ctx;` at the top of `emit`.
-
-### Enforced by `conforms()`
-
-`src/backend.zig` no longer wraps `Impl` in a struct. It exposes one function:
-
-    pub fn conforms(comptime Impl: type) bool
-
-Returns `true` if `Impl` has `Context`, `Capabilities`, `emit`, and `Impl.Capabilities` has `supports`. Each backend test suite calls it:
-
-    test "dvui backend conforms to contract" {
-        const contract = @import("../backend.zig");
-        try std.testing.expect(contract.conforms(Backend(StubDvui)));
-    }
-
-The prior `pub fn Backend(Impl: type) type` wrapper was removed because passing a backend's own comptime-generated struct to another `Backend(Impl)` failed with "struct has no member named 'Context'". A boolean `conforms` check sidesteps that compiler edge case while still catching regressions.
-
-### Why `Node` was removed
-
-The original contract had `pub const Node = Impl.Node;` and `pub fn emit(...) Node`. Neither backend returns a node: DVUI's `button` returns `bool`, Nanoui's returns `Interaction`, both discarded. Rendering is a side effect of walking the AST. `Node` was aspirational; the actual contract has always been `void`-returning.
-
-### Capability honesty
-
-`Capabilities.grow` on Nanoui was `true` but `applyBox` never called `.grow()`. Fixed to `false` in Phase 3.5. A capability must reflect what the emitter actually does, not what the framework could theoretically do. False positives break the "no silent failures" rule: the backend claims it handles `flex` and the user's markup with `flex` is silently dropped.
-
-### Expand unification
-
-`<column flex />` was DVUI-specific. Phase 3.5 promoted it to `style.zig`:
-
-- `style_mod.Expand = enum { none, horizontal, vertical, both }`
-- `style_mod.Style.expand: ?Expand = null`
-- `styleFrom` reads the `flex` boolean attribute
-
-DVUI maps `Expand` to `dvui.Options.expand` 1:1. Nanoui currently ignores `Style.expand`; when implemented it should map to `.grow()` for the parent's primary axis. `Capabilities.grow: false` reflects this.
-
-### DVUI migration to style.zig
-
-DVUI's local `parseClasses`, `parseNumeric`, `firstText`, `applyClasses` (~110 lines) removed. All classes route through `style_mod`. `toDvuiColor` is a field-for-field copy of `style_mod.Color`; for `ColorOrGradient` fields the backend wraps explicitly (`opts.color_fill = .{ .color = toDvuiColor(bg) }`), while Nanoui takes `Color` directly. That asymmetry is per-backend, not per-contract.
-
-### The `mktemp` pattern for appending docs
-
-Direct `cat >> docs/file.md << 'EOF'` can leave a partially-written file if the shell is interrupted mid-heredoc. Two-step:
-
-    DOC_TMP=$(mktemp)
-    cat > "$DOC_TMP" << 'EOF'
-    ... content ...
-    EOF
-    cat "$DOC_TMP" >> docs/file.md
-    rm "$DOC_TMP"
-
-The first `cat` is atomic per-heredoc; if the shell dies, `docs/file.md` is untouched. The second `cat >>` either completes or does not.
-
-### Verification for doc appends
-
-1. `grep -c '^## Section Header' docs/file.md` -- exactly 1
-2. `grep -c '^```' docs/file.md` -- even (fence parity)
-3. `git diff --stat docs/file.md` -- plausible insertion count
-
-If any check fails, `git restore docs/file.md` before committing.
-
-## Concurrency: The Lock File Is the Only Signal
-
-Multiple `wr.sh` instances racing on the same checkout corrupt history. Observed failure modes in this session:
-
-- One process's `git commit` advanced HEAD while another reported "Unable to create .git/index.lock" — the commit landed but the caller did not know
-- A `git restore` in one process wiped a file another had just appended
-- A conformance test appended in step E was missing by step G because a parallel process restored the file from HEAD
-
-### The wrong fix: `pgrep` + `kill`
-
-An earlier guard tried:
-
-    ORPHANS=$(pgrep -f 'wr\.sh' | grep -v "^$$\$" || true)
-    for pid in $ORPHANS; do kill -TERM "$pid"; done
-
-This killed the script itself. `pgrep -f 'wr\.sh'` matches **every** process whose full command line contains `wr.sh`, including:
-
-- The current bash (`$$` — filtered correctly)
-- Its **parent** shell or wrapper (not filtered — this was the actual killer)
-- A `watch`, `nohup`, or terminal multiplexer that launched it
-- A sibling terminal that happened to run `./wr.sh` recently and has it in the process table via a wrapper
-
-Killing the parent terminates the current process too. "Command killed by Terminate" at step A is the signature.
-
-### The right fix: check the lock file
-
-Git already serializes concurrent writers via `.git/index.lock`. If it exists, some git operation is in flight. The signal is unambiguous:
-
-    if [ -f .git/index.lock ]; then
-        echo "REFUSING: .git/index.lock exists"
-        echo "Inspect with: ps axww | grep -E 'wr\\.sh|git' | grep -v grep"
-        echo "If no process is running, remove with: rm .git/index.lock"
-        exit 1
-    fi
-
-No process enumeration. No `kill`. No self-kill risk. If the lock is stale from a crashed run, the message tells the user to remove it manually — one second of human inspection is worth infinitely more than an automated guess that can kill the wrong PID.
-
-### What not to do
-
-- **Do not** `kill -TERM $(pgrep -f 'wr\.sh')`. It kills the script's ancestors.
-- **Do not** `pkill -f 'wr\.sh'`. Same problem.
-- **Do not** use `grep -v "^$$\$"` as a filter and assume that is sufficient. It excludes only the immediate shell, not its parent tree.
-- **Do not** write a PID file at start and `kill -0` it at next start. The PID is reused by the OS; `kill -0` on a stale PID returns 0 for an unrelated process.
-
-### If `flock` is installed
-
-Preferred, if available:
-
-    exec 9>.git/index.lock.check
-    if ! flock -n 9; then
-        echo "REFUSING: another wr.sh holds the flock"
-        exit 1
-    fi
-
-This is atomic at the OS level. It does not require process enumeration and cannot kill anything. Downside: `flock` is not installed by default on macOS (`brew install flock`).
-
-### The `$$` trap, restated
-
-    echo "$$"                              # 12345
-    echo "^$$\$"                           # ^12345$    ($$ expands, then \$ is literal $)
-
-Inside a **double-quoted** string, `$$` expands and `\$` becomes a literal `$`. This is a regex anchor around the current PID. It is correct. It is also insufficient: excluding self does not exclude the self's parent, grandparent, or invoking wrapper.
-
-### Recovery after a race
-
-Do not `git restore` or `git reset` blindly. Sequence:
-
-1. `rm -f .git/index.lock .git/HEAD.lock .git/refs/heads/main.lock`
-2. `git log --oneline -5` — see what actually landed
-3. `git status` — see if any files are mid-modification
-4. For each expected-but-missing change, check **both** working tree and HEAD:
-
-       grep -c 'expected content' src/file.zig
-       git show HEAD:src/file.zig | grep -c 'expected content'
-
-   Missing from both: append and commit. Present in working tree only: commit. Present in both: done.
-5. `zig build test` before committing anything, to confirm the tree is functional.
-6. Use `HEAD_BEFORE` captured at script start, not a hardcoded hash, when reasoning about what changed.
+3. `build.zig.zon` has `.name` as enum literal, `.fingerprint` populated, `.minimum_zig_version = "0.17.0"`.
+4. No unused `const` bindings or function parameters.
+5. All `addTest`/`addExecutable`/`addLibrary` use `.root_module`.
+6. Every file with a `test` block is reachable from `root.zig`.
+7. `.gitignore` includes `.zig-cache/`, `zig-out/`, `zig-pkg/`.
