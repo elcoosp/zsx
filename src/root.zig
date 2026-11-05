@@ -396,3 +396,52 @@ test "onclick: no queued click means no save" {
     try std.testing.expect(!ctx.save_called);
     try std.testing.expectEqual(@as(usize, 1), ctx.button_rendered);
 }
+
+const ShadcnLibraryCtx = struct {
+    pub const Button = @import("lib/shadcn.zig").Button;
+    pub const Badge = @import("lib/shadcn.zig").Badge;
+
+    save_called: bool = false,
+    button_count: usize = 0,
+    label_count: usize = 0,
+
+    pub fn save(self: *@This()) void {
+        self.save_called = true;
+    }
+};
+
+test "shadcn-lib-file: Button variant dispatches via library" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/shadcn_lib_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ShadcnLibraryCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 4), dvui_adapter.StubDvui.buttonsRendered());
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "shadcn-lib-file: Button on_click via library fires handler" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/onclick_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    dvui_adapter.StubDvui.queue_click();
+    var ctx = ShadcnLibraryCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(ctx.save_called);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "shadcn-lib-file: Button on_click not fired without queue" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/onclick_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ShadcnLibraryCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(!ctx.save_called);
+}
