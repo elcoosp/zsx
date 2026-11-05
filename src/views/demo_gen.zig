@@ -6,9 +6,13 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
         var b = ui.column(c, .{.padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 }, .gap = 8});
         defer b.end();
-        ui.text(c, ctx.user.name, .{});
         if (ctx.show_save) {
             if (ui.button(c, "Save", .{.color_fill = .{ .r = 59, .g = 130, .b = 246, .a = 255 }, .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 }, .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 }})) ctx.save();
+        } else {
+            ui.text(c, "No actions", .{.color_text = .{ .r = 107, .g = 114, .b = 128, .a = 255 }});
+        }
+        for (ctx.items) |item| {
+            ui.text(c, item, .{});
         }
     }
 }
