@@ -10,6 +10,7 @@ pub fn build(b: *std.Build) void {
     const zsx_files = [_][]const u8{
         "src/views/demo.zsx",
         "src/views/component_demo.zsx",
+        "src/views/shadcn_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
