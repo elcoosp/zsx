@@ -13,6 +13,7 @@ pub fn build(b: *std.Build) void {
         "src/views/shadcn_demo.zsx",
         "src/views/shadcn_lib_demo.zsx",
         "src/views/onclick_demo.zsx",
+        "src/views/struct_loop_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
@@ -178,20 +179,22 @@ fn emitElement(comptime el: ast.Element, comptime level: usize, comptime start_i
     const indent = makeIndent(level);
 
     if (comptime std.mem.eql(u8, el.tag, "column")) {
-        const inner = comptime emitChildren(el.children, level + 1, start_id);
+        const box_name = "b_" ++ fmtInt(@intCast(start_id));
+        const inner = comptime emitChildren(el.children, level + 1, start_id + 1);
         var out: []const u8 = "";
         out = out ++ indent ++ "{\n";
-        out = out ++ indent ++ "    var b = ui.column(c, " ++ optsLiteral(el) ++ ");\n";
-        out = out ++ indent ++ "    defer b.end();\n";
+        out = out ++ indent ++ "    var " ++ box_name ++ " = ui.column(c, " ++ optsLiteral(el) ++ ");\n";
+        out = out ++ indent ++ "    defer " ++ box_name ++ ".end();\n";
         out = out ++ inner.code;
         out = out ++ indent ++ "}\n";
         return .{ .code = out, .preamble = inner.preamble, .next_id = inner.next_id };
     } else if (comptime std.mem.eql(u8, el.tag, "row")) {
-        const inner = comptime emitChildren(el.children, level + 1, start_id);
+        const box_name = "b_" ++ fmtInt(@intCast(start_id));
+        const inner = comptime emitChildren(el.children, level + 1, start_id + 1);
         var out: []const u8 = "";
         out = out ++ indent ++ "{\n";
-        out = out ++ indent ++ "    var b = ui.row(c, " ++ optsLiteral(el) ++ ");\n";
-        out = out ++ indent ++ "    defer b.end();\n";
+        out = out ++ indent ++ "    var " ++ box_name ++ " = ui.row(c, " ++ optsLiteral(el) ++ ");\n";
+        out = out ++ indent ++ "    defer " ++ box_name ++ ".end();\n";
         out = out ++ inner.code;
         out = out ++ indent ++ "}\n";
         return .{ .code = out, .preamble = inner.preamble, .next_id = inner.next_id };
