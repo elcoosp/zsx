@@ -157,7 +157,7 @@ fn emitChildren(comptime children: []const ast.Child, comptime start_level: usiz
                 if (comptime std.mem.startsWith(u8, e, "if ")) {
                     const cond = comptime std.mem.trim(u8, e[3..], " \t\n\r");
                     if (comptime cond.len == 0) @compileError("zsx: {if } with empty condition");
-                    if (stack_depth >= 32) @compileError("zsx: control-flow nesting exceeds 32");
+                    if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
                     out = out ++ makeIndent(level) ++ "if (" ++ cond ++ ") {\n";
                     stack[stack_depth] = 'i';
                     stack_depth += 1;
@@ -167,9 +167,9 @@ fn emitChildren(comptime children: []const ast.Child, comptime start_level: usiz
                     const as_idx = comptime std.mem.indexOf(u8, body, " as ").?;
                     const items = comptime std.mem.trim(u8, body[0..as_idx], " \t\n\r");
                     const binding = comptime std.mem.trim(u8, body[as_idx + 4 ..], " \t\n\r");
-                    if (comptime items.len == 0) @compileError("zsx: {for} with empty items expression");
+                    if (comptime items.len == 0) @compileError("zsx: {for} with empty items");
                     if (comptime binding.len == 0) @compileError("zsx: {for} with empty binding");
-                    if (stack_depth >= 32) @compileError("zsx: control-flow nesting exceeds 32");
+                    if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
                     out = out ++ makeIndent(level) ++ "for (" ++ items ++ ") |" ++ binding ++ "| {\n";
                     stack[stack_depth] = 'f';
                     stack_depth += 1;
@@ -269,6 +269,15 @@ fn optsLiteral(comptime el: ast.Element) []const u8 {
     }
     if (style.font_size) |fs| {
         out = out ++ sep ++ ".font_size = " ++ fmtF32(fs);
+        sep = ", ";
+    }
+    if (style.font_weight) |fw| {
+        const weight: u32 = switch (fw) {
+            .regular => 400,
+            .semibold => 600,
+            .bold => 700,
+        };
+        out = out ++ sep ++ ".font_weight = " ++ fmtInt(weight);
         sep = ", ";
     }
     return out ++ "}";
