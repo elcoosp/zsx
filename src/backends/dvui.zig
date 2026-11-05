@@ -294,3 +294,8 @@ test "dvui backend capabilities report" {
     try std.testing.expect(!caps.supports(.gap));
     try std.testing.expect(!caps.supports(.shadow));
 }
+
+test "dvui backend conforms to contract" {
+    const contract = @import("../backend.zig");
+    try std.testing.expect(contract.conforms(Backend(StubDvui)));
+}
