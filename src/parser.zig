@@ -1,57 +1,34 @@
 const std = @import("std");
 const ast = @import("ast.zig");
 
-pub const ParseError = error{
-    UnexpectedEof,
-    ExpectedTagStart,
-    ExpectedTagName,
-    ExpectedClose,
-    MismatchedTag,
-    ExpectedAttrName,
-    UnterminatedString,
-    UnterminatedExpression,
-    TooManyNestingLevels,
-    TrailingInput,
-    OutOfMemory,
-};
+pub const Element = ast.Element;
+pub const Attribute = ast.Attribute;
+pub const AttributeValue = ast.AttributeValue;
+pub const Child = ast.Child;
 
-pub const Result = struct {
-    arena: std.heap.ArenaAllocator,
-    root: ast.Element,
-
-    pub fn deinit(self: *Result) void {
-        self.arena.deinit();
-    }
-};
-
-pub fn parse(source: []const u8) ParseError!Result {
-    var arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator);
-    errdefer arena.deinit();
-    const alloc = arena.allocator();
-
-    var pos: usize = 0;
-    const root = try parseElement(alloc, source, &pos, 0);
-    if (pos != source.len) return error.TrailingInput;
-    return .{ .arena = arena, .root = root };
+pub fn parse(comptime src: []const u8) Element {
+    return comptime blk: {
+        var pos: usize = 0;
+        const el = parseElement(src, &pos);
+        if (pos != src.len) @compileError("trailing input after root element");
+        break :blk el;
+    };
 }
 
-fn parseElement(alloc: std.mem.Allocator, src: []const u8, pos: *usize, depth: usize) ParseError!ast.Element {
-    if (depth > 256) return error.TooManyNestingLevels;
-    if (pos.* >= src.len or src[pos.*] != '<') return error.ExpectedTagStart;
+fn parseElement(comptime src: []const u8, pos: *usize) Element {
+    if (pos.* >= src.len or src[pos.*] != '<') @compileError("expected '<'");
     pos.* += 1;
-
     const tag_start = pos.*;
     while (pos.* < src.len and isTagChar(src[pos.*])) pos.* += 1;
-    if (pos.* == tag_start) return error.ExpectedTagName;
-    const tag = try alloc.dupe(u8, src[tag_start..pos.*]);
+    if (pos.* == tag_start) @compileError("expected tag name");
+    const tag = src[tag_start..pos.*];
 
-    var attrs: std.ArrayList(ast.Attribute) = .empty;
-    errdefer attrs.deinit(alloc);
-    var self_closed = false;
+    var attrs_buf: [16]Attribute = undefined;
+    var attr_count: usize = 0;
 
     while (true) {
         while (pos.* < src.len and src[pos.*] == ' ') pos.* += 1;
-        if (pos.* >= src.len) return error.UnexpectedEof;
+        if (pos.* >= src.len) @compileError("unexpected EOF in opening tag");
         const c = src[pos.*];
         if (c == '>') {
             pos.* += 1;
@@ -59,104 +36,108 @@ fn parseElement(alloc: std.mem.Allocator, src: []const u8, pos: *usize, depth: u
         }
         if (c == '/') {
             pos.* += 1;
-            if (pos.* >= src.len or src[pos.*] != '>') return error.ExpectedClose;
+            if (pos.* >= src.len or src[pos.*] != '>') @compileError("expected '>' after '/'");
             pos.* += 1;
-            self_closed = true;
-            break;
+            return .{
+                .tag = tag,
+                .attributes = attrs_buf[0..attr_count],
+                .children = &[_]Child{},
+            };
         }
-        const attr = try parseAttribute(alloc, src, pos);
-        try attrs.append(alloc, attr);
+        if (attr_count >= attrs_buf.len) @compileError("too many attributes");
+        attrs_buf[attr_count] = parseAttribute(src, pos);
+        attr_count += 1;
     }
 
-    var children: std.ArrayList(ast.Child) = .empty;
-    errdefer children.deinit(alloc);
+    var children_buf: [32]Child = undefined;
+    var child_count: usize = 0;
 
-    if (!self_closed) {
-        while (true) {
-            if (pos.* >= src.len) return error.UnexpectedEof;
-            if (src[pos.*] == '<' and pos.* + 1 < src.len and src[pos.* + 1] == '/') {
-                pos.* += 2;
-                const close_start = pos.*;
-                while (pos.* < src.len and isTagChar(src[pos.*])) pos.* += 1;
-                const close_tag = src[close_start..pos.*];
-                if (!std.mem.eql(u8, close_tag, tag)) return error.MismatchedTag;
-                if (pos.* >= src.len or src[pos.*] != '>') return error.ExpectedClose;
-                pos.* += 1;
-                break;
-            }
-            const child = try parseChild(alloc, src, pos, depth + 1);
-            try children.append(alloc, child);
+    while (true) {
+        if (pos.* >= src.len) @compileError("unexpected EOF inside element");
+        if (src[pos.*] == '<' and pos.* + 1 < src.len and src[pos.* + 1] == '/') {
+            pos.* += 2;
+            const close_start = pos.*;
+            while (pos.* < src.len and isTagChar(src[pos.*])) pos.* += 1;
+            const close_tag = src[close_start..pos.*];
+            if (!std.mem.eql(u8, close_tag, tag)) @compileError("mismatched closing tag");
+            if (pos.* >= src.len or src[pos.*] != '>') @compileError("expected '>' after closing tag");
+            pos.* += 1;
+            break;
         }
+        if (child_count >= children_buf.len) @compileError("too many children");
+        children_buf[child_count] = parseChild(src, pos);
+        child_count += 1;
     }
 
     return .{
         .tag = tag,
-        .attributes = try attrs.toOwnedSlice(alloc),
-        .children = try children.toOwnedSlice(alloc),
+        .attributes = attrs_buf[0..attr_count],
+        .children = children_buf[0..child_count],
     };
 }
 
-fn parseAttribute(alloc: std.mem.Allocator, src: []const u8, pos: *usize) ParseError!ast.Attribute {
+fn parseAttribute(comptime src: []const u8, pos: *usize) Attribute {
     const name_start = pos.*;
     while (pos.* < src.len and isAttrNameChar(src[pos.*])) pos.* += 1;
-    if (pos.* == name_start) return error.ExpectedAttrName;
-    const name = try alloc.dupe(u8, src[name_start..pos.*]);
+    if (pos.* == name_start) @compileError("expected attribute name");
+    const name = src[name_start..pos.*];
 
     if (pos.* >= src.len or src[pos.*] != '=') {
         return .{ .name = name, .value = .boolean };
     }
     pos.* += 1;
-    if (pos.* >= src.len) return error.UnexpectedEof;
+
+    if (pos.* >= src.len) @compileError("unexpected EOF in attribute value");
 
     const c = src[pos.*];
     if (c == '"') {
         pos.* += 1;
         const val_start = pos.*;
         while (pos.* < src.len and src[pos.*] != '"') pos.* += 1;
-        if (pos.* >= src.len) return error.UnterminatedString;
-        const val = try alloc.dupe(u8, src[val_start..pos.*]);
+        if (pos.* >= src.len) @compileError("unterminated string attribute");
+        const val = src[val_start..pos.*];
         pos.* += 1;
         return .{ .name = name, .value = .{ .string = val } };
     }
     if (c == '{') {
         pos.* += 1;
         const val_start = pos.*;
-        var bracket_depth: usize = 1;
-        while (pos.* < src.len and bracket_depth > 0) {
-            if (src[pos.*] == '{') bracket_depth += 1;
-            if (src[pos.*] == '}') bracket_depth -= 1;
-            if (bracket_depth > 0) pos.* += 1;
+        var depth: usize = 1;
+        while (pos.* < src.len and depth > 0) {
+            if (src[pos.*] == '{') depth += 1;
+            if (src[pos.*] == '}') depth -= 1;
+            if (depth > 0) pos.* += 1;
         }
-        if (pos.* >= src.len) return error.UnterminatedExpression;
-        const val = try alloc.dupe(u8, src[val_start..pos.*]);
+        if (pos.* >= src.len) @compileError("unterminated expression attribute");
+        const val = src[val_start..pos.*];
         pos.* += 1;
         return .{ .name = name, .value = .{ .expression = val } };
     }
-    return error.ExpectedAttrName;
+    @compileError("expected quoted string or {expression} in attribute value");
 }
 
-fn parseChild(alloc: std.mem.Allocator, src: []const u8, pos: *usize, depth: usize) ParseError!ast.Child {
+fn parseChild(comptime src: []const u8, pos: *usize) Child {
     if (src[pos.*] == '<') {
-        return .{ .element = try parseElement(alloc, src, pos, depth) };
+        return .{ .element = parseElement(src, pos) };
     }
     if (src[pos.*] == '{') {
         pos.* += 1;
         const val_start = pos.*;
-        var bracket_depth: usize = 1;
-        while (pos.* < src.len and bracket_depth > 0) {
-            if (src[pos.*] == '{') bracket_depth += 1;
-            if (src[pos.*] == '}') bracket_depth -= 1;
-            if (bracket_depth > 0) pos.* += 1;
+        var depth: usize = 1;
+        while (pos.* < src.len and depth > 0) {
+            if (src[pos.*] == '{') depth += 1;
+            if (src[pos.*] == '}') depth -= 1;
+            if (depth > 0) pos.* += 1;
         }
-        if (pos.* >= src.len) return error.UnterminatedExpression;
-        const val = try alloc.dupe(u8, src[val_start..pos.*]);
+        if (pos.* >= src.len) @compileError("unterminated expression child");
+        const val = src[val_start..pos.*];
         pos.* += 1;
         return .{ .expression = val };
     }
     const start = pos.*;
     while (pos.* < src.len and src[pos.*] != '<' and src[pos.*] != '{') pos.* += 1;
-    if (pos.* == start) return error.ExpectedTagName;
-    return .{ .text = try alloc.dupe(u8, src[start..pos.*]) };
+    if (pos.* == start) @compileError("expected text content");
+    return .{ .text = src[start..pos.*] };
 }
 
 fn isTagChar(c: u8) bool {
@@ -168,83 +149,86 @@ fn isAttrNameChar(c: u8) bool {
 }
 
 test "parse simple element" {
-    var r = try parse("<column></column>");
-    defer r.deinit();
-    try std.testing.expectEqualStrings("column", r.root.tag);
-    try std.testing.expectEqual(@as(usize, 0), r.root.attributes.len);
-    try std.testing.expectEqual(@as(usize, 0), r.root.children.len);
+    const el = parse("<column></column>");
+    try std.testing.expectEqualStrings("column", el.tag);
+    try std.testing.expectEqual(@as(usize, 0), el.attributes.len);
+    try std.testing.expectEqual(@as(usize, 0), el.children.len);
 }
 
 test "parse boolean attribute" {
-    var r = try parse("<column flex></column>");
-    defer r.deinit();
-    try std.testing.expectEqual(@as(usize, 1), r.root.attributes.len);
-    try std.testing.expectEqualStrings("flex", r.root.attributes[0].name);
-    switch (r.root.attributes[0].value) {
+    const el = parse("<column flex></column>");
+    try std.testing.expectEqual(@as(usize, 1), el.attributes.len);
+    try std.testing.expectEqualStrings("flex", el.attributes[0].name);
+    const v = el.attributes[0].value;
+    switch (v) {
         .boolean => {},
         else => return error.TestUnexpectedResult,
     }
 }
 
 test "parse expression attribute" {
-    var r = try parse("<div gap={8}></div>");
-    defer r.deinit();
-    try std.testing.expectEqualStrings("gap", r.root.attributes[0].name);
-    switch (r.root.attributes[0].value) {
-        .expression => |e| try std.testing.expectEqualStrings("8", e),
+    const el = parse("<div gap={8}></div>");
+    try std.testing.expectEqualStrings("gap", el.attributes[0].name);
+    const v = el.attributes[0].value;
+    switch (v) {
+        .expression => |expr| try std.testing.expectEqualStrings("8", expr),
         else => return error.TestUnexpectedResult,
     }
 }
 
 test "parse string attribute" {
-    var r = try parse("<div class=\"p-4\"></div>");
-    defer r.deinit();
-    switch (r.root.attributes[0].value) {
+    const el = parse("<div class=\"p-4\"></div>");
+    try std.testing.expectEqualStrings("class", el.attributes[0].name);
+    const v = el.attributes[0].value;
+    switch (v) {
         .string => |s| try std.testing.expectEqualStrings("p-4", s),
         else => return error.TestUnexpectedResult,
     }
 }
 
-test "parse self closing" {
-    var r = try parse("<input />");
-    defer r.deinit();
-    try std.testing.expectEqualStrings("input", r.root.tag);
-    try std.testing.expectEqual(@as(usize, 0), r.root.children.len);
+test "parse self-closing" {
+    const el = parse("<input />");
+    try std.testing.expectEqualStrings("input", el.tag);
+    try std.testing.expectEqual(@as(usize, 0), el.children.len);
 }
 
 test "parse text child" {
-    var r = try parse("<label>Hello</label>");
-    defer r.deinit();
-    try std.testing.expectEqual(@as(usize, 1), r.root.children.len);
-    switch (r.root.children[0]) {
+    const el = parse("<label>Hello</label>");
+    try std.testing.expectEqual(@as(usize, 1), el.children.len);
+    const c = el.children[0];
+    switch (c) {
         .text => |t| try std.testing.expectEqualStrings("Hello", t),
         else => return error.TestUnexpectedResult,
     }
 }
 
-test "parse expression child" {
-    var r = try parse("<label>{ctx.user.name}</label>");
-    defer r.deinit();
-    switch (r.root.children[0]) {
-        .expression => |e| try std.testing.expectEqualStrings("ctx.user.name", e),
+test "parse nested element" {
+    const el = parse("<column><label>Hi</label></column>");
+    try std.testing.expectEqual(@as(usize, 1), el.children.len);
+    const c = el.children[0];
+    switch (c) {
+        .element => |child_el| {
+            try std.testing.expectEqualStrings("label", child_el.tag);
+            try std.testing.expectEqual(@as(usize, 1), child_el.children.len);
+        },
         else => return error.TestUnexpectedResult,
     }
 }
 
-test "parse nested element" {
-    var r = try parse("<column><label>Hi</label></column>");
-    defer r.deinit();
-    switch (r.root.children[0]) {
-        .element => |el| try std.testing.expectEqualStrings("label", el.tag),
+test "parse expression child" {
+    const el = parse("<label>{greeting}</label>");
+    try std.testing.expectEqual(@as(usize, 1), el.children.len);
+    const c = el.children[0];
+    switch (c) {
+        .expression => |expr| try std.testing.expectEqualStrings("greeting", expr),
         else => return error.TestUnexpectedResult,
     }
 }
 
 test "parse multiple attributes" {
-    var r = try parse("<button class=\"bg-blue-500\" on_click={ctx.save} disabled></button>");
-    defer r.deinit();
-    try std.testing.expectEqual(@as(usize, 3), r.root.attributes.len);
-    try std.testing.expectEqualStrings("class", r.root.attributes[0].name);
-    try std.testing.expectEqualStrings("on_click", r.root.attributes[1].name);
-    try std.testing.expectEqualStrings("disabled", r.root.attributes[2].name);
+    const el = parse("<button class=\"bg-blue-500\" on_click={save} disabled></button>");
+    try std.testing.expectEqual(@as(usize, 3), el.attributes.len);
+    try std.testing.expectEqualStrings("class", el.attributes[0].name);
+    try std.testing.expectEqualStrings("on_click", el.attributes[1].name);
+    try std.testing.expectEqualStrings("disabled", el.attributes[2].name);
 }
