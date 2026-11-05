@@ -1,0 +1,11 @@
+<column padding={8}>
+  <Card>
+    <Card>
+      <label>inner</label>
+    </Card>
+    <label>mid</label>
+  </Card>
+  <Card>
+    <label>sibling</label>
+  </Card>
+</column>
