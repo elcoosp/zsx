@@ -14,6 +14,7 @@ pub fn build(b: *std.Build) void {
         "src/views/shadcn_lib_demo.zsx",
         "src/views/onclick_demo.zsx",
         "src/views/struct_loop_demo.zsx",
+        "src/views/card_if_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
@@ -324,24 +325,70 @@ fn emitContentChildren(comptime children: []const ast.Child, comptime start_leve
     @setEvalBranchQuota(200_000);
     var code: []const u8 = "";
     var preamble: []const u8 = "";
+    var level: usize = start_level;
     var id: usize = start_id;
+    comptime var stack: [32]u8 = undefined;
+    comptime var stack_depth: usize = 0;
     for (children) |child| {
         switch (child) {
             .element => |el| {
-                const r = comptime emitElement(el, start_level, id);
+                const r = comptime emitElement(el, level, id);
                 code = code ++ r.code;
                 preamble = preamble ++ r.preamble;
                 id = r.next_id;
             },
             .text => |t| {
                 if (comptime isWhitespaceOnly(t)) continue;
-                code = code ++ makeIndent(start_level) ++ "ui.text(c, \"" ++ escapeString(t) ++ "\", .{});\n";
+                code = code ++ makeIndent(level) ++ "ui.text(c, \"" ++ escapeString(t) ++ "\", .{});\n";
             },
             .expression => |e| {
-                code = code ++ makeIndent(start_level) ++ "ui.text(c, " ++ e ++ ", .{});\n";
+                if (comptime std.mem.startsWith(u8, e, "if ")) {
+                    const cond = comptime std.mem.trim(u8, e[3..], " \t\n\r");
+                    if (comptime cond.len == 0) @compileError("zsx: {if } empty condition");
+                    if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
+                    code = code ++ makeIndent(level) ++ "if (" ++ cond ++ ") {\n";
+                    stack[stack_depth] = 'i';
+                    stack_depth += 1;
+                    level += 1;
+                } else if (comptime std.mem.startsWith(u8, e, "for ") and std.mem.indexOf(u8, e, " as ") != null) {
+                    const body = comptime std.mem.trim(u8, e[4..], " \t\n\r");
+                    const as_idx = comptime std.mem.indexOf(u8, body, " as ").?;
+                    const items = comptime std.mem.trim(u8, body[0..as_idx], " \t\n\r");
+                    const binding = comptime std.mem.trim(u8, body[as_idx + 4 ..], " \t\n\r");
+                    if (comptime items.len == 0) @compileError("zsx: {for} empty items");
+                    if (comptime binding.len == 0) @compileError("zsx: {for} empty binding");
+                    if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
+                    code = code ++ makeIndent(level) ++ "for (" ++ items ++ ") |" ++ binding ++ "| {\n";
+                    stack[stack_depth] = 'f';
+                    stack_depth += 1;
+                    level += 1;
+                } else if (comptime std.mem.eql(u8, e, "else")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {else} without {if}");
+                    if (comptime stack[stack_depth - 1] != 'i') @compileError("zsx: {else} unmatched");
+                    stack[stack_depth - 1] = 'e';
+                    level -= 1;
+                    code = code ++ makeIndent(level) ++ "} else {\n";
+                    level += 1;
+                } else if (comptime std.mem.eql(u8, e, "endif")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {endif} without {if}");
+                    const top = comptime stack[stack_depth - 1];
+                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {endif} unmatched");
+                    stack_depth -= 1;
+                    level -= 1;
+                    code = code ++ makeIndent(level) ++ "}\n";
+                } else if (comptime std.mem.eql(u8, e, "endfor")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {endfor} without {for}");
+                    if (comptime stack[stack_depth - 1] != 'f') @compileError("zsx: {endfor} unmatched");
+                    stack_depth -= 1;
+                    level -= 1;
+                    code = code ++ makeIndent(level) ++ "}\n";
+                } else {
+                    code = code ++ makeIndent(level) ++ "ui.text(c, " ++ e ++ ", .{});\n";
+                }
             },
         }
     }
+    if (comptime stack_depth != 0) @compileError("zsx: unclosed control-flow block");
     return .{ .code = code, .preamble = preamble, .next_id = id };
 }
 
