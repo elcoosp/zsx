@@ -388,3 +388,88 @@ fn applyClasses(opts: *Options, comptime class: []const u8) void {
 ```
 
 `comptime var` + `inline while` + runtime `while` for inner scans evaluate at comptime because the outer loop is unrolled. No dependence on `parseFloat`, `tokenizeScalar`, or any std API whose comptime behavior is undefined.
+
+---
+
+## Nanoui Backend Notes
+
+Confirmed against the stub used in `src/backends/nanoui.zig`. Real Nanoui API may differ. If the stub tests pass but a real integration fails, adjust the stub to match the real API and re-run the emitter.
+
+### Backend Contract Divergence (Load-Bearing Finding)
+
+DVUI's signature: `pub fn emit(comptime element: ast.Element) void`. Self-contained.
+
+Nanoui's signature: `pub fn emit(comptime element: ast.Element, ctx: *Context) void`. Requires a context because `ui.div(c)` and `ui.text(c, ...)` all take `*ui.Context`.
+
+**These are incompatible.** The aspirational `Backend(Impl)` in `src/backend.zig` cannot assume a context-free `emit`. Two options for Phase 3.5:
+
+1. Universal contract takes `*Context` that DVUI wraps as an empty struct.
+2. Two contract variants: `BackendStateless` and `BackendStateful`.
+
+The current state is that each backend defines its own signature. That is honest but not unified. The unification is Phase 3.5.
+
+### Per-Tag Capabilities (Load-Bearing Finding)
+
+Nanoui's `ui.button` is variant-driven: `opts.variant = .primary | .danger | .ghost`. There is no `opts.bg` or `opts.color`. DVUI's `button` accepts `Options` with `color_fill` and `color_text` directly.
+
+**Capabilities are per-tag, not per-backend.** "Background is supported" is not a meaningful claim when it is true for `div` but false for `button` within the same backend. The flat `Capabilities` struct in `src/capabilities.zig` is inadequate. Phase 3.5 needs a per-tag capability table.
+
+### Stub-Driven Development
+
+The Nanoui backend was implemented against a `StubNanoui` with a minimal API surface — `div`, `text`, `button`, and a `Div` with `.column()`, `.row()`, `.gap()`, `.p()`, `.px()`, `.py()`, `.rounded()`, `.bg()`, `.w()`, `.h()`, `.end()`.
+
+Stub tests prove:
+
+- The emitter recurses through nested elements correctly.
+- Class strings route through `style_mod.styleFrom` and reach the builder chain.
+- Capability table is coherent.
+- Tag dispatch is correct.
+
+Stub tests do **not** prove:
+
+- The builder methods exist on real Nanoui's `Div` with those exact names.
+- The `Context` struct has the shape the stub assumes.
+- `.end()` is required.
+
+If real Nanoui diverges, the fix is: update `StubNanoui` to match real API, re-run tests, adjust emitter until tests pass, then test against real Nanoui. The stub is the contract.
+
+### Shared Style Module (src/style.zig)
+
+`src/style.zig` is now the canonical home of:
+
+- `Color`, `Spacing`, `FontWeight`, `Style` structs.
+- `parseClasses(comptime []const u8) Style` — class-string parser.
+- `parseNumeric(comptime []const u8) f32` — attribute expression parser.
+- `firstText(comptime Element) ?[]const u8` — text extraction.
+- `styleFrom(comptime Element) Style` — attribute + class merge.
+
+DVUI backend still has local copies. **Tech debt**. Migrating DVUI to `style.zig` is Phase 3.5.
+
+The `Style` struct is the prototype for the `StylePlan` IR. It has the right shape: flat, framework-agnostic, optional fields. Aeolus integration will extend it, not replace it.
+
+### Nanoui Stub API Surface
+
+For reference when writing similar backends, the minimal stub is:
+
+```zig
+pub const Context = struct {};
+pub const Color = struct { r, g, b, a: u8 };
+pub const Div = struct {
+    pub fn column(self) Div;
+    pub fn row(self) Div;
+    pub fn gap(self, v: f32) Div;
+    pub fn p(self, v: f32) Div;
+    pub fn px(self, v: f32) Div;
+    pub fn py(self, v: f32) Div;
+    pub fn rounded(self, v: f32) Div;
+    pub fn bg(self, c: Color) Div;
+    pub fn w(self, v: f32) Div;
+    pub fn h(self, v: f32) Div;
+    pub fn end(self) void;
+};
+pub fn div(c: *Context) Div;
+pub fn text(c: *Context, str: []const u8, opts: anytype) void;
+pub fn button(c: *Context, label: []const u8, opts: anytype) ButtonResult;
+```
+
+This is the surface a "shadcn for Nanoui" would need to target. Confirm against real Nanoui before depending on it.
