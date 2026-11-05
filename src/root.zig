@@ -21,20 +21,36 @@ test {
     _ = @import("views/demo_gen.zig");
 }
 
-test "demo_gen renders against stub dvui" {
+const User = struct { name: []const u8 };
+const Ctx = struct {
+    user: User,
+    show_save: bool = true,
+    save_called: bool = false,
+    pub fn save(self: *@This()) void {
+        self.save_called = true;
+    }
+};
+
+test "demo_gen with show_save=true renders button" {
     const dvui_adapter = @import("adapters/dvui.zig");
     const demo = @import("views/demo_gen.zig");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
-    const User = struct { name: []const u8 };
-    const Ctx = struct {
-        user: User,
-        save_called: bool = false,
-        pub fn save(self: *@This()) void {
-            self.save_called = true;
-        }
-    };
-    var ctx = Ctx{ .user = .{ .name = "Alice" } };
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = Ctx{ .user = .{ .name = "Alice" }, .show_save = true };
     demo.view(A, &c, &ctx);
     try std.testing.expect(!ctx.save_called);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "demo_gen with show_save=false skips button" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = Ctx{ .user = .{ .name = "Bob" }, .show_save = false };
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(!ctx.save_called);
+    try std.testing.expectEqual(@as(usize, 0), dvui_adapter.StubDvui.buttonsRendered());
 }
