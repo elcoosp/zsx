@@ -49,6 +49,10 @@ test {
     _ = @import("views/card_if_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/else_if_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -520,4 +524,42 @@ test "card-if: show=false renders zero labels" {
     var ctx = CardIfCtx{ .show = false };
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 0), dvui_adapter.StubDvui.labelsRendered());
+}
+
+const ElseIfCtx = struct {
+    a: bool = false,
+    b: bool = false,
+};
+
+test "else-if: a=true renders only A (1 label)" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/else_if_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ElseIfCtx{ .a = true, .b = false };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "else-if: a=false b=true renders B branch (2 labels)" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/else_if_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ElseIfCtx{ .a = false, .b = true };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "else-if: a=false b=false renders else branch (3 labels)" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/else_if_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ElseIfCtx{ .a = false, .b = false };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 3), dvui_adapter.StubDvui.labelsRendered());
 }
