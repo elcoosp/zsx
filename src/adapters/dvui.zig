@@ -100,6 +100,21 @@ pub const StubDvui = struct {
     pub const Context = struct {};
 
     var _box: BoxWidget = .{};
+    var _buttons_rendered: usize = 0;
+    var _labels_rendered: usize = 0;
+
+    pub fn buttonsRendered() usize {
+        return _buttons_rendered;
+    }
+
+    pub fn labelsRendered() usize {
+        return _labels_rendered;
+    }
+
+    pub fn resetCounters() void {
+        _buttons_rendered = 0;
+        _labels_rendered = 0;
+    }
 
     pub fn box(src: anytype, init: anytype, opts: Options) *BoxWidget {
         _ = src;
@@ -107,16 +122,6 @@ pub const StubDvui = struct {
         _ = opts;
         _box.ended = false;
         return &_box;
-    }
-
-    var _buttons_rendered: usize = 0;
-
-    pub fn buttonsRendered() usize {
-        return _buttons_rendered;
-    }
-
-    pub fn resetCounters() void {
-        _buttons_rendered = 0;
     }
 
     pub fn button(src: anytype, label: []const u8, init: anytype, opts: Options) bool {
@@ -133,6 +138,7 @@ pub const StubDvui = struct {
         _ = text;
         _ = init;
         _ = opts;
+        _labels_rendered += 1;
     }
 };
 
@@ -143,15 +149,18 @@ test "dvui adapter column opens and ends" {
     b.end();
 }
 
-test "dvui adapter text with padding literal" {
+test "dvui adapter text counts labels" {
     const A = Adapter(StubDvui);
     var c: StubDvui.Context = .{};
-    A.text(&c, "hi", .{ .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 } });
+    StubDvui.resetCounters();
+    A.text(&c, "hi", .{});
+    try std.testing.expectEqual(@as(usize, 1), StubDvui.labelsRendered());
 }
 
-test "dvui adapter button with color_fill literal" {
+test "dvui adapter button counts buttons" {
     const A = Adapter(StubDvui);
     var c: StubDvui.Context = .{};
-    const clicked = A.button(&c, "Save", .{ .color_fill = .{ .r = 59, .g = 130, .b = 246, .a = 255 } });
-    try std.testing.expect(!clicked);
+    StubDvui.resetCounters();
+    _ = A.button(&c, "Save", .{ .color_fill = .{ .r = 59, .g = 130, .b = 246, .a = 255 } });
+    try std.testing.expectEqual(@as(usize, 1), StubDvui.buttonsRendered());
 }
