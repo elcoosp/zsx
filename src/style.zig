@@ -60,6 +60,16 @@ fn applyToken(style: *Style, comptime token: []const u8) void {
         style.foreground = Color.white;
     } else if (std.mem.eql(u8, token, "text-black")) {
         style.foreground = Color.black;
+    } else if (std.mem.eql(u8, token, "text-gray-100")) {
+        style.foreground = .{ .r = 243, .g = 244, .b = 246 };
+    } else if (std.mem.eql(u8, token, "text-gray-300")) {
+        style.foreground = .{ .r = 209, .g = 213, .b = 219 };
+    } else if (std.mem.eql(u8, token, "text-gray-500")) {
+        style.foreground = .{ .r = 107, .g = 114, .b = 128 };
+    } else if (std.mem.eql(u8, token, "text-gray-700")) {
+        style.foreground = .{ .r = 55, .g = 65, .b = 81 };
+    } else if (std.mem.eql(u8, token, "text-gray-900")) {
+        style.foreground = .{ .r = 17, .g = 24, .b = 39 };
     } else if (std.mem.eql(u8, token, "p-4")) {
         style.padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 };
     } else if (std.mem.eql(u8, token, "p-2")) {
