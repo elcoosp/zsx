@@ -102,6 +102,7 @@ pub const StubDvui = struct {
     var _box: BoxWidget = .{};
     var _buttons_rendered: usize = 0;
     var _labels_rendered: usize = 0;
+    var _queued_clicks: usize = 0;
 
     pub fn buttonsRendered() usize {
         return _buttons_rendered;
@@ -111,9 +112,14 @@ pub const StubDvui = struct {
         return _labels_rendered;
     }
 
+    pub fn queue_click() void {
+        _queued_clicks += 1;
+    }
+
     pub fn resetCounters() void {
         _buttons_rendered = 0;
         _labels_rendered = 0;
+        _queued_clicks = 0;
     }
 
     pub fn box(src: anytype, init: anytype, opts: Options) *BoxWidget {
@@ -130,6 +136,10 @@ pub const StubDvui = struct {
         _ = init;
         _ = opts;
         _buttons_rendered += 1;
+        if (_queued_clicks > 0) {
+            _queued_clicks -= 1;
+            return true;
+        }
         return false;
     }
 
