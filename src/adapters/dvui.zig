@@ -102,6 +102,8 @@ pub const StubDvui = struct {
     var _box: BoxWidget = .{};
     var _buttons_rendered: usize = 0;
     var _labels_rendered: usize = 0;
+    var _last_button_padding: ?Rect = null;
+    var _last_button_radius: ?f32 = null;
     var _queued_clicks: usize = 0;
 
     pub fn buttonsRendered() usize {
@@ -112,6 +114,14 @@ pub const StubDvui = struct {
         return _labels_rendered;
     }
 
+    pub fn lastButtonPadding() ?Rect {
+        return _last_button_padding;
+    }
+
+    pub fn lastButtonRadius() ?f32 {
+        return _last_button_radius;
+    }
+
     pub fn queue_click() void {
         _queued_clicks += 1;
     }
@@ -120,6 +130,8 @@ pub const StubDvui = struct {
         _buttons_rendered = 0;
         _labels_rendered = 0;
         _queued_clicks = 0;
+        _last_button_padding = null;
+        _last_button_radius = null;
     }
 
     pub fn box(src: anytype, init: anytype, opts: Options) *BoxWidget {
@@ -134,8 +146,9 @@ pub const StubDvui = struct {
         _ = src;
         _ = label;
         _ = init;
-        _ = opts;
         _buttons_rendered += 1;
+        _last_button_padding = opts.padding;
+        _last_button_radius = opts.radius;
         if (_queued_clicks > 0) {
             _queued_clicks -= 1;
             return true;
