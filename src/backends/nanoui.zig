@@ -325,3 +325,8 @@ test "nanoui backend capabilities report" {
     try std.testing.expect(!caps.supports(.hover_background));
     try std.testing.expect(!caps.supports(.grow));
 }
+
+test "nanoui backend conforms to contract" {
+    const contract = @import("../backend.zig");
+    try std.testing.expect(contract.conforms(Backend(StubNanoui)));
+}
