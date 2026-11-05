@@ -12,6 +12,7 @@ pub fn build(b: *std.Build) void {
         "src/views/component_demo.zsx",
         "src/views/shadcn_demo.zsx",
         "src/views/shadcn_lib_demo.zsx",
+        "src/views/onclick_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
@@ -369,16 +370,36 @@ fn firstTextLiteral(comptime el: ast.Element) []const u8 {
     return "\"\"";
 }
 
+fn normalizeClickHandler(comptime expr: []const u8) []const u8 {
+    const trimmed = comptime std.mem.trim(u8, expr, " \t\n\r");
+    if (!std.mem.startsWith(u8, trimmed, "ctx.")) {
+        @compileError("zsx: on_click must start with ctx., got {" ++ expr ++ "}");
+    }
+    if (!std.mem.endsWith(u8, trimmed, "()")) {
+        @compileError("zsx: on_click must be a call like {ctx.method()}, got {" ++ expr ++ "}");
+    }
+    const method = trimmed[4 .. trimmed.len - 2];
+    if (comptime method.len == 0) @compileError("zsx: on_click empty method name");
+    return "@field(@TypeOf(ctx.*), \"" ++ method ++ "\")";
+}
+
 fn componentPropsLiteral(comptime el: ast.Element, comptime include_text: bool) []const u8 {
     @setEvalBranchQuota(200_000);
     var out: []const u8 = ".{";
     var sep: []const u8 = "";
     inline for (el.attributes) |attr| {
         out = out ++ sep ++ "." ++ attr.name ++ " = ";
-        switch (attr.value) {
-            .boolean => out = out ++ "true",
-            .string => |s| out = out ++ "\"" ++ escapeString(s) ++ "\"",
-            .expression => |e| out = out ++ e,
+        if (comptime std.mem.eql(u8, attr.name, "on_click")) {
+            switch (attr.value) {
+                .expression => |e| out = out ++ normalizeClickHandler(e),
+                else => out = out ++ "undefined",
+            }
+        } else {
+            switch (attr.value) {
+                .boolean => out = out ++ "true",
+                .string => |s| out = out ++ "\"" ++ escapeString(s) ++ "\"",
+                .expression => |e| out = out ++ e,
+            }
         }
         sep = ", ";
     }
