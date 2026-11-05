@@ -17,6 +17,7 @@ pub fn build(b: *std.Build) void {
         "src/views/card_if_demo.zsx",
         "src/views/else_if_demo.zsx",
         "src/views/fragment_demo.zsx",
+        "src/views/class_override_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
