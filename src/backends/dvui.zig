@@ -88,26 +88,27 @@ pub fn Backend(comptime dvui: type) type {
         fn optionsFrom(comptime el: ast.Element) dvui.Options {
             var opts = dvui.Options{};
             inline for (el.attributes) |attr| {
-                if (std.mem.eql(u8, attr.name, "class")) {
-                    if (attr.value == .string) applyClassesToOpts(attr.value.string, &opts);
-                } else if (std.mem.eql(u8, attr.name, "padding")) {
+                const name = attr.name;
+                if (std.mem.eql(u8, name, "class")) {
+                    if (attr.value == .string) applyClasses(&opts, attr.value.string);
+                } else if (std.mem.eql(u8, name, "padding")) {
                     if (attr.value == .expression) {
                         const v = std.fmt.parseFloat(f32, attr.value.expression) catch @compileError("padding must be numeric");
                         opts.padding = .{ .x = v, .y = v, .w = v, .h = v };
                     }
-                } else if (std.mem.eql(u8, attr.name, "width")) {
+                } else if (std.mem.eql(u8, name, "width")) {
                     if (attr.value == .expression) {
                         const v = std.fmt.parseFloat(f32, attr.value.expression) catch @compileError("width must be numeric");
                         const h = if (opts.min_size_content) |s| s.h else 0;
                         opts.min_size_content = .{ .w = v, .h = h };
                     }
-                } else if (std.mem.eql(u8, attr.name, "height")) {
+                } else if (std.mem.eql(u8, name, "height")) {
                     if (attr.value == .expression) {
                         const v = std.fmt.parseFloat(f32, attr.value.expression) catch @compileError("height must be numeric");
                         const w = if (opts.min_size_content) |s| s.w else 0;
                         opts.min_size_content = .{ .w = w, .h = v };
                     }
-                } else if (std.mem.eql(u8, attr.name, "flex")) {
+                } else if (std.mem.eql(u8, name, "flex")) {
                     if (attr.value == .boolean) {
                         opts.expand = .horizontal;
                     }
@@ -116,7 +117,7 @@ pub fn Backend(comptime dvui: type) type {
             return opts;
         }
 
-        fn applyClassesToOpts(comptime class: []const u8, opts: *dvui.Options) void {
+        fn applyClasses(opts: *dvui.Options, class: []const u8) void {
             var iter = std.mem.tokenizeScalar(u8, class, ' ');
             while (iter.next()) |token| {
                 if (std.mem.eql(u8, token, "bg-blue-500")) {
@@ -202,11 +203,13 @@ const StubDvui = struct {
         }
     };
 
-    pub fn box(src: anytype, init: anytype, opts: Options) BoxWidget {
+    var _box_storage: BoxWidget = .{};
+
+    pub fn box(src: anytype, init: anytype, opts: Options) *BoxWidget {
         _ = src;
         _ = init;
         _ = opts;
-        return .{};
+        return &_box_storage;
     }
 
     pub fn button(src: anytype, label: []const u8, init: anytype, opts: Options) bool {
@@ -230,31 +233,67 @@ test "dvui backend instantiates against stub" {
 }
 
 test "dvui backend emits label" {
-    comptime {
-        const el = @import("../parser.zig").parse("<label>hi</label>");
-        Backend(StubDvui).emit(el);
-    }
+    const el = comptime ast.Element{
+        .tag = "label",
+        .attributes = &.{},
+        .children = &.{
+            .{ .text = "hi" },
+        },
+    };
+    const B = Backend(StubDvui);
+    B.emit(el);
 }
 
 test "dvui backend emits column with label child" {
-    comptime {
-        const el = @import("../parser.zig").parse("<column><label>hello</label></column>");
-        Backend(StubDvui).emit(el);
-    }
+    const el = comptime ast.Element{
+        .tag = "column",
+        .attributes = &.{},
+        .children = &.{
+            .{ .element = ast.Element{
+                .tag = "label",
+                .attributes = &.{},
+                .children = &.{
+                    .{ .text = "hello" },
+                },
+            } },
+        },
+    };
+    const B = Backend(StubDvui);
+    B.emit(el);
 }
 
 test "dvui backend emits button with classes" {
-    comptime {
-        const el = @import("../parser.zig").parse("<button class=\"bg-blue-500 text-white px-4 py-2\">Save</button>");
-        Backend(StubDvui).emit(el);
-    }
+    const el = comptime ast.Element{
+        .tag = "button",
+        .attributes = &.{
+            .{ .name = "class", .value = .{ .string = "bg-blue-500 text-white px-4 py-2" } },
+        },
+        .children = &.{
+            .{ .text = "Save" },
+        },
+    };
+    const B = Backend(StubDvui);
+    B.emit(el);
 }
 
 test "dvui backend emits column with padding" {
-    comptime {
-        const el = @import("../parser.zig").parse("<column padding={16}><label>x</label></column>");
-        Backend(StubDvui).emit(el);
-    }
+    const el = comptime ast.Element{
+        .tag = "column",
+        .attributes = &.{
+            .{ .name = "padding", .value = .{ .expression = "16" } },
+        },
+        .children = &.{
+            .{ .element = ast.Element{
+                .tag = "label",
+                .attributes = &.{},
+                .children = &.{
+                    .{ .text = "x" },
+                },
+            } },
+        },
+    };
+    const B = Backend(StubDvui);
+    B.emit(el);
 }
 
 test "dvui backend capabilities report" {
