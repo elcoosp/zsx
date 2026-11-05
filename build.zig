@@ -31,6 +31,19 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     const tests = b.addTest(.{ .root_module = zsx_mod });
     test_step.dependOn(&b.addRunArtifact(tests).step);
+
+    const hello_mod = b.createModule(.{
+        .root_source_file = b.path("src/hello.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const hello_exe = b.addExecutable(.{
+        .name = "zsx-hello",
+        .root_module = hello_mod,
+    });
+    const hello_run = b.addRunArtifact(hello_exe);
+    const example_step = b.step("example", "Run the hello example");
+    example_step.dependOn(&hello_run.step);
 }
 
 fn isWs(c: u8) bool {
