@@ -245,3 +245,146 @@ Before committing any `build.zig` change on Zig 0.17.0:
 ## Changelog
 
 - **2026-11-04**: Initial curation after bringing up `zsx` from an empty directory. Captured four hard errors: enum-literal name, required fingerprint, `root_module` shift in test options, and unused-local-constant rule.
+
+---
+
+## `zig test <file>` Sets Module Root to the File's Parent
+
+Running `zig test src/backends/dvui.zig` fails when that file contains `@import("../ast.zig")`:
+
+```
+error: import of file outside module path
+const ast = @import("../ast.zig");
+```
+
+**Cause**: `zig test <file>` uses `<file>`'s **parent directory** as the module root. Relative imports that climb (`../`) are illegal because they leave the module. This is not a bug — it is the module boundary rule.
+
+**Wrong gate**: `zig test src/backends/dvui.zig` — false signal, the backend's imports are illegal from that root.
+
+**Correct gate**: route the file through `root.zig` (or any file at a high-enough module root) and run `zig build test`. In ZSX, `src/root.zig` contains:
+
+```zig
+test {
+    _ = @import("backends/dvui.zig");
+}
+```
+
+That forces the backend tests to be collected and executed by `zig build test`, with the module root at `src/`, where `../ast.zig` is `src/ast.zig` and resolves legally.
+
+**Corollary**: any file with new tests must be reachable from `root.zig` before `zig build test` will execute those tests. A commit that adds tests to an unimported file passes compilation but runs zero tests — this is how a false positive happened during ZSX Phase 2.
+
+## False Positive from `zig build test` Without Import
+
+When a file with tests is not imported from `root.zig`, `zig build test` still reports success. The tests are silently skipped because they are not reachable from the module root.
+
+Symptom: a commit passes `zig build test` but a subsequent change reveals the file's tests were never executed (they may have contained latent `@compileError` or `@import` errors).
+
+Verification before committing any file with new tests:
+
+1. The file is imported (directly or transitively) from `src/root.zig`.
+2. `zig build test` passes.
+3. `git diff` of `src/root.zig` at that commit includes the new import (or the import was already present).
+
+Without (3), "tests pass" does not mean "the tests you added ran".
+
+## Multiple `@compileError` Arms Fire in Non-Comptime Switch
+
+When switching on a runtime-typed value, every arm is analyzed. A `@compileError` in a non-taken arm still fires.
+
+```zig
+for (el.children) |c| {
+    switch (c) {
+        .text => |t| return t,
+        .element => continue,
+        .expression => return null,
+    }
+}
+```
+
+If `c` is not comptime-known, the compiler analyzes `.text => return t` even when `c` is actually `.element`. That is fine if the arm has no `@compileError`. But if the arm is:
+
+```zig
+switch (c) {
+    .element => |el| emitElement(el),
+    .text => @compileError("text cannot be a direct child"),
+    .expression => @compileError("expression children unsupported"),
+}
+```
+
+the switch fires both `@compileError`s regardless of `c`'s actual tag.
+
+**Fix**: force the switch value to be comptime-known.
+
+- Use `inline for` for iteration so each `c` is comptime-bound.
+- Use `comptime std.mem.eql(u8, el.tag, "column")` for tag checks so the `if`-chain prunes branches at analysis.
+- Use `comptime` on function call arguments where the value must be known.
+
+The rule: `@compileError` in a `switch` or `if` arm fires only if the arm is **analyzed**. Comptime-known control flow prunes unreachable arms; runtime control flow analyzes all of them.
+
+## `orelse` Does Not Inject the Wrapped Type
+
+Given `opts.padding: ?Rect`, this fails:
+
+```zig
+const cur = opts.padding orelse .{ .x = 0, .y = 0, .w = 0, .h = 0 };
+```
+
+```
+error: incompatible types: 'Rect' and 'struct_1064'
+```
+
+`orelse` does not propagate the optional's payload type into the right operand. The anonymous struct infers as its own type.
+
+**Fix**: annotate either side.
+
+```zig
+const cur: dvui.Rect = opts.padding orelse dvui.Rect{};
+```
+
+or
+
+```zig
+const cur: dvui.Rect = opts.padding orelse .{};
+```
+
+Both give the struct literal the expected type.
+
+## `std.fmt.parseFloat` Is Unreliable at Comptime
+
+`parseFloat` can fail or error at comptime for inputs that succeed at runtime. Do not rely on it for values that must be comptime-known (numeric attributes in a markup parser, for example).
+
+**Fix**: write a manual digit scanner for non-negative integers:
+
+```zig
+fn parseNumeric(comptime s: []const u8) f32 {
+    if (s.len == 0) @compileError("empty numeric attribute value");
+    var result: f32 = 0;
+    inline for (s) |ch| {
+        if (ch < '0' or ch > '9') @compileError("non-numeric attribute value: '" ++ s ++ "'");
+        result = result * 10.0 + @as(f32, @floatFromInt(ch - '0'));
+    }
+    return result;
+}
+```
+
+The `inline for` makes each `ch` comptime-bound. The `if` bounds check is comptime-resolvable. `@compileError` fires only for genuinely non-numeric input. Extend with sign and decimal handling if the target attribute set requires it.
+
+## Comptime String Tokenization via `inline while`
+
+`std.mem.tokenizeScalar` returns a runtime iterator. Inside a comptime function it usually works, but only when the input is comptime-known and the function is forced to comptime. To make the intent explicit and the failure mode obvious, hand-roll a tokenizer with `comptime var` index and `inline while`:
+
+```zig
+fn applyClasses(opts: *Options, comptime class: []const u8) void {
+    comptime var i: usize = 0;
+    inline while (i < class.len) {
+        while (i < class.len and class[i] == ' ') i += 1;
+        if (i >= class.len) break;
+        const start = i;
+        while (i < class.len and class[i] != ' ') i += 1;
+        const token = class[start..i];
+        // compare token against known classes
+    }
+}
+```
+
+`comptime var` + `inline while` + runtime `while` for inner scans evaluate at comptime because the outer loop is unrolled. No dependence on `parseFloat`, `tokenizeScalar`, or any std API whose comptime behavior is undefined.
