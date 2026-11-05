@@ -62,8 +62,8 @@ pub fn Backend(comptime ui: type) type {
                 inline for (el.children) |c| emitChild(c, ctx);
             } else if (comptime std.mem.eql(u8, el.tag, "label")) {
                 const text = comptime style_mod.firstText(el) orelse @compileError("label requires text child");
-                const opts = comptime textOpts(el);
-                ui.text(ctx.c, text, opts);
+                const style = comptime textStyle(el);
+                ui.text(ctx.c, text, style);
             } else if (comptime std.mem.eql(u8, el.tag, "button")) {
                 const text = comptime style_mod.firstText(el) orelse @compileError("button requires text child");
                 _ = ui.button(ctx.c, text, .{});
@@ -83,9 +83,7 @@ pub fn Backend(comptime ui: type) type {
         fn applyBox(initial: anytype, comptime el: ast.Element) @TypeOf(initial) {
             const s = comptime style_mod.styleFrom(el);
             var d = initial;
-            if (s.background) |bg| {
-                d = d.bg(.{ .r = bg.r, .g = bg.g, .b = bg.b, .a = bg.a });
-            }
+            if (s.background) |bg| d = d.bg(toUiColor(bg));
             if (s.padding) |p| {
                 if (p.x == p.y and p.x == p.w and p.x == p.h) {
                     d = d.p(p.x);
@@ -101,21 +99,28 @@ pub fn Backend(comptime ui: type) type {
             return d;
         }
 
-        pub const TextOpts = struct {
-            size: ?f32 = null,
-            weight: ?style_mod.FontWeight = null,
-            color: ?ui.Color = null,
-        };
-
-        fn textOpts(comptime el: ast.Element) TextOpts {
+        fn textStyle(comptime el: ast.Element) ui.TextStyle {
             const s = comptime style_mod.styleFrom(el);
-            var opts = TextOpts{};
-            if (s.foreground) |fg| {
-                opts.color = .{ .r = fg.r, .g = fg.g, .b = fg.b, .a = fg.a };
+            var ts = ui.TextStyle{};
+            if (s.foreground) |fg| ts.color = toUiColor(fg);
+            if (s.font_size) |fs| ts.size = fs;
+            if (s.font_weight) |fw| {
+                ts.weight = switch (fw) {
+                    .regular => .regular,
+                    .semibold => .semibold,
+                    .bold => .bold,
+                };
             }
-            if (s.font_size) |fs| opts.size = fs;
-            if (s.font_weight) |fw| opts.weight = fw;
-            return opts;
+            return ts;
+        }
+
+        fn toUiColor(c: style_mod.Color) ui.Color {
+            return .{
+                .r = @as(f32, @floatFromInt(c.r)) / 255.0,
+                .g = @as(f32, @floatFromInt(c.g)) / 255.0,
+                .b = @as(f32, @floatFromInt(c.b)) / 255.0,
+                .a = @as(f32, @floatFromInt(c.a)) / 255.0,
+            };
         }
     };
 }
@@ -124,10 +129,36 @@ const StubNanoui = struct {
     pub const Context = struct {};
 
     pub const Color = struct {
-        r: u8 = 0,
-        g: u8 = 0,
-        b: u8 = 0,
-        a: u8 = 255,
+        r: f32 = 0,
+        g: f32 = 0,
+        b: f32 = 0,
+        a: f32 = 1,
+    };
+
+    pub const Weight = enum { regular, medium, semibold, bold };
+
+    pub const TextStyle = struct {
+        size: f32 = 14,
+        weight: Weight = .regular,
+        color: ?Color = null,
+        wrap: bool = false,
+    };
+
+    pub const Interaction = struct {
+        clicked: bool = false,
+        hovered: bool = false,
+        pressed: bool = false,
+        id: u32 = 0,
+    };
+
+    pub const ButtonVariant = enum { primary, secondary, ghost, danger };
+
+    pub const ButtonOptions = struct {
+        variant: ButtonVariant = .primary,
+        size: f32 = 14,
+        disabled: bool = false,
+        icon: []const u8 = "",
+        width: f32 = 0,
     };
 
     pub const Div = struct {
@@ -174,24 +205,20 @@ const StubNanoui = struct {
         }
     };
 
-    pub const ButtonResult = struct {
-        clicked: bool = false,
-    };
-
     pub fn div(c: *Context) Div {
         _ = c;
         return .{};
     }
 
-    pub fn text(c: *Context, str: []const u8, opts: anytype) void {
+    pub fn text(c: *Context, str: []const u8, style: TextStyle) void {
         _ = c;
         _ = str;
-        _ = opts;
+        _ = style;
     }
 
-    pub fn button(c: *Context, label: []const u8, opts: anytype) ButtonResult {
+    pub fn button(c: *Context, title: []const u8, opts: ButtonOptions) Interaction {
         _ = c;
-        _ = label;
+        _ = title;
         _ = opts;
         return .{};
     }
@@ -260,6 +287,19 @@ test "nanoui backend emits button" {
         .tag = "button",
         .attributes = &[_]Attr{},
         .children = &[_]Child{Child{ .text = "Save" }},
+    };
+    var c: StubNanoui.Context = .{};
+    var ctx = Backend(StubNanoui).Context{ .c = &c };
+    Backend(StubNanoui).emit(el, &ctx);
+}
+
+test "nanoui backend emits label with text classes" {
+    const el = comptime Elem{
+        .tag = "label",
+        .attributes = &[_]Attr{
+            Attr{ .name = "class", .value = AttrVal{ .string = "text-white text-lg font-bold" } },
+        },
+        .children = &[_]Child{Child{ .text = "Heading" }},
     };
     var c: StubNanoui.Context = .{};
     var ctx = Backend(StubNanoui).Context{ .c = &c };
