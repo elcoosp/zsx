@@ -473,3 +473,92 @@ pub fn button(c: *Context, label: []const u8, opts: anytype) ButtonResult;
 ```
 
 This is the surface a "shadcn for Nanoui" would need to target. Confirm against real Nanoui before depending on it.
+
+---
+---
+---
+
+## Nanoui 0.12.0 Real API (Verified from Source)
+
+Confirmed by reading `zig-pkg/nanoui-0.12.0-*/src/ui/` after `zig fetch --save git+https://github.com/justrach/nanoui#main`. This supersedes the earlier stub-based Nanoui section. The prior section described a guessed API; this one describes the actual one.
+
+### What justrach/nanoui Actually Is
+
+It is a webview desktop-app framework (Electron/Tauri-shaped): `src/window.zig`, `src/page_webview2.zig`, `src/page_webkit.zig`, `src/tray.zig`, `src/ipc.zig`, `src/update.zig`, iOS/Android/Linux/Windows backends. That is the primary product.
+
+It also ships a full native immediate-mode UI toolkit under `src/ui/` (135 files: `div.zig`, `widgets.zig`, `text_tt.zig`, `shaper.zig`, `panes.zig`, `scrollbar.zig`, `types.zig`, `motion/`, `gpu.zig`, Metal/OpenGL/CPU renderers). This toolkit is what a `ui.zig` consumer uses. For ZSX, the Nanoui backend targets `src/ui/ui.zig`, not `nanoui.zig`.
+
+### Import Path
+
+    const ui = @import("nanoui/ui/ui.zig");
+
+Not `@import("nanoui")` -- that pulls in the webview app framework, not the UI toolkit.
+
+### Color -- f32 in [0, 1]
+
+    pub const Color = struct {
+        r: f32 = 0,
+        g: f32 = 0,
+        b: f32 = 0,
+        a: f32 = 1,
+    };
+
+Not u8. The backend converts `style_mod.Color` (u8 in [0,255]) to `ui.Color` (f32 in [0,1]) via `@floatFromInt(r) / 255.0`. The `toUiColor` helper does this.
+
+### Weight -- 4 variants
+
+    pub const Weight = enum { regular, medium, semibold, bold };
+
+`style_mod.FontWeight` has 3 (regular, semibold, bold). The `textStyle` switch maps the 3 that overlap.
+
+### TextStyle -- full struct
+
+    pub const TextStyle = struct {
+        size: f32 = 14,
+        weight: Weight = .regular,
+        color: ?Color = null,
+        wrap: bool = false,
+        mono: bool = false,
+        italic: bool = false,
+        leading: f32 = 1,
+        line_height: f32 = 0,
+        truncate: Truncate = .none,
+        max_lines: u8 = 0,
+        tabular: bool = false,
+        tracking: f32 = 0,
+        rounded: bool = false,
+        serif: bool = false,
+    };
+
+The backend returns `ui.TextStyle` directly from `textStyle(el)` -- no local TextOpts struct.
+
+### Widget Signatures
+
+    pub fn text(c: *Context, str: []const u8, style: types.TextStyle) void;
+    pub fn button(c: *Context, title: []const u8, opts: ButtonOptions) Interaction;
+
+`text` takes TextStyle by value, not anytype. `button` takes ButtonOptions by value and returns Interaction, not ButtonResult.
+
+### Div -- fully verified
+
+Every method the stub assumed exists with the matching signature: `row(d: Div) Div`, `column(d: Div) Div`, `gap(d: Div, v: f32) Div`, `p(d: Div, v: f32) Div`, `px(d: Div, v: f32) Div`, `py(d: Div, v: f32) Div`, `rounded(d: Div, v: f32) Div`, `bg(d: Div, color: Color) Div`, `w(d: Div, v: f32) Div`, `h(d: Div, v: f32) Div`, `end(d: Div) void`.
+
+Additional methods available later: `pt`, `pb`, `pl`, `pr`, `size`, `wFull`, `hFull`, `sizeFull`, `grow`, `minW`, `maxW`, `maxH`, `itemsStart`, `itemsCenter`, `itemsEnd`, `itemsStretch`, `justifyCenter`, `justifyEnd`, `justifyBetween`, `center`, `border`, `borderW`, `roundedFull`, `circular`, `shadow`, `shadows`, `dashed`, `safeArea`.
+
+### Context
+
+    pub const Context = struct {
+        gpa: std.mem.Allocator,
+        arena: std.heap.ArenaAllocator,
+        text: *text.TextSystem,
+        theme: Theme = .light,
+        ...
+    };
+
+The Context is created by the framework event loop, not the user. The Backend.Context wrapper holds `*ui.Context`, passed by the app at every emit call.
+
+### The Lesson
+
+The prior stub passed tests with fabricated types because the stub and emitter shared the same wrong assumptions. Stub tests prove internal consistency; they do not prove API compatibility with the real library.
+
+Rule: before writing a stub for a third-party API, dump the real API surface to disk first (grep, awk on `zig-pkg/<dep>-*/src/`), read it, then write both the stub and the emitter against it.
