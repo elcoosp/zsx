@@ -56,6 +56,12 @@ fn applyToken(style: *Style, comptime token: []const u8) void {
         style.hover_background = .{ .r = 37, .g = 99, .b = 235 };
     } else if (std.mem.eql(u8, token, "bg-gray-100")) {
         style.background = .{ .r = 243, .g = 244, .b = 246 };
+    } else if (std.mem.eql(u8, token, "bg-red-500")) {
+        style.background = .{ .r = 239, .g = 68, .b = 68 };
+    } else if (std.mem.eql(u8, token, "bg-green-500")) {
+        style.background = .{ .r = 34, .g = 197, .b = 94 };
+    } else if (std.mem.eql(u8, token, "bg-yellow-500")) {
+        style.background = .{ .r = 234, .g = 179, .b = 8 };
     } else if (std.mem.eql(u8, token, "text-white")) {
         style.foreground = Color.white;
     } else if (std.mem.eql(u8, token, "text-black")) {
@@ -70,10 +76,22 @@ fn applyToken(style: *Style, comptime token: []const u8) void {
         style.foreground = .{ .r = 55, .g = 65, .b = 81 };
     } else if (std.mem.eql(u8, token, "text-gray-900")) {
         style.foreground = .{ .r = 17, .g = 24, .b = 39 };
+    } else if (std.mem.eql(u8, token, "text-red-500")) {
+        style.foreground = .{ .r = 239, .g = 68, .b = 68 };
+    } else if (std.mem.eql(u8, token, "text-green-500")) {
+        style.foreground = .{ .r = 34, .g = 197, .b = 94 };
     } else if (std.mem.eql(u8, token, "p-4")) {
         style.padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 };
     } else if (std.mem.eql(u8, token, "p-2")) {
         style.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 };
+    } else if (std.mem.eql(u8, token, "p-1")) {
+        style.padding = .{ .x = 4, .y = 4, .w = 4, .h = 4 };
+    } else if (std.mem.eql(u8, token, "px-2")) {
+        const cur: Spacing = style.padding orelse Spacing{};
+        style.padding = .{ .x = 8, .y = cur.y, .w = 8, .h = cur.h };
+    } else if (std.mem.eql(u8, token, "py-1")) {
+        const cur: Spacing = style.padding orelse Spacing{};
+        style.padding = .{ .x = cur.x, .y = 4, .w = cur.w, .h = 4 };
     } else if (std.mem.eql(u8, token, "px-4")) {
         const cur: Spacing = style.padding orelse Spacing{};
         style.padding = .{ .x = 16, .y = cur.y, .w = 16, .h = cur.h };
