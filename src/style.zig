@@ -13,6 +13,8 @@ pub const Color = struct {
 
 pub const FontWeight = enum { regular, semibold, bold };
 
+pub const Expand = enum { none, horizontal, vertical, both };
+
 pub const Spacing = struct {
     x: f32 = 0,
     y: f32 = 0,
@@ -31,6 +33,7 @@ pub const Style = struct {
     height: ?f32 = null,
     font_size: ?f32 = null,
     font_weight: ?FontWeight = null,
+    expand: ?Expand = null,
 };
 
 pub fn parseClasses(comptime class: []const u8) Style {
@@ -127,6 +130,11 @@ pub fn styleFrom(comptime el: ast.Element) Style {
                 .expression => |e| style.height = comptime parseNumeric(e),
                 else => @compileError("height must be an expression"),
             }
+        } else if (comptime std.mem.eql(u8, attr.name, "flex")) {
+            switch (attr.value) {
+                .boolean => style.expand = .horizontal,
+                else => @compileError("flex must be boolean"),
+            }
         }
     }
     return style;
@@ -143,6 +151,7 @@ fn mergeStyle(dst: *Style, src: Style) void {
     if (src.height) |v| dst.height = v;
     if (src.font_size) |v| dst.font_size = v;
     if (src.font_weight) |v| dst.font_weight = v;
+    if (src.expand) |v| dst.expand = v;
 }
 
 test "parseClasses maps bg-blue-500" {
@@ -184,4 +193,27 @@ test "styleFrom merges class and attributes" {
     const s = comptime styleFrom(el);
     try std.testing.expect(s.background != null);
     try std.testing.expectEqual(@as(f32, 12), s.padding.?.x);
+}
+
+test "styleFrom handles flex attribute" {
+    const el = comptime ast.Element{
+        .tag = "column",
+        .attributes = &[_]ast.Attribute{
+            ast.Attribute{ .name = "flex", .value = ast.AttributeValue{ .boolean = {} } },
+        },
+        .children = &[_]ast.Child{},
+    };
+    const s = comptime styleFrom(el);
+    try std.testing.expect(s.expand != null);
+    try std.testing.expectEqual(Expand.horizontal, s.expand.?);
+}
+
+test "styleFrom leaves expand null without flex" {
+    const el = comptime ast.Element{
+        .tag = "column",
+        .attributes = &[_]ast.Attribute{},
+        .children = &[_]ast.Child{},
+    };
+    const s = comptime styleFrom(el);
+    try std.testing.expect(s.expand == null);
 }
