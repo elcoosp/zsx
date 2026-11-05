@@ -57,6 +57,10 @@ test {
     _ = @import("views/fragment_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/class_override_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -592,4 +596,29 @@ test "fragment: verbose=true renders two+always labels from fragment" {
     var ctx = FragmentCtx{ .verbose = true };
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 3), dvui_adapter.StubDvui.labelsRendered());
+}
+
+const ClassOverrideCtx = struct {
+    pub const Button = @import("lib/shadcn.zig").Button;
+    first_padding: ?@import("adapters/dvui.zig").StubDvui.Rect = null,
+    second_padding: ?@import("adapters/dvui.zig").StubDvui.Rect = null,
+    count: usize = 0,
+};
+
+test "class-override: default Button gets 16x8 padding, p-4 override gets 16x16" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/class_override_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ClassOverrideCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.buttonsRendered());
+
+    const final_padding = dvui_adapter.StubDvui.lastButtonPadding();
+    try std.testing.expect(final_padding != null);
+    try std.testing.expectEqual(@as(f32, 16), final_padding.?.x);
+    try std.testing.expectEqual(@as(f32, 16), final_padding.?.y);
+    try std.testing.expectEqual(@as(f32, 16), final_padding.?.w);
+    try std.testing.expectEqual(@as(f32, 16), final_padding.?.h);
 }
