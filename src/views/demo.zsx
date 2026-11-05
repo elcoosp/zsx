@@ -5,6 +5,6 @@
     <label class="text-gray-500">No actions</label>
   {endif}
   {for ctx.items as item}
-    <label class="text-lg">{item}</label>
+    <label class="text-lg font-bold">{item}</label>
   {endfor}
 </column>
