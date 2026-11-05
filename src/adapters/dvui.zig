@@ -109,11 +109,22 @@ pub const StubDvui = struct {
         return &_box;
     }
 
+    var _buttons_rendered: usize = 0;
+
+    pub fn buttonsRendered() usize {
+        return _buttons_rendered;
+    }
+
+    pub fn resetCounters() void {
+        _buttons_rendered = 0;
+    }
+
     pub fn button(src: anytype, label: []const u8, init: anytype, opts: Options) bool {
         _ = src;
         _ = label;
         _ = init;
         _ = opts;
+        _buttons_rendered += 1;
         return false;
     }
 
