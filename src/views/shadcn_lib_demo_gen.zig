@@ -4,8 +4,8 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b = ui.column(c, .{.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
-        defer b.end();
+        var b_0 = ui.column(c, .{.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
+        defer b_0.end();
         ctx.Button(ui, c, .{.variant = "primary", .text = "Save"});
         ctx.Button(ui, c, .{.variant = "secondary", .text = "Cancel"});
         ctx.Button(ui, c, .{.variant = "ghost", .text = "Skip"});
