@@ -29,6 +29,10 @@ test {
     _ = @import("views/component_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/shadcn_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -180,4 +184,66 @@ test "component: content fn receives ctx pointer, can read its fields" {
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+const ShadcnCtx = struct {
+    primary_count: usize = 0,
+    ghost_count: usize = 0,
+    badge_green_count: usize = 0,
+    last_primary_text: []const u8 = "",
+    last_ghost_text: []const u8 = "",
+
+    pub inline fn Button(self: *@This(), ui: anytype, c: anytype, comptime props: anytype) void {
+        const variant: []const u8 = if (@hasField(@TypeOf(props), "variant")) props.variant else "default";
+        if (std.mem.eql(u8, variant, "primary")) {
+            self.primary_count += 1;
+            self.last_primary_text = props.text;
+        } else if (std.mem.eql(u8, variant, "ghost")) {
+            self.ghost_count += 1;
+            self.last_ghost_text = props.text;
+        }
+        _ = ui.button(c, props.text, .{});
+    }
+
+    pub inline fn Badge(self: *@This(), ui: anytype, c: anytype, comptime props: anytype) void {
+        _ = ui;
+        _ = c;
+        const color: []const u8 = if (@hasField(@TypeOf(props), "color")) props.color else "";
+        if (std.mem.eql(u8, color, "green")) {
+            self.badge_green_count += 1;
+        }
+    }
+};
+
+test "shadcn: Button variant primary renders via ctx.Button" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/shadcn_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ShadcnCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.primary_count);
+    try std.testing.expectEqualStrings("Save", ctx.last_primary_text);
+}
+
+test "shadcn: Button variant ghost fires separately" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/shadcn_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    var ctx = ShadcnCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.ghost_count);
+    try std.testing.expectEqualStrings("Cancel", ctx.last_ghost_text);
+}
+
+test "shadcn: Badge color green passes through" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/shadcn_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    var ctx = ShadcnCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.badge_green_count);
 }
