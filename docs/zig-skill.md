@@ -562,3 +562,69 @@ The Context is created by the framework event loop, not the user. The Backend.Co
 The prior stub passed tests with fabricated types because the stub and emitter shared the same wrong assumptions. Stub tests prove internal consistency; they do not prove API compatibility with the real library.
 
 Rule: before writing a stub for a third-party API, dump the real API surface to disk first (grep, awk on `zig-pkg/<dep>-*/src/`), read it, then write both the stub and the emitter against it.
+
+## Unified Backend Contract (Phase 3.5)
+
+Phase 3 revealed that DVUI used `emit(comptime Element) void` while Nanoui used `emit(comptime Element, *Context) void`. The contract is now unified as:
+
+    pub fn emit(comptime element: ast.Element, ctx: *Context) void
+
+Every backend defines a `Context` type (may be empty `struct {}`). Backends that need no context `_ = ctx;` at the top of `emit`.
+
+### Enforced by `conforms()`
+
+`src/backend.zig` no longer wraps `Impl` in a struct. It exposes one function:
+
+    pub fn conforms(comptime Impl: type) bool
+
+Returns `true` if `Impl` has `Context`, `Capabilities`, `emit`, and `Impl.Capabilities` has `supports`. Each backend test suite calls it:
+
+    test "dvui backend conforms to contract" {
+        const contract = @import("../backend.zig");
+        try std.testing.expect(contract.conforms(Backend(StubDvui)));
+    }
+
+The prior `pub fn Backend(Impl: type) type` wrapper was removed because passing a backend's own comptime-generated struct to another `Backend(Impl)` failed with "struct has no member named 'Context'". A boolean `conforms` check sidesteps that compiler edge case while still catching regressions.
+
+### Why `Node` was removed
+
+The original contract had `pub const Node = Impl.Node;` and `pub fn emit(...) Node`. Neither backend returns a node: DVUI's `button` returns `bool`, Nanoui's returns `Interaction`, both discarded. Rendering is a side effect of walking the AST. `Node` was aspirational; the actual contract has always been `void`-returning.
+
+### Capability honesty
+
+`Capabilities.grow` on Nanoui was `true` but `applyBox` never called `.grow()`. Fixed to `false` in Phase 3.5. A capability must reflect what the emitter actually does, not what the framework could theoretically do. False positives break the "no silent failures" rule: the backend claims it handles `flex` and the user's markup with `flex` is silently dropped.
+
+### Expand unification
+
+`<column flex />` was DVUI-specific. Phase 3.5 promoted it to `style.zig`:
+
+- `style_mod.Expand = enum { none, horizontal, vertical, both }`
+- `style_mod.Style.expand: ?Expand = null`
+- `styleFrom` reads the `flex` boolean attribute
+
+DVUI maps `Expand` to `dvui.Options.expand` 1:1. Nanoui currently ignores `Style.expand`; when implemented it should map to `.grow()` for the parent's primary axis. `Capabilities.grow: false` reflects this.
+
+### DVUI migration to style.zig
+
+DVUI's local `parseClasses`, `parseNumeric`, `firstText`, `applyClasses` (~110 lines) removed. All classes route through `style_mod`. `toDvuiColor` is a field-for-field copy of `style_mod.Color`; for `ColorOrGradient` fields the backend wraps explicitly (`opts.color_fill = .{ .color = toDvuiColor(bg) }`), while Nanoui takes `Color` directly. That asymmetry is per-backend, not per-contract.
+
+### The `mktemp` pattern for appending docs
+
+Direct `cat >> docs/file.md << 'EOF'` can leave a partially-written file if the shell is interrupted mid-heredoc. Two-step:
+
+    DOC_TMP=$(mktemp)
+    cat > "$DOC_TMP" << 'EOF'
+    ... content ...
+    EOF
+    cat "$DOC_TMP" >> docs/file.md
+    rm "$DOC_TMP"
+
+The first `cat` is atomic per-heredoc; if the shell dies, `docs/file.md` is untouched. The second `cat >>` either completes or does not.
+
+### Verification for doc appends
+
+1. `grep -c '^## Section Header' docs/file.md` -- exactly 1
+2. `grep -c '^```' docs/file.md` -- even (fence parity)
+3. `git diff --stat docs/file.md` -- plausible insertion count
+
+If any check fails, `git restore docs/file.md` before committing.
