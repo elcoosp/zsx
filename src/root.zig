@@ -7,6 +7,7 @@ pub const Backend = @import("backend.zig").Backend;
 
 pub const ast = @import("ast.zig");
 pub const parse = @import("parser.zig").parse;
+pub const style = @import("style.zig");
 
 test "Feature enum" {
     const f: Feature = .background;
@@ -26,5 +27,13 @@ test "StyleRef defaults" {
 }
 
 test {
+    _ = @import("style.zig");
+}
+
+test {
     _ = @import("backends/dvui.zig");
+}
+
+test {
+    _ = @import("backends/nanoui.zig");
 }
