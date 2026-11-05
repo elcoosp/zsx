@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
         "src/views/demo.zsx",
         "src/views/component_demo.zsx",
         "src/views/shadcn_demo.zsx",
+        "src/views/shadcn_lib_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
