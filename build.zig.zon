@@ -1,6 +1,12 @@
 .{
     .name = .zsx,
     .version = "0.0.1",
+    .dependencies = .{
+        .dvui = .{
+            .url = "git+https://github.com/david-vanderson/dvui#d33935989e166d8340c9dd2888ad8aff0265c4ba",
+            .hash = "dvui-0.6.0-dev-AQFJmROtBAGQY_PnyAZrF1ccsgzQaWPNp0LWI55FM5Nk",
+        },
+    },
     .fingerprint = 0xfcebe7afe7650afb,
     .minimum_zig_version = "0.17.0",
     .paths = .{
