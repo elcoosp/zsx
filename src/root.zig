@@ -24,3 +24,7 @@ test "StyleRef defaults" {
     try std.testing.expect(ref.raw_class == null);
     try std.testing.expect(ref.resolved == null);
 }
+
+test {
+    _ = @import("backends/dvui.zig");
+}
