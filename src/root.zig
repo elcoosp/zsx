@@ -41,17 +41,22 @@ const Ctx = struct {
 };
 
 const CtxWithComponents = struct {
-    buttons_via_component: usize = 0,
-    badges_via_component: usize = 0,
-    pub fn Button(self: *@This(), ui: anytype, c: anytype, props: anytype) void {
-        _ = ui.button(c, props.text, .{});
-        self.buttons_via_component += 1;
-    }
-    pub fn Badge(self: *@This(), ui: anytype, c: anytype, props: anytype) void {
-        _ = ui;
-        _ = c;
+    card_count: usize = 0,
+    button_count: usize = 0,
+    content_invocations: usize = 0,
+
+    pub inline fn Card(self: *@This(), ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
         _ = props;
-        self.badges_via_component += 1;
+        self.card_count += 1;
+        var b = ui.column(c, .{ .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 } });
+        defer b.end();
+        self.content_invocations += 1;
+        content(ui, c, self);
+    }
+
+    pub inline fn Button(self: *@This(), ui: anytype, c: anytype, comptime props: anytype) void {
+        self.button_count += 1;
+        _ = ui.button(c, props.text, .{});
     }
 };
 
@@ -127,7 +132,7 @@ test "nanoui: if-false with no items, font_weight stays regular" {
     try std.testing.expectEqual(nanoui_adapter.StubNanoui.Weight.regular, nanoui_adapter.StubNanoui.lastTextWeight());
 }
 
-test "component: <Button> invokes ctx.Button, <Badge> invokes ctx.Badge" {
+test "component: Card content renders two labels via comptime content fn" {
     const dvui_adapter = @import("adapters/dvui.zig");
     const demo = @import("views/component_demo_gen.zig");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
@@ -135,32 +140,44 @@ test "component: <Button> invokes ctx.Button, <Badge> invokes ctx.Badge" {
     dvui_adapter.StubDvui.resetCounters();
     var ctx = CtxWithComponents{};
     demo.view(A, &c, &ctx);
-    try std.testing.expectEqual(@as(usize, 1), ctx.buttons_via_component);
-    try std.testing.expectEqual(@as(usize, 1), ctx.badges_via_component);
+    try std.testing.expectEqual(@as(usize, 1), ctx.card_count);
+    try std.testing.expectEqual(@as(usize, 1), ctx.content_invocations);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "component: Button leaf fires without content fn" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/component_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = CtxWithComponents{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.button_count);
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
 }
 
-test "component: <Button> passes .text prop from child" {
+test "component: content fn receives ctx pointer, can read its fields" {
     const dvui_adapter = @import("adapters/dvui.zig");
     const demo = @import("views/component_demo_gen.zig");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
 
-    const CtxCaptures = struct {
-        captured_text: []const u8 = "",
-        pub fn Button(self: *@This(), ui: anytype, c_: anytype, props: anytype) void {
-            _ = ui;
-            _ = c_;
-            self.captured_text = props.text;
-        }
-        pub fn Badge(self: *@This(), ui: anytype, c_: anytype, props: anytype) void {
-            _ = self;
-            _ = ui;
-            _ = c_;
+    const CtxCapture = struct {
+        pub inline fn Card(self: *@This(), ui: anytype, c_: anytype, comptime props: anytype, comptime content: anytype) void {
             _ = props;
+            var b = ui.column(c_, .{});
+            defer b.end();
+            content(ui, c_, self);
+        }
+        pub inline fn Button(self: *@This(), ui: anytype, c_: anytype, comptime props: anytype) void {
+            _ = self;
+            _ = ui.button(c_, props.text, .{});
         }
     };
-    var ctx = CtxCaptures{};
+    var ctx = CtxCapture{};
+    dvui_adapter.StubDvui.resetCounters();
     demo.view(A, &c, &ctx);
-    try std.testing.expectEqualStrings("Hello", ctx.captured_text);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
 }
