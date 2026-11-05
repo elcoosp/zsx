@@ -628,3 +628,82 @@ The first `cat` is atomic per-heredoc; if the shell dies, `docs/file.md` is unto
 3. `git diff --stat docs/file.md` -- plausible insertion count
 
 If any check fails, `git restore docs/file.md` before committing.
+
+## Concurrency: The Lock File Is the Only Signal
+
+Multiple `wr.sh` instances racing on the same checkout corrupt history. Observed failure modes in this session:
+
+- One process's `git commit` advanced HEAD while another reported "Unable to create .git/index.lock" — the commit landed but the caller did not know
+- A `git restore` in one process wiped a file another had just appended
+- A conformance test appended in step E was missing by step G because a parallel process restored the file from HEAD
+
+### The wrong fix: `pgrep` + `kill`
+
+An earlier guard tried:
+
+    ORPHANS=$(pgrep -f 'wr\.sh' | grep -v "^$$\$" || true)
+    for pid in $ORPHANS; do kill -TERM "$pid"; done
+
+This killed the script itself. `pgrep -f 'wr\.sh'` matches **every** process whose full command line contains `wr.sh`, including:
+
+- The current bash (`$$` — filtered correctly)
+- Its **parent** shell or wrapper (not filtered — this was the actual killer)
+- A `watch`, `nohup`, or terminal multiplexer that launched it
+- A sibling terminal that happened to run `./wr.sh` recently and has it in the process table via a wrapper
+
+Killing the parent terminates the current process too. "Command killed by Terminate" at step A is the signature.
+
+### The right fix: check the lock file
+
+Git already serializes concurrent writers via `.git/index.lock`. If it exists, some git operation is in flight. The signal is unambiguous:
+
+    if [ -f .git/index.lock ]; then
+        echo "REFUSING: .git/index.lock exists"
+        echo "Inspect with: ps axww | grep -E 'wr\\.sh|git' | grep -v grep"
+        echo "If no process is running, remove with: rm .git/index.lock"
+        exit 1
+    fi
+
+No process enumeration. No `kill`. No self-kill risk. If the lock is stale from a crashed run, the message tells the user to remove it manually — one second of human inspection is worth infinitely more than an automated guess that can kill the wrong PID.
+
+### What not to do
+
+- **Do not** `kill -TERM $(pgrep -f 'wr\.sh')`. It kills the script's ancestors.
+- **Do not** `pkill -f 'wr\.sh'`. Same problem.
+- **Do not** use `grep -v "^$$\$"` as a filter and assume that is sufficient. It excludes only the immediate shell, not its parent tree.
+- **Do not** write a PID file at start and `kill -0` it at next start. The PID is reused by the OS; `kill -0` on a stale PID returns 0 for an unrelated process.
+
+### If `flock` is installed
+
+Preferred, if available:
+
+    exec 9>.git/index.lock.check
+    if ! flock -n 9; then
+        echo "REFUSING: another wr.sh holds the flock"
+        exit 1
+    fi
+
+This is atomic at the OS level. It does not require process enumeration and cannot kill anything. Downside: `flock` is not installed by default on macOS (`brew install flock`).
+
+### The `$$` trap, restated
+
+    echo "$$"                              # 12345
+    echo "^$$\$"                           # ^12345$    ($$ expands, then \$ is literal $)
+
+Inside a **double-quoted** string, `$$` expands and `\$` becomes a literal `$`. This is a regex anchor around the current PID. It is correct. It is also insufficient: excluding self does not exclude the self's parent, grandparent, or invoking wrapper.
+
+### Recovery after a race
+
+Do not `git restore` or `git reset` blindly. Sequence:
+
+1. `rm -f .git/index.lock .git/HEAD.lock .git/refs/heads/main.lock`
+2. `git log --oneline -5` — see what actually landed
+3. `git status` — see if any files are mid-modification
+4. For each expected-but-missing change, check **both** working tree and HEAD:
+
+       grep -c 'expected content' src/file.zig
+       git show HEAD:src/file.zig | grep -c 'expected content'
+
+   Missing from both: append and commit. Present in working tree only: commit. Present in both: done.
+5. `zig build test` before committing anything, to confirm the tree is functional.
+6. Use `HEAD_BEFORE` captured at script start, not a hardcoded hash, when reasoning about what changed.
