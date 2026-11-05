@@ -65,6 +65,10 @@ test {
     _ = @import("views/nested_card_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/dashboard_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -640,4 +644,86 @@ test "nested-card: three cards produce distinct render fns and three labels" {
     var ctx = NestedCardCtx{};
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 3), dvui_adapter.StubDvui.labelsRendered());
+}
+
+const DashboardTask = struct {
+    name: []const u8,
+    urgent: bool = false,
+    pending: bool = false,
+};
+
+const DashboardCtx = struct {
+    pub const Badge = @import("lib/shadcn.zig").Badge;
+    pub const Button = @import("lib/shadcn.zig").Button;
+
+    user_role: []const u8 = "guest",
+    error_message: []const u8 = "",
+    items: []const DashboardTask = &[_]DashboardTask{},
+    refresh_called: bool = false,
+
+    pub fn refresh(self: *@This()) void {
+        self.refresh_called = true;
+    }
+};
+
+test "dashboard: empty state renders header, no-items, refresh (4 labels, 1 button)" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/dashboard_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = DashboardCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 4), dvui_adapter.StubDvui.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+    try std.testing.expect(!ctx.refresh_called);
+}
+
+test "dashboard: three items mixed status renders 9 labels (3x label+badge)" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/dashboard_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = DashboardCtx{
+        .user_role = "admin",
+        .items = &[_]DashboardTask{
+            .{ .name = "task1", .urgent = true },
+            .{ .name = "task2", .pending = true },
+            .{ .name = "task3" },
+        },
+    };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 9), dvui_adapter.StubDvui.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "dashboard: error + one pending renders 6 labels (with error badge)" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/dashboard_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = DashboardCtx{
+        .user_role = "guest",
+        .error_message = "connection lost",
+        .items = &[_]DashboardTask{
+            .{ .name = "retry", .pending = true },
+        },
+    };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 6), dvui_adapter.StubDvui.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "dashboard: refresh button fires ctx.refresh when clicked" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/dashboard_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    dvui_adapter.StubDvui.queue_click();
+    var ctx = DashboardCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(ctx.refresh_called);
 }
