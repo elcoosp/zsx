@@ -1,6 +1,7 @@
 const std = @import("std");
 const ast = @import("../ast.zig");
 const Feature = @import("../feature.zig").Feature;
+const style_mod = @import("../style.zig");
 
 pub fn Backend(comptime dvui: type) type {
     return struct {
@@ -42,7 +43,8 @@ pub fn Backend(comptime dvui: type) type {
             }
         };
 
-        pub fn emit(comptime element: ast.Element) void {
+        pub fn emit(comptime element: ast.Element, ctx: *Context) void {
+            _ = ctx;
             emitElement(element);
         }
 
@@ -61,10 +63,10 @@ pub fn Backend(comptime dvui: type) type {
                 defer box.deinit();
                 inline for (el.children) |c| emitChild(c);
             } else if (is_label) {
-                const text = comptime firstText(el) orelse @compileError("label element requires a text child");
+                const text = comptime style_mod.firstText(el) orelse @compileError("label element requires a text child");
                 dvui.labelNoFmt(@src(), text, .{}, comptime optionsFrom(el));
             } else if (is_button) {
-                const text = comptime firstText(el) orelse @compileError("button element requires a text child");
+                const text = comptime style_mod.firstText(el) orelse @compileError("button element requires a text child");
                 _ = dvui.button(@src(), text, .{}, comptime optionsFrom(el));
             } else {
                 @compileError("dvui backend does not support tag '" ++ el.tag ++ "'");
@@ -79,103 +81,34 @@ pub fn Backend(comptime dvui: type) type {
             }
         }
 
-        fn firstText(comptime el: ast.Element) ?[]const u8 {
-            inline for (el.children) |c| {
-                switch (c) {
-                    .text => |t| return t,
-                    .expression => return null,
-                    .element => continue,
-                }
-            }
-            return null;
-        }
-
         fn optionsFrom(comptime el: ast.Element) dvui.Options {
+            const s = comptime style_mod.styleFrom(el);
             var opts = dvui.Options{};
-            inline for (el.attributes) |attr| {
-                if (comptime std.mem.eql(u8, attr.name, "class")) {
-                    switch (attr.value) {
-                        .string => |s| applyClasses(&opts, s),
-                        else => @compileError("class attribute must be a string"),
-                    }
-                } else if (comptime std.mem.eql(u8, attr.name, "padding")) {
-                    switch (attr.value) {
-                        .expression => |e| {
-                            const v = comptime parseNumeric(e);
-                            opts.padding = .{ .x = v, .y = v, .w = v, .h = v };
-                        },
-                        else => @compileError("padding attribute must be an expression"),
-                    }
-                } else if (comptime std.mem.eql(u8, attr.name, "width")) {
-                    switch (attr.value) {
-                        .expression => |e| {
-                            const v = comptime parseNumeric(e);
-                            const h: f32 = if (opts.min_size_content) |s| s.h else 0;
-                            opts.min_size_content = .{ .w = v, .h = h };
-                        },
-                        else => @compileError("width attribute must be an expression"),
-                    }
-                } else if (comptime std.mem.eql(u8, attr.name, "height")) {
-                    switch (attr.value) {
-                        .expression => |e| {
-                            const v = comptime parseNumeric(e);
-                            const w: f32 = if (opts.min_size_content) |s| s.w else 0;
-                            opts.min_size_content = .{ .w = w, .h = v };
-                        },
-                        else => @compileError("height attribute must be an expression"),
-                    }
-                } else if (comptime std.mem.eql(u8, attr.name, "flex")) {
-                    switch (attr.value) {
-                        .boolean => opts.expand = .horizontal,
-                        else => @compileError("flex attribute must be boolean"),
-                    }
-                }
+            if (s.background) |bg| opts.color_fill = .{ .color = toDvuiColor(bg) };
+            if (s.hover_background) |bg| opts.color_fill_hover = .{ .color = toDvuiColor(bg) };
+            if (s.foreground) |fg| opts.color_text = .{ .color = toDvuiColor(fg) };
+            if (s.padding) |p| opts.padding = .{ .x = p.x, .y = p.y, .w = p.w, .h = p.h };
+            if (s.width) |w| {
+                const h: f32 = if (opts.min_size_content) |sz| sz.h else 0;
+                opts.min_size_content = .{ .w = w, .h = h };
+            }
+            if (s.height) |h| {
+                const w: f32 = if (opts.min_size_content) |sz| sz.w else 0;
+                opts.min_size_content = .{ .w = w, .h = h };
+            }
+            if (s.expand) |ex| {
+                opts.expand = switch (ex) {
+                    .none => .none,
+                    .horizontal => .horizontal,
+                    .vertical => .vertical,
+                    .both => .both,
+                };
             }
             return opts;
         }
 
-        fn applyClasses(opts: *dvui.Options, comptime class: []const u8) void {
-            comptime var i: usize = 0;
-            inline while (i < class.len) {
-                while (i < class.len and class[i] == ' ') i += 1;
-                if (i >= class.len) break;
-                const start = i;
-                while (i < class.len and class[i] != ' ') i += 1;
-                const token = class[start..i];
-                if (std.mem.eql(u8, token, "bg-blue-500")) {
-                    opts.color_fill = .{ .color = .{ .r = 59, .g = 130, .b = 246 } };
-                } else if (std.mem.eql(u8, token, "bg-blue-600")) {
-                    opts.color_fill_hover = .{ .color = .{ .r = 37, .g = 99, .b = 235 } };
-                } else if (std.mem.eql(u8, token, "bg-gray-100")) {
-                    opts.color_fill = .{ .color = .{ .r = 243, .g = 244, .b = 246 } };
-                } else if (std.mem.eql(u8, token, "text-white")) {
-                    opts.color_text = .{ .color = dvui.Color.white };
-                } else if (std.mem.eql(u8, token, "text-black")) {
-                    opts.color_text = .{ .color = dvui.Color.black };
-                } else if (std.mem.eql(u8, token, "p-4")) {
-                    opts.padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 };
-                } else if (std.mem.eql(u8, token, "p-2")) {
-                    opts.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 };
-                } else if (std.mem.eql(u8, token, "px-4")) {
-                    const cur: dvui.Rect = opts.padding orelse dvui.Rect{};
-                    opts.padding = .{ .x = 16, .y = cur.y, .w = 16, .h = cur.h };
-                } else if (std.mem.eql(u8, token, "py-2")) {
-                    const cur: dvui.Rect = opts.padding orelse dvui.Rect{};
-                    opts.padding = .{ .x = cur.x, .y = 8, .w = cur.w, .h = 8 };
-                } else {
-                    @compileError("dvui backend does not recognize tailwind class '" ++ token ++ "'");
-                }
-            }
-        }
-
-        fn parseNumeric(comptime s: []const u8) f32 {
-            if (s.len == 0) @compileError("empty numeric attribute value");
-            var result: f32 = 0;
-            inline for (s) |ch| {
-                if (ch < '0' or ch > '9') @compileError("non-numeric attribute value: '" ++ s ++ "'");
-                result = result * 10.0 + @as(f32, @floatFromInt(ch - '0'));
-            }
-            return result;
+        fn toDvuiColor(c: style_mod.Color) dvui.Color {
+            return .{ .r = c.r, .g = c.g, .b = c.b, .a = c.a };
         }
     };
 }
@@ -273,12 +206,11 @@ test "dvui backend emits label" {
     const el = comptime Elem{
         .tag = "label",
         .attributes = &[_]Attr{},
-        .children = &[_]Child{
-            Child{ .text = "hi" },
-        },
+        .children = &[_]Child{Child{ .text = "hi" }},
     };
     const B = Backend(StubDvui);
-    B.emit(el);
+    var ctx: B.Context = .{};
+    B.emit(el, &ctx);
 }
 
 test "dvui backend emits column with label child" {
@@ -289,14 +221,13 @@ test "dvui backend emits column with label child" {
             Child{ .element = Elem{
                 .tag = "label",
                 .attributes = &[_]Attr{},
-                .children = &[_]Child{
-                    Child{ .text = "hello" },
-                },
+                .children = &[_]Child{Child{ .text = "hello" }},
             } },
         },
     };
     const B = Backend(StubDvui);
-    B.emit(el);
+    var ctx: B.Context = .{};
+    B.emit(el, &ctx);
 }
 
 test "dvui backend emits button with classes" {
@@ -305,12 +236,11 @@ test "dvui backend emits button with classes" {
         .attributes = &[_]Attr{
             Attr{ .name = "class", .value = AttrVal{ .string = "bg-blue-500 text-white px-4 py-2" } },
         },
-        .children = &[_]Child{
-            Child{ .text = "Save" },
-        },
+        .children = &[_]Child{Child{ .text = "Save" }},
     };
     const B = Backend(StubDvui);
-    B.emit(el);
+    var ctx: B.Context = .{};
+    B.emit(el, &ctx);
 }
 
 test "dvui backend emits column with padding" {
@@ -323,14 +253,36 @@ test "dvui backend emits column with padding" {
             Child{ .element = Elem{
                 .tag = "label",
                 .attributes = &[_]Attr{},
-                .children = &[_]Child{
-                    Child{ .text = "x" },
-                },
+                .children = &[_]Child{Child{ .text = "x" }},
             } },
         },
     };
     const B = Backend(StubDvui);
-    B.emit(el);
+    var ctx: B.Context = .{};
+    B.emit(el, &ctx);
+}
+
+test "dvui backend emits flex attribute" {
+    const el = comptime Elem{
+        .tag = "column",
+        .attributes = &[_]Attr{
+            Attr{ .name = "flex", .value = AttrVal{ .boolean = {} } },
+        },
+        .children = &[_]Child{},
+    };
+    const B = Backend(StubDvui);
+    var ctx: B.Context = .{};
+    B.emit(el, &ctx);
+}
+
+test "dvui backend shape matches contract" {
+    const Impl = Backend(StubDvui);
+    const ctx: Impl.Context = .{};
+    _ = ctx;
+    const caps: Impl.Capabilities = .{};
+    try std.testing.expect(caps.supports(.background));
+    try std.testing.expect(caps.supports(.padding));
+    try std.testing.expect(!caps.supports(.radius));
 }
 
 test "dvui backend capabilities report" {
