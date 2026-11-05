@@ -1,0 +1,27 @@
+<column padding={8} class="gap-2">
+  <row class="gap-2">
+    <label class="text-lg font-bold">Dashboard</label>
+    <Badge color={ctx.user_role}>{ctx.user_role}</Badge>
+  </row>
+  {if ctx.error_message.len > 0}
+    <Badge color="red">{ctx.error_message}</Badge>
+  {endif}
+  <label class="text-gray-500">Items</label>
+  {if ctx.items.len == 0}
+    <label class="text-gray-500">No items</label>
+  {else}
+    {for ctx.items as item}
+      <row class="gap-2">
+        <label>{item.name}</label>
+        {if item.urgent}
+          <Badge color="red">urgent</Badge>
+        {else if item.pending}
+          <Badge color="blue">pending</Badge>
+        {else}
+          <Badge color="green">done</Badge>
+        {endif}
+      </row>
+    {endfor}
+  {endif}
+  <Button variant="primary" on_click={ctx.refresh()}>Refresh</Button>
+</column>
