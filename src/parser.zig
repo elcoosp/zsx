@@ -20,7 +20,6 @@ fn parseElement(comptime src: []const u8, pos: *usize) Element {
     pos.* += 1;
     const tag_start = pos.*;
     while (pos.* < src.len and isTagChar(src[pos.*])) pos.* += 1;
-    if (pos.* == tag_start) @compileError("expected tag name");
     const tag = src[tag_start..pos.*];
 
     var attrs_buf: [16]Attribute = undefined;
