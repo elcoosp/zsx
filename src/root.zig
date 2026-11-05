@@ -41,6 +41,10 @@ test {
     _ = @import("views/onclick_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/struct_loop_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -444,4 +448,45 @@ test "shadcn-lib-file: Button on_click not fired without queue" {
     var ctx = ShadcnLibraryCtx{};
     demo.view(A, &c, &ctx);
     try std.testing.expect(!ctx.save_called);
+}
+
+const StructLoopUser = struct {
+    name: []const u8,
+    role: []const u8,
+};
+
+const StructLoopCtx = struct {
+    users: []const StructLoopUser,
+    badge_colors: [8][]const u8 = @splat(""),
+    badge_count: usize = 0,
+
+    pub inline fn Badge(self: *@This(), ui: anytype, c: anytype, props: anytype) void {
+        const color: []const u8 = if (@hasField(@TypeOf(props), "color")) props.color else "";
+        if (self.badge_count < 8) {
+            self.badge_colors[self.badge_count] = color;
+            self.badge_count += 1;
+        }
+        @import("lib/shadcn.zig").Badge(self, ui, c, props);
+    }
+};
+
+test "struct-loop: iterates user records with field access" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/struct_loop_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = StructLoopCtx{
+        .users = &[_]StructLoopUser{
+            .{ .name = "Alice", .role = "green" },
+            .{ .name = "Bob", .role = "red" },
+            .{ .name = "Carol", .role = "blue" },
+        },
+    };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 3), ctx.badge_count);
+    try std.testing.expectEqualStrings("green", ctx.badge_colors[0]);
+    try std.testing.expectEqualStrings("red", ctx.badge_colors[1]);
+    try std.testing.expectEqualStrings("blue", ctx.badge_colors[2]);
+    try std.testing.expectEqual(@as(usize, 6), dvui_adapter.StubDvui.labelsRendered());
 }
