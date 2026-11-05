@@ -9,6 +9,7 @@ pub fn build(b: *std.Build) void {
 
     const zsx_files = [_][]const u8{
         "src/views/demo.zsx",
+        "src/views/component_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
@@ -42,12 +43,17 @@ pub fn build(b: *std.Build) void {
         .root_module = hello_mod,
     });
     const hello_run = b.addRunArtifact(hello_exe);
+    hello_run.has_side_effects = true;
     const example_step = b.step("example", "Run the hello example");
     example_step.dependOn(&hello_run.step);
 }
 
 fn isWs(c: u8) bool {
     return c == ' ' or c == '\t' or c == '\n' or c == '\r';
+}
+
+fn isUpper(c: u8) bool {
+    return c >= 'A' and c <= 'Z';
 }
 
 fn trimSpace(comptime s: []const u8) []const u8 {
@@ -147,9 +153,43 @@ fn emitElement(comptime el: ast.Element, comptime level: usize) []const u8 {
             return indent ++ "if (ui.button(c, " ++ text ++ ", " ++ opts ++ ")) " ++ handler ++ ";\n";
         }
         return indent ++ "_ = ui.button(c, " ++ text ++ ", " ++ opts ++ ");\n";
+    } else if (comptime isUpper(el.tag[0])) {
+        return indent ++ "ctx." ++ el.tag ++ "(ui, c, " ++ componentPropsLiteral(el) ++ ");\n";
     } else {
         @compileError("zsx: unsupported tag: " ++ el.tag);
     }
+}
+
+fn componentPropsLiteral(comptime el: ast.Element) []const u8 {
+    @setEvalBranchQuota(100_000);
+    var out: []const u8 = ".{";
+    var sep: []const u8 = "";
+    for (el.attributes) |attr| {
+        out = out ++ sep ++ "." ++ attr.name ++ " = ";
+        switch (attr.value) {
+            .boolean => out = out ++ "true",
+            .string => |s| out = out ++ "\"" ++ escapeString(s) ++ "\"",
+            .expression => |e| out = out ++ e,
+        }
+        sep = ", ";
+    }
+    for (el.children) |child| {
+        switch (child) {
+            .text => |t| {
+                if (comptime isWhitespaceOnly(t)) continue;
+                out = out ++ sep ++ ".text = \"" ++ escapeString(t) ++ "\"";
+                sep = ", ";
+            },
+            .expression => |e| {
+                out = out ++ sep ++ ".text = " ++ e;
+                sep = ", ";
+            },
+            .element => |child_el| {
+                @compileError("zsx: <" ++ el.tag ++ "> component cannot have element children; got <" ++ child_el.tag ++ ">. Only text children are supported in this milestone.");
+            },
+        }
+    }
+    return out ++ "}";
 }
 
 fn emitChildren(comptime children: []const ast.Child, comptime start_level: usize) []const u8 {
