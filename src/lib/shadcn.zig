@@ -1,18 +1,9 @@
 const std = @import("std");
+const style_mod = @import("../style.zig");
 
-pub const Color = struct {
-    r: u8 = 0,
-    g: u8 = 0,
-    b: u8 = 0,
-    a: u8 = 255,
-};
+pub const Color = style_mod.Color;
 
-pub const Padding = struct {
-    x: f32 = 0,
-    y: f32 = 0,
-    w: f32 = 0,
-    h: f32 = 0,
-};
+pub const Padding = style_mod.Spacing;
 
 pub const ButtonOptions = struct {
     color_fill: Color,
@@ -51,12 +42,19 @@ fn variantStyle(name: []const u8) VariantStyle {
 pub inline fn Button(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     const variant: []const u8 = if (@hasField(@TypeOf(props), "variant")) props.variant else "primary";
     const style = variantStyle(variant);
-    const opts = ButtonOptions{
+    var opts = ButtonOptions{
         .color_fill = style.fill,
         .color_text = style.text,
         .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 },
         .radius = 8,
     };
+    if (@hasField(@TypeOf(props), "class")) {
+        const overrides = comptime style_mod.parseClasses(props.class);
+        if (overrides.padding) |p| opts.padding = p;
+        if (overrides.radius) |r| opts.radius = r;
+        if (overrides.background) |bg| opts.color_fill = bg;
+        if (overrides.foreground) |fg| opts.color_text = fg;
+    }
     const clicked = ui.button(c, props.text, opts);
     if (clicked) {
         if (@hasField(@TypeOf(props), "on_click")) {
