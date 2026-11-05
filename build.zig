@@ -16,6 +16,7 @@ pub fn build(b: *std.Build) void {
         "src/views/struct_loop_demo.zsx",
         "src/views/card_if_demo.zsx",
         "src/views/else_if_demo.zsx",
+        "src/views/fragment_demo.zsx",
     };
 
     inline for (zsx_files) |path| {
@@ -178,6 +179,11 @@ fn generateView(comptime source: []const u8, comptime path: []const u8) []const 
 
 fn emitElement(comptime el: ast.Element, comptime level: usize, comptime start_id: usize) EmitResult {
     @setEvalBranchQuota(200_000);
+
+    if (comptime el.tag.len == 0) {
+        return comptime emitChildren(el.children, level, start_id);
+    }
+
     const indent = makeIndent(level);
 
     if (comptime std.mem.eql(u8, el.tag, "column")) {
