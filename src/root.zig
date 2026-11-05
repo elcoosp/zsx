@@ -33,6 +33,10 @@ test {
     _ = @import("views/shadcn_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/shadcn_lib_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -246,4 +250,101 @@ test "shadcn: Badge color green passes through" {
     var ctx = ShadcnCtx{};
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 1), ctx.badge_green_count);
+}
+
+const ShadcnLibCtx = struct {
+    primary_count: usize = 0,
+    secondary_count: usize = 0,
+    ghost_count: usize = 0,
+    danger_count: usize = 0,
+    badge_red_count: usize = 0,
+    badge_green_count: usize = 0,
+
+    pub inline fn Button(self: *@This(), ui: anytype, c: anytype, props: anytype) void {
+        const variant: []const u8 = if (@hasField(@TypeOf(props), "variant")) props.variant else "primary";
+        if (std.mem.eql(u8, variant, "primary")) {
+            self.primary_count += 1;
+            _ = ui.button(c, props.text, .{
+                .color_fill = .{ .r = 59, .g = 130, .b = 246, .a = 255 },
+                .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 },
+                .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 },
+                .radius = 8,
+            });
+        } else if (std.mem.eql(u8, variant, "secondary")) {
+            self.secondary_count += 1;
+            _ = ui.button(c, props.text, .{
+                .color_fill = .{ .r = 243, .g = 244, .b = 246, .a = 255 },
+                .color_text = .{ .r = 0, .g = 0, .b = 0, .a = 255 },
+                .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 },
+                .radius = 8,
+            });
+        } else if (std.mem.eql(u8, variant, "ghost")) {
+            self.ghost_count += 1;
+            _ = ui.button(c, props.text, .{
+                .color_fill = .{ .r = 0, .g = 0, .b = 0, .a = 0 },
+                .color_text = .{ .r = 0, .g = 0, .b = 0, .a = 255 },
+                .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 },
+                .radius = 8,
+            });
+        } else if (std.mem.eql(u8, variant, "danger")) {
+            self.danger_count += 1;
+            _ = ui.button(c, props.text, .{
+                .color_fill = .{ .r = 239, .g = 68, .b = 68, .a = 255 },
+                .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 },
+                .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 },
+                .radius = 8,
+            });
+        } else {
+            _ = ui.button(c, props.text, .{});
+        }
+    }
+
+    pub inline fn Badge(self: *@This(), ui: anytype, c: anytype, props: anytype) void {
+        const color: []const u8 = if (@hasField(@TypeOf(props), "color")) props.color else "";
+        if (std.mem.eql(u8, color, "red")) {
+            self.badge_red_count += 1;
+            ui.text(c, props.text, .{
+                .color_text = .{ .r = 239, .g = 68, .b = 68, .a = 255 },
+                .font_size = 14,
+                .padding = .{ .x = 8, .y = 4, .w = 8, .h = 4 },
+            });
+        } else if (std.mem.eql(u8, color, "green")) {
+            self.badge_green_count += 1;
+            ui.text(c, props.text, .{
+                .color_text = .{ .r = 34, .g = 197, .b = 94, .a = 255 },
+                .font_size = 14,
+                .padding = .{ .x = 8, .y = 4, .w = 8, .h = 4 },
+            });
+        } else {
+            ui.text(c, props.text, .{});
+        }
+    }
+};
+
+test "shadcn-lib: Button variants dispatch correctly" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/shadcn_lib_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ShadcnLibCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.primary_count);
+    try std.testing.expectEqual(@as(usize, 1), ctx.secondary_count);
+    try std.testing.expectEqual(@as(usize, 1), ctx.ghost_count);
+    try std.testing.expectEqual(@as(usize, 1), ctx.danger_count);
+    try std.testing.expectEqual(@as(usize, 4), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "shadcn-lib: Badge colors dispatch correctly" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/shadcn_lib_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = ShadcnLibCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.badge_red_count);
+    try std.testing.expectEqual(@as(usize, 1), ctx.badge_green_count);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
 }
