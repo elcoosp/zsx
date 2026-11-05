@@ -47,6 +47,20 @@ pub fn build(b: *std.Build) void {
     hello_run.has_side_effects = true;
     const example_step = b.step("example", "Run the hello example");
     example_step.dependOn(&hello_run.step);
+
+    const nanoui_hello_mod = b.createModule(.{
+        .root_source_file = b.path("src/nanoui_hello.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const nanoui_hello_exe = b.addExecutable(.{
+        .name = "zsx-nanoui-hello",
+        .root_module = nanoui_hello_mod,
+    });
+    const nanoui_hello_run = b.addRunArtifact(nanoui_hello_exe);
+    nanoui_hello_run.has_side_effects = true;
+    const nanoui_example_step = b.step("example-nanoui", "Run the nanoui example");
+    nanoui_example_step.dependOn(&nanoui_hello_run.step);
 }
 
 const EmitResult = struct {
