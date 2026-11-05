@@ -46,21 +46,17 @@ fn trimSpace(comptime s: []const u8) []const u8 {
 }
 
 fn isWhitespaceOnly(comptime s: []const u8) bool {
-    for (s) |c| {
-        if (!isWs(c)) return false;
-    }
+    for (s) |c| if (!isWs(c)) return false;
     return true;
 }
 
 fn writeIfChanged(b: *std.Build, path: []const u8, content: []const u8) !void {
     const io = b.graph.io;
     const dir = std.Io.Dir.cwd();
-
     if (dir.readFileAlloc(io, path, std.heap.page_allocator, .limited(1 << 20))) |existing| {
         defer std.heap.page_allocator.free(existing);
         if (std.mem.eql(u8, existing, content)) return;
     } else |_| {}
-
     try dir.writeFile(io, .{
         .sub_path = path,
         .data = content,
@@ -85,9 +81,7 @@ fn fmtInt(comptime n: u32) []const u8 {
             len += 1;
         }
         var out: [12]u8 = undefined;
-        for (0..len) |i| {
-            out[i] = tmp[len - 1 - i];
-        }
+        for (0..len) |i| out[i] = tmp[len - 1 - i];
         const result: [len]u8 = out[0..len].*;
         break :blk &result;
     };
@@ -119,7 +113,7 @@ fn emitElement(comptime el: ast.Element, comptime level: usize) []const u8 {
         out = out ++ indent ++ "{\n";
         out = out ++ indent ++ "    var b = ui.column(c, " ++ optsLiteral(el) ++ ");\n";
         out = out ++ indent ++ "    defer b.end();\n";
-        for (el.children) |child| out = out ++ emitChild(child, level + 1);
+        out = out ++ emitChildren(el.children, level + 1);
         out = out ++ indent ++ "}\n";
         return out;
     } else if (comptime std.mem.eql(u8, el.tag, "row")) {
@@ -127,7 +121,7 @@ fn emitElement(comptime el: ast.Element, comptime level: usize) []const u8 {
         out = out ++ indent ++ "{\n";
         out = out ++ indent ++ "    var b = ui.row(c, " ++ optsLiteral(el) ++ ");\n";
         out = out ++ indent ++ "    defer b.end();\n";
-        for (el.children) |child| out = out ++ emitChild(child, level + 1);
+        out = out ++ emitChildren(el.children, level + 1);
         out = out ++ indent ++ "}\n";
         return out;
     } else if (comptime std.mem.eql(u8, el.tag, "label")) {
@@ -145,15 +139,38 @@ fn emitElement(comptime el: ast.Element, comptime level: usize) []const u8 {
     }
 }
 
-fn emitChild(comptime child: ast.Child, comptime level: usize) []const u8 {
-    switch (child) {
-        .element => |el| return emitElement(el, level),
-        .text => |t| {
-            if (comptime isWhitespaceOnly(t)) return "";
-            @compileError("zsx: bare text child in layout; wrap in <label>");
-        },
-        .expression => @compileError("zsx: bare expression child in layout; wrap in <label>"),
+fn emitChildren(comptime children: []const ast.Child, comptime start_level: usize) []const u8 {
+    @setEvalBranchQuota(100_000);
+    var out: []const u8 = "";
+    var level: usize = start_level;
+    var if_depth: usize = 0;
+    for (children) |child| {
+        switch (child) {
+            .element => |el| out = out ++ emitElement(el, level),
+            .text => |t| {
+                if (comptime isWhitespaceOnly(t)) continue;
+                @compileError("zsx: bare text child in layout; wrap in <label>");
+            },
+            .expression => |e| {
+                if (comptime std.mem.startsWith(u8, e, "if ")) {
+                    const cond = comptime std.mem.trim(u8, e[3..], " \t\n\r");
+                    if (comptime cond.len == 0) @compileError("zsx: {if } with empty condition");
+                    out = out ++ makeIndent(level) ++ "if (" ++ cond ++ ") {\n";
+                    level += 1;
+                    if_depth += 1;
+                } else if (comptime std.mem.eql(u8, e, "endif")) {
+                    if (if_depth == 0) @compileError("zsx: {endif} without matching {if}");
+                    level -= 1;
+                    if_depth -= 1;
+                    out = out ++ makeIndent(level) ++ "}\n";
+                } else {
+                    @compileError("zsx: unsupported expression child {" ++ e ++ "}; control flow is {if cond}...{endif}");
+                }
+            },
+        }
     }
+    if (if_depth != 0) @compileError("zsx: unclosed {if} — missing {endif}");
+    return out;
 }
 
 fn makeIndent(comptime level: usize) []const u8 {
