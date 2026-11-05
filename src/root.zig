@@ -45,6 +45,10 @@ test {
     _ = @import("views/struct_loop_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/card_if_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -489,4 +493,31 @@ test "struct-loop: iterates user records with field access" {
     try std.testing.expectEqualStrings("red", ctx.badge_colors[1]);
     try std.testing.expectEqualStrings("blue", ctx.badge_colors[2]);
     try std.testing.expectEqual(@as(usize, 6), dvui_adapter.StubDvui.labelsRendered());
+}
+
+const CardIfCtx = struct {
+    pub const Card = @import("lib/shadcn.zig").Card;
+    show: bool = true,
+};
+
+test "card-if: show=true renders one label" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/card_if_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = CardIfCtx{ .show = true };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "card-if: show=false renders zero labels" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/card_if_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = CardIfCtx{ .show = false };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 0), dvui_adapter.StubDvui.labelsRendered());
 }
