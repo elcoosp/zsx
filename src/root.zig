@@ -37,6 +37,10 @@ test {
     _ = @import("views/shadcn_lib_demo_gen.zig");
 }
 
+test {
+    _ = @import("views/onclick_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -347,4 +351,48 @@ test "shadcn-lib: Badge colors dispatch correctly" {
     try std.testing.expectEqual(@as(usize, 1), ctx.badge_red_count);
     try std.testing.expectEqual(@as(usize, 1), ctx.badge_green_count);
     try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
+}
+
+const OnClickCtx = struct {
+    save_called: bool = false,
+    button_rendered: usize = 0,
+
+    pub fn save(self: *@This()) void {
+        self.save_called = true;
+    }
+
+    pub inline fn Button(self: *@This(), ui: anytype, c: anytype, props: anytype) void {
+        self.button_rendered += 1;
+        if (ui.button(c, props.text, .{})) {
+            if (@hasField(@TypeOf(props), "on_click")) {
+                props.on_click(self);
+            }
+        }
+    }
+};
+
+test "onclick: queued click fires on_click via props" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/onclick_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    dvui_adapter.StubDvui.queue_click();
+    var ctx = OnClickCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(ctx.save_called);
+    try std.testing.expectEqual(@as(usize, 1), ctx.button_rendered);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "onclick: no queued click means no save" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/onclick_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = OnClickCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(!ctx.save_called);
+    try std.testing.expectEqual(@as(usize, 1), ctx.button_rendered);
 }
