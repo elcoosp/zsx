@@ -25,6 +25,15 @@ pub const InputOptions = struct {
     id_extra: ?usize = null,
 };
 
+pub const TextareaOptions = struct {
+    placeholder: ?[]const u8 = null,
+    id_extra: ?usize = null,
+};
+
+pub const CheckboxOptions = struct {
+    id_extra: ?usize = null,
+};
+
 const VariantStyle = struct {
     fill: Color,
     text: Color,
@@ -98,7 +107,12 @@ pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anyty
         .radius = 8,
     });
     defer b.end();
-    content(ui, c, self);
+    const SelfT = @TypeOf(self);
+    if (@typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer) {
+        content(ui, c, self.*);
+    } else {
+        content(ui, c, self);
+    }
 }
 
 pub inline fn Heading(self: anytype, ui: anytype, c: anytype, props: anytype) void {
@@ -152,19 +166,29 @@ pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: an
     var box = ui.column(c, .{
         .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
         .gap = 8,
-        .id_extra = @as(?usize, if (@hasField(@TypeOf(props), "id_extra")) props.id_extra else null),
     });
     defer box.end();
     const title: []const u8 = if (@hasField(@TypeOf(props), "title")) props.title else "";
     if (title.len > 0) {
-        Heading(self, ui, c, .{ .text = title, .size = @as(u32, 3) });
+        // Inline Heading call — passing self to Heading makes Zig unify
+        // self's type across two anytype calls, which can infer **Ctx.
+        var h_opts = TextOptions{
+            .color_text = Color.black,
+            .font_size = 18,
+            .font_weight = 700,
+            .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+        };
+        if (@hasField(@TypeOf(props), "id_extra")) h_opts.id_extra = props.id_extra;
+        ui.text(c, title, h_opts);
     }
-    content(ui, c, self);
+    const SelfT = @TypeOf(self);
+    if (@typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer) {
+        content(ui, c, self.*);
+    } else {
+        content(ui, c, self);
+    }
 }
 
-/// Editable single-line text field.
-/// Pass a mutable buffer via `<Input buffer={&ctx.field} placeholder="..." />`.
-/// The buffer's bytes are edited in place; the caller owns the storage.
 pub inline fn Input(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     _ = self;
     var opts = InputOptions{};
@@ -172,4 +196,22 @@ pub inline fn Input(self: anytype, ui: anytype, c: anytype, props: anytype) void
     if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
     const buf: []u8 = props.buffer;
     ui.textEntry(c, buf, opts);
+}
+
+pub inline fn Textarea(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = TextareaOptions{};
+    if (@hasField(@TypeOf(props), "placeholder")) opts.placeholder = props.placeholder;
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    const buf: []u8 = props.buffer;
+    ui.textArea(c, buf, opts);
+}
+
+/// Checkbox + label. Value is `*bool` on the context.
+pub inline fn Checkbox(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = CheckboxOptions{};
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    const val: *bool = props.checked;
+    _ = ui.checkbox(c, props.text, val, opts);
 }
