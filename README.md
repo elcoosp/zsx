@@ -1,5 +1,7 @@
 # ZSX
 
+> **This is a template, not a fetched package.** ZSX uses a comptime parser and `@embedFile`, which are incompatible with `zig fetch`. See [TEMPLATE.md](TEMPLATE.md) for why, and for the fork workflow.
+
 **A compile-time JSX-like syntax layer for Zig native GUI frameworks.**
 
 [![Zig](https://img.shields.io/badge/zig-0.17%2B-F7A41D?style=flat-square&logo=zig&logoColor=white)](https://ziglang.org)
@@ -204,22 +206,21 @@ If you need routing, state management, or a component model, build them on top o
 
 ## Getting Started
 
-Requires Zig 0.17 or later.
+This is a template. Start a project from it:
 
-```sh
-zig fetch --save https://github.com/<org>/zsx/archive/refs/heads/main.tar.gz
+```bash
+./scripts/new-project.sh ~/code/my-app my-app
+cd ~/code/my-app
+zig build test
+zig build build-app
 ```
 
-Add to your `build.zig`:
+That copies the tree, renames the package, generates a fresh fingerprint, and
+initializes a clean git repo you own. Alternatively, fork the repo on GitHub
+and clone your fork.
 
-```zig
-const zsx = b.dependency("zsx", .{ .target = target, .optimize = optimize });
-exe.root_module.addImport("zsx", zsx.module("zsx"));
-```
+See [TEMPLATE.md](TEMPLATE.md) for the full reasoning and the fork workflow.
 
-See `examples/` for working samples against each backend.
-
----
 
 ## Community
 
