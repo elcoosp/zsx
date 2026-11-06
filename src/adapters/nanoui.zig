@@ -110,6 +110,54 @@ pub fn Adapter(comptime ui: type) type {
             }
         }
 
+        pub fn textArea(c: anytype, buffer: []u8, opts: anytype) void {
+            if (@hasDecl(ui, "textArea")) {
+                const Opts = ui.AreaOptions;
+                var o: Opts = .{};
+                if (@hasField(Opts, "placeholder")) {
+                    if (@hasField(@TypeOf(opts), "placeholder")) {
+                        if (opts.placeholder) |p| o.placeholder = p;
+                    }
+                }
+                if (@hasField(Opts, "id_extra")) {
+                    if (@hasField(@TypeOf(opts), "id_extra")) o.id_extra = opts.id_extra;
+                }
+                const id: u64 = blk: {
+                    if (!@hasField(@TypeOf(opts), "id_extra")) break :blk 0;
+                    const raw = opts.id_extra;
+                    if (@typeInfo(@TypeOf(raw)) == .optional) break :blk @as(u64, @intCast(raw orelse 0));
+                    break :blk @as(u64, @intCast(raw));
+                };
+                const gop = text_buffers.getOrPut(std.heap.c_allocator, id) catch return;
+                if (!gop.found_existing) {
+                    const tb = std.heap.c_allocator.create(ui.TextBuffer) catch return;
+                    tb.* = .{};
+                    const seed_len = std.mem.indexOfScalar(u8, buffer, 0) orelse buffer.len;
+                    if (seed_len > 0) tb.set(buffer[0..seed_len]);
+                    gop.value_ptr.* = tb;
+                }
+                const tb: *ui.TextBuffer = gop.value_ptr.*;
+                _ = ui.textArea(c, tb, o);
+                const txt = tb.text();
+                const n = @min(txt.len, buffer.len);
+                @memcpy(buffer[0..n], txt[0..n]);
+                if (n < buffer.len) @memset(buffer[n..], 0);
+            } else {
+                textEntry(c, buffer, opts);
+            }
+        }
+
+        pub fn checkbox(c: anytype, title: []const u8, value: *bool, opts: anytype) bool {
+            // nanoui's checkbox takes no options — id_extra has no destination.
+            // Field is accepted by the adapter for interface symmetry with DVUI,
+            // and silently ignored.
+            _ = opts;
+            if (@hasDecl(ui, "checkbox")) {
+                return ui.checkbox(c, title, value);
+            }
+            return false;
+        }
+
         pub const Box = struct {
             inner: ui.Div,
 
@@ -227,6 +275,8 @@ pub const StubNanoui = struct {
 
     var _buttons_rendered: usize = 0;
     var _text_entries_rendered: usize = 0;
+    var _text_areas_rendered: usize = 0;
+    var _checkboxes_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_text_size: f32 = 0;
     var _last_text_weight: Weight = .regular;
@@ -282,6 +332,17 @@ pub const StubNanoui = struct {
     pub fn textEntry(c: *Context, buffer: []u8, opts: anytype) void {
         _ = c; _ = buffer; _ = opts;
         _text_entries_rendered += 1;
+    }
+
+    pub fn textArea(c: *Context, buffer: []u8, opts: anytype) void {
+        _ = c; _ = buffer; _ = opts;
+        _text_areas_rendered += 1;
+    }
+
+    pub fn checkbox(c: *Context, title: []const u8, value: *bool, opts: anytype) bool {
+        _ = c; _ = title; _ = value; _ = opts;
+        _checkboxes_rendered += 1;
+        return false;
     }
 };
 
