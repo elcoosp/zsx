@@ -21,6 +21,7 @@ pub fn build(b: *std.Build) void {
         "src/views/nested_card_demo.zsx",
         "src/views/dashboard.zsx",
         "src/views/input_demo.zsx",
+        "src/views/playground.zsx",
         "src/views/component_lib_demo.zsx",
         "src/views/extended_styles_demo.zsx",
     };
