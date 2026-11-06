@@ -4,13 +4,13 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
+        var b_0 = ui.column(c, .{.id_extra = 300000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
         defer b_0.end();
-        ctx.Button(ui, c, .{.variant = "primary", .text = "Save"});
-        ctx.Button(ui, c, .{.variant = "secondary", .text = "Cancel"});
-        ctx.Button(ui, c, .{.variant = "ghost", .text = "Skip"});
-        ctx.Button(ui, c, .{.variant = "danger", .text = "Delete"});
-        ctx.Badge(ui, c, .{.color = "red", .text = "error"});
-        ctx.Badge(ui, c, .{.color = "green", .text = "ok"});
+        ctx.Button(ui, c, .{.id_extra = 300001, .variant = "primary", .text = "Save"});
+        ctx.Button(ui, c, .{.id_extra = 300002, .variant = "secondary", .text = "Cancel"});
+        ctx.Button(ui, c, .{.id_extra = 300003, .variant = "ghost", .text = "Skip"});
+        ctx.Button(ui, c, .{.id_extra = 300004, .variant = "danger", .text = "Delete"});
+        ctx.Badge(ui, c, .{.id_extra = 300005, .color = "red", .text = "error"});
+        ctx.Badge(ui, c, .{.id_extra = 300006, .color = "green", .text = "ok"});
     }
 }
