@@ -69,6 +69,10 @@ test {
     _ = @import("views/dashboard_gen.zig");
 }
 
+test {
+    _ = @import("views/extended_styles_demo_gen.zig");
+}
+
 const User = struct { name: []const u8 };
 const Ctx = struct {
     user: User,
@@ -741,4 +745,33 @@ test "dashboard: refresh_count>0 renders count badge (5 labels)" {
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 5), dvui_adapter.StubDvui.labelsRendered());
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "extended tokens resolve" {
+    const style_mod = @import("style.zig");
+    const s = comptime style_mod.parseClasses("bg-slate-100 text-slate-900 p-6 rounded-full text-3xl gap-4");
+    try std.testing.expectEqual(@as(u8, 241), s.background.?.r);
+    try std.testing.expectEqual(@as(u8, 15), s.foreground.?.r);
+    try std.testing.expectEqual(@as(f32, 24), s.padding.?.x);
+    try std.testing.expectEqual(@as(f32, 9999), s.radius.?);
+    try std.testing.expectEqual(@as(f32, 30), s.font_size.?);
+    try std.testing.expectEqual(@as(f32, 16), s.gap.?);
+    const s2 = comptime style_mod.parseClasses("bg-transparent text-xs px-3 py-3 gap-1");
+    try std.testing.expectEqual(@as(u8, 0), s2.background.?.a);
+    try std.testing.expectEqual(@as(f32, 12), s2.font_size.?);
+    try std.testing.expectEqual(@as(f32, 12), s2.padding.?.x);
+    try std.testing.expectEqual(@as(f32, 4), s2.gap.?);
+}
+
+test "extended_styles_demo renders 2 buttons 5 labels" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/extended_styles_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    const NullCtx = struct {};
+    var nctx: NullCtx = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    demo.view(A, &c, &nctx);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.buttonsRendered());
+    try std.testing.expectEqual(@as(usize, 5), dvui_adapter.StubDvui.labelsRendered());
 }
