@@ -106,6 +106,21 @@ pub fn build(b: *std.Build) void {
     b.getInstallStep().dependOn(&install_real_nanoui.step);
     const build_app_nanoui_step = b.step("build-app-nanoui", "Build the real nanoui app");
     build_app_nanoui_step.dependOn(&install_real_nanoui.step);
+
+    const snapshot_mod = b.createModule(.{
+        .root_source_file = b.path("src/snapshot_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    snapshot_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
+    snapshot_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
+    snapshot_mod.addImport("nanoui", nanoui_dep.module("nanoui"));
+    const snapshot_test = b.addTest(.{ .root_module = snapshot_mod });
+    snapshot_test.step.dependOn(&zsx_update.step);
+    const snapshot_run = b.addRunArtifact(snapshot_test);
+    snapshot_run.has_side_effects = true;
+    const snapshot_step = b.step("snapshot", "Generate component screenshots");
+    snapshot_step.dependOn(&snapshot_run.step);
     const build_app_alias = b.step("build-app", "Alias for build-app-dvui");
     build_app_alias.dependOn(&install_real.step);
     const build_all_step = b.step("build-all", "Build both real binaries");
