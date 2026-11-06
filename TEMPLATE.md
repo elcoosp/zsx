@@ -38,7 +38,7 @@ Packages cannot.
     ./scripts/new-project.sh ~/code/my-app my-app
     cd ~/code/my-app
     zig build test           # fast stub-based tests, ~1s
-    zig build build-app      # DVUI binary
+    zig build build-app-dvui    # DVUI binary
     zig build build-app-nanoui  # Nanoui binary (macOS)
 
 `new-project.sh` copies the tree, renames the package, generates a fresh
