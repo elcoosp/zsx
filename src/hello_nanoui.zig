@@ -14,10 +14,15 @@ const Ctx = struct {
     pub const Input = @import("lib/shadcn.zig").Input;
     pub const Textarea = @import("lib/shadcn.zig").Textarea;
     pub const Checkbox = @import("lib/shadcn.zig").Checkbox;
+    pub const Progress = @import("lib/shadcn.zig").Progress;
+    pub const Divider = @import("lib/shadcn.zig").Divider;
+    pub const Slider = @import("lib/shadcn.zig").Slider;
 
     name: [64]u8 = @splat(0),
     notes: [256]u8 = @splat(0),
     remember: bool = false,
+    completion: f32 = 0.42,
+    volume: f32 = 0.5,
     email: [128]u8 = @splat(0),
 };
 

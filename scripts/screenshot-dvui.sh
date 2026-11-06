@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Capture DVUI binary window. Requires Screen Recording + Accessibility for Terminal.
+# Capture the DVUI window by ID. No repositioning of any window.
+# Requires: Screen Recording for Terminal.
+# Usage: ./scripts/screenshot-dvui.sh [output.png]
+
 set -uo pipefail
 
 OUT="${1:-/tmp/components-dvui.png}"
 BIN="./zig-out/bin/zsx-hello-dvui"
-WINDOW_TITLE="${ZSX_WINDOW_TITLE:-ZSX}"
 
 if [ ! -x "$BIN" ]; then
     echo "ERROR: $BIN not found. Run: zig build build-app-dvui" >&2
@@ -15,74 +17,47 @@ echo "Launching $BIN"
 "$BIN" &
 APP_PID=$!
 
+# Give the app time to create its window
 sleep 2
 
-echo "Positioning window at 100,100"
-osascript >/dev/null 2>&1 << APPLESCRIPT || echo "WARN: positioning failed"
+# Ask System Events for the window id of exactly this process (by unix id)
+WINDOW_ID=$(osascript <<APPLESCRIPT 2>/dev/null
 tell application "System Events"
-    repeat with p in (every process whose background only is false)
-        try
-            tell p
-                if (count of windows) > 0 then
-                    if name of window 1 contains "ZSX" or name of p contains "zsx" then
-                        set position of window 1 to {100, 100}
-                        set frontmost to true
-                    end if
-                end if
-            end tell
-        end try
-    end repeat
+    try
+        set p to first process whose unix id is $APP_PID
+        set w to first window of p
+        return id of w as text
+    on error
+        return ""
+    end try
 end tell
 APPLESCRIPT
-
-sleep 1
-
-# Query exact window bounds (includes title bar)
-BOUNDS=$(osascript <<'AS' 2>/dev/null
-tell application "System Events"
-    repeat with p in (every process whose background only is false)
-        try
-            tell p
-                if (count of windows) > 0 then
-                    if name of window 1 contains "ZSX" or name of p contains "zsx" then
-                        set pos to position of window 1
-                        set sz to size of window 1
-                        return ((item 1 of pos) as string) & "," & ((item 2 of pos) as string) & "," & ((item 1 of sz) as string) & "," & ((item 2 of sz) as string)
-                    end if
-                end if
-            end tell
-        end try
-    end repeat
-end tell
-return ""
-AS
 )
 
-if [ -n "$BOUNDS" ]; then
-    echo "Window bounds: $BOUNDS"
-    CAPTURE_REGION="$BOUNDS"
-else
-    echo "WARN: bounds query failed, using fallback 100,100,720,560"
-    CAPTURE_REGION="100,100,720,560"
-fi
-
-echo "Capturing region $CAPTURE_REGION → $OUT"
-if ! screencapture -x -R "$CAPTURE_REGION" "$OUT" 2>&1; then
-    echo "ERROR: screencapture failed" >&2
-    kill -9 "$APP_PID" 2>/dev/null || true
-    echo ""
-    echo "Grant permission: System Settings → Privacy & Security → Screen Recording"
-    echo "  → Enable for Terminal"
+if [ -z "$WINDOW_ID" ]; then
+    echo "ERROR: window id not found for PID $APP_PID" >&2
+    kill -9 $APP_PID 2>/dev/null || true
+    echo "Check: System Settings → Privacy & Security → Screen Recording → Terminal" >&2
     exit 1
 fi
 
-kill -9 "$APP_PID" 2>/dev/null || true
+echo "Window id: $WINDOW_ID"
+echo "Capturing window → $OUT"
+
+# -l <id> captures only that window. -o omits the shadow.
+if ! screencapture -x -o -l "$WINDOW_ID" "$OUT" 2>&1; then
+    echo "ERROR: screencapture failed" >&2
+    kill -9 $APP_PID 2>/dev/null || true
+    exit 1
+fi
+
+kill -9 $APP_PID 2>/dev/null || true
 
 if [ -f "$OUT" ]; then
     SIZE=$(stat -f%z "$OUT" 2>/dev/null || stat -c%s "$OUT" 2>/dev/null)
     echo "Wrote $OUT ($SIZE bytes)"
     if [ "$SIZE" -lt 3000 ]; then
-        echo "WARN: file too small ($SIZE bytes) — empty?"
+        echo "WARN: file is small ($SIZE bytes) — likely empty"
         exit 1
     fi
 else

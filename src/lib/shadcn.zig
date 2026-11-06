@@ -218,3 +218,21 @@ pub inline fn Checkbox(self: anytype, ui: anytype, c: anytype, props: anytype) v
     const val: *bool = props.checked;
     _ = ui.checkbox(c, props.text, val, opts);
 }
+
+
+pub inline fn Progress(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    ui.progress(c, props.value, .{});
+}
+
+pub inline fn Divider(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    _ = props;
+    ui.divider(c, .{});
+}
+
+pub inline fn Slider(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    const value: *f32 = props.value;
+    _ = ui.slider(c, value, .{});
+}
