@@ -27,7 +27,12 @@ pub fn Adapter(comptime dvui: type) type {
                 if (@hasField(@TypeOf(opts), "placeholder")) {
                     if (opts.placeholder) |p| init.placeholder = p;
                 }
-                var te = dvui.textEntry(@src(), init, optionsFrom(dvui, opts));
+                var o = optionsFrom(dvui, opts);
+                // DVUI TextEntryWidget has no intrinsic size — give it one
+                if (o.min_size_content == null) {
+                    o.min_size_content = .{ .w = 240, .h = 30 };
+                }
+                var te = dvui.textEntry(@src(), init, o);
                 defer te.deinit();
             } else {
                 dvui.textEntry(@src(), buffer, opts);
