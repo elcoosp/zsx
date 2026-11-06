@@ -26,10 +26,13 @@ fn dvuiFrame() !dvui.App.Result {
 }
 
 test "snapshot: nanoui component library" {
+    var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .init;
+    defer _ = gpa_state.deinit();
+    const gpa = gpa_state.allocator();
     var ctx: Ctx = .{};
     var t: nanoui.ui.Tester = undefined;
     try t.init(
-        std.testing.allocator,
+        gpa,
         nanoui.ui.View.init(&ctx, nanouiView),
         .{ .width = 700, .height = 500, .scale = 2 },
     );
@@ -40,7 +43,7 @@ test "snapshot: nanoui component library" {
 }
 
 test "snapshot: dvui component library" {
-    var t = try dvui.testing.init(.{});
+    var t = try dvui.testing.init(.{ .image_dir = "/tmp", });
     defer t.deinit();
     try t.saveImage(dvuiFrame, null, "/tmp/components-dvui.png");
     std.debug.print("wrote /tmp/components-dvui.png\n", .{});
