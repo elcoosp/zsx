@@ -27,7 +27,8 @@ pub fn Adapter(comptime dvui: type) type {
                 if (@hasField(@TypeOf(opts), "placeholder")) {
                     if (opts.placeholder) |p| init.placeholder = p;
                 }
-                _ = dvui.textEntry(@src(), init, optionsFrom(dvui, opts));
+                var te = dvui.textEntry(@src(), init, optionsFrom(dvui, opts));
+                defer te.deinit();
             } else {
                 dvui.textEntry(@src(), buffer, opts);
             }
