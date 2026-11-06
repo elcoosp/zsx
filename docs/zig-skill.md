@@ -532,3 +532,75 @@ If the field might be either `?T` or `T` depending on caller version, dispatch a
     };
 
 `orelse` on a non-optional is a compile error, so the branch must be pruned with `@typeInfo` — not blind `orelse`.
+
+## var vs const: never-mutated locals are hard errors
+
+Zig 0.17 rejects `var` locals that are never mutated. The check runs at
+compile time, not lint time — a never-mutated `var` is a **compile error**,
+not a warning.
+
+    error: local variable is never mutated
+        var init = dvui.Progress_InitOptions{ .percent = 50 };
+            ^~~~
+    note: consider using 'const'
+
+`var` in Zig means "will be mutated after initialization." The compiler
+verifies this. If the variable is only read, use `const`:
+
+    // WRONG — will not compile if `init` is never mutated
+    var init = dvui.Progress_InitOptions{ .percent = 50 };
+    dvui.progress(@src(), init, opts);
+
+    // RIGHT
+    const init = dvui.Progress_InitOptions{ .percent = 50 };
+    dvui.progress(@src(), init, opts);
+
+Same rule for function parameters. `var` parameter that is never mutated
+is a compile error too. Use `_ = param;` in the body if the parameter is
+intentionally unused, or remove it from the signature.
+
+Common false-reflex: writing `var` because "it's a struct, might need to
+mutate fields later." Zig's whole point is that `var` is a promise the
+compiler enforces. Declare `const` first, upgrade to `var` only when a
+mutation is actually needed.
+
+Related: `var x: T = undefined;` where `x` is later fully assigned without
+reading is a different case — that IS considered mutated (from `undefined`
+to a real value) and compiles. The "never mutated" error is about `var`
+locals initialized to a concrete value and then only read.
+
+## var vs const: never-mutated locals are hard errors
+
+Zig 0.17 rejects `var` locals that are never mutated. The check runs at
+compile time, not lint time — a never-mutated `var` is a **compile error**,
+not a warning.
+
+    error: local variable is never mutated
+        var init = dvui.Progress_InitOptions{ .percent = 50 };
+            ^~~~
+    note: consider using 'const'
+
+`var` in Zig means "will be mutated after initialization." The compiler
+verifies this. If the variable is only read, use `const`:
+
+    // WRONG — will not compile if `init` is never mutated
+    var init = dvui.Progress_InitOptions{ .percent = 50 };
+    dvui.progress(@src(), init, opts);
+
+    // RIGHT
+    const init = dvui.Progress_InitOptions{ .percent = 50 };
+    dvui.progress(@src(), init, opts);
+
+Same rule for function parameters. `var` parameter that is never mutated
+is a compile error too. Use `_ = param;` in the body if the parameter is
+intentionally unused, or remove it from the signature.
+
+Common false-reflex: writing `var` because "it's a struct, might need to
+mutate fields later." Zig's whole point is that `var` is a promise the
+compiler enforces. Declare `const` first, upgrade to `var` only when a
+mutation is actually needed.
+
+Related: `var x: T = undefined;` where `x` is later fully assigned without
+reading is a different case — that IS considered mutated (from `undefined`
+to a real value) and compiles. The "never mutated" error is about `var`
+locals initialized to a concrete value and then only read.
