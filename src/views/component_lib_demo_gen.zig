@@ -3,38 +3,38 @@
 // do not edit by hand
 
 inline fn render_Section_14(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Caption(ui, c, .{.id_extra = 1300010, .text = "Four components, zero adapter changes."});
+    ctx.Caption(ui, c, .{.id_extra = 1400010, .text = "Four components, zero adapter changes."});
     {
-        var b_11 = ui.row(c, .{.id_extra = 1300011, .gap = 8});
+        var b_11 = ui.row(c, .{.id_extra = 1400011, .gap = 8});
         defer b_11.end();
-        _ = ui.button(c, "Install", .{.id_extra = 1300012, .color_fill = .{ .r = 59, .g = 130, .b = 246, .a = 255 }, .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 }, .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 }});
-        _ = ui.button(c, "Docs", .{.id_extra = 1300013, .color_fill = .{ .r = 243, .g = 244, .b = 246, .a = 255 }, .color_text = .{ .r = 0, .g = 0, .b = 0, .a = 255 }, .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 }});
+        _ = ui.button(c, "Install", .{.id_extra = 1400012, .color_fill = .{ .r = 59, .g = 130, .b = 246, .a = 255 }, .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 }, .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 }});
+        _ = ui.button(c, "Docs", .{.id_extra = 1400013, .color_fill = .{ .r = 243, .g = 244, .b = 246, .a = 255 }, .color_text = .{ .r = 0, .g = 0, .b = 0, .a = 255 }, .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 }});
     }
 }
 
 inline fn render_Section_20(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Link(ui, c, .{.id_extra = 1300016, .text = "Heading"});
-    ctx.Link(ui, c, .{.id_extra = 1300017, .text = "Caption"});
-    ctx.Link(ui, c, .{.id_extra = 1300018, .text = "Link"});
-    ctx.Link(ui, c, .{.id_extra = 1300019, .text = "Section"});
+    ctx.Link(ui, c, .{.id_extra = 1400016, .text = "Heading"});
+    ctx.Link(ui, c, .{.id_extra = 1400017, .text = "Caption"});
+    ctx.Link(ui, c, .{.id_extra = 1400018, .text = "Link"});
+    ctx.Link(ui, c, .{.id_extra = 1400019, .text = "Section"});
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 1300000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 16});
+        var b_0 = ui.column(c, .{.id_extra = 1400000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 16});
         defer b_0.end();
-        ctx.Heading(ui, c, .{.id_extra = 1300001, .size = 1, .text = "Component Library"});
-        ctx.Caption(ui, c, .{.id_extra = 1300002, .text = "Heading, Caption, Link, Section"});
+        ctx.Heading(ui, c, .{.id_extra = 1400001, .size = 1, .text = "Component Library"});
+        ctx.Caption(ui, c, .{.id_extra = 1400002, .text = "Heading, Caption, Link, Section"});
         {
-            var b_3 = ui.row(c, .{.id_extra = 1300003, .gap = 8});
+            var b_3 = ui.row(c, .{.id_extra = 1400003, .gap = 8});
             defer b_3.end();
-            ctx.Link(ui, c, .{.id_extra = 1300004, .text = "documentation"});
-            ctx.Caption(ui, c, .{.id_extra = 1300005, .text = "·"});
-            ctx.Link(ui, c, .{.id_extra = 1300006, .text = "examples"});
-            ctx.Caption(ui, c, .{.id_extra = 1300007, .text = "·"});
-            ctx.Link(ui, c, .{.id_extra = 1300008, .text = "changelog"});
+            ctx.Link(ui, c, .{.id_extra = 1400004, .text = "documentation"});
+            ctx.Caption(ui, c, .{.id_extra = 1400005, .text = "·"});
+            ctx.Link(ui, c, .{.id_extra = 1400006, .text = "examples"});
+            ctx.Caption(ui, c, .{.id_extra = 1400007, .text = "·"});
+            ctx.Link(ui, c, .{.id_extra = 1400008, .text = "changelog"});
         }
-        ctx.Section(ui, c, .{.id_extra = 1300009, .title = "Getting Started"}, render_Section_14);
-        ctx.Section(ui, c, .{.id_extra = 1300015, .title = "What is Included"}, render_Section_20);
+        ctx.Section(ui, c, .{.id_extra = 1400009, .title = "Getting Started"}, render_Section_14);
+        ctx.Section(ui, c, .{.id_extra = 1400015, .title = "What is Included"}, render_Section_20);
     }
 }
