@@ -2,7 +2,7 @@
 
 **A compile-time JSX-like syntax layer for Zig native GUI frameworks.**
 
-[![Zig](https://img.shields.io/badge/zig-0.14%2B-F7A41D?style=flat-square&logo=zig&logoColor=white)](https://ziglang.org)
+[![Zig](https://img.shields.io/badge/zig-0.17%2B-F7A41D?style=flat-square&logo=zig&logoColor=white)](https://ziglang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--alpha-orange?style=flat-square)](#roadmap)
 [![Backends](https://img.shields.io/badge/backends-DVUI%20%7C%20Nanoui%20%7C%20zigui-lightgrey?style=flat-square)](#backends)
@@ -204,7 +204,7 @@ If you need routing, state management, or a component model, build them on top o
 
 ## Getting Started
 
-Requires Zig 0.14 or later.
+Requires Zig 0.17 or later.
 
 ```sh
 zig fetch --save https://github.com/<org>/zsx/archive/refs/heads/main.tar.gz
