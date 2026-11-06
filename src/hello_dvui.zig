@@ -18,22 +18,27 @@ pub const dvui_app: dvui.App = .{
         .size = .{ .w = 700, .h = 500 },
         .min_size = .{ .w = 350, .h = 250 },
         .org = "com.example.zsx",
-        .app = "zsx-dashboard",
+        .app = "zsx-component-lib",
         .title = "ZSX Component Library",
-        .window_init_options = .{
-            .keybinds_zoom = true,
-            .theme = dvui.Theme.builtin.adwaita_light,
-            .color_scheme = .light,
-        },
     } },
     .frameFn = frame,
+    .initFn = appInit,
 };
 
 pub const main = dvui.App.main;
 pub const panic = dvui.App.panic;
 pub const std_options: std.Options = .{ .logFn = dvui.App.logFn };
 
+fn appInit(win: *dvui.Window) !void {
+    win.themeSet(dvui.Theme.builtin.adwaita_light);
+}
+
 fn frame() !dvui.App.Result {
-    components.view(A, dvui.currentWindow(), &g_ctx);
+    const win = dvui.currentWindow();
+    // Force light theme every frame — dvui re-queries system preference during begin()
+    if (win.theme.dark) {
+        win.themeSet(dvui.Theme.builtin.adwaita_light);
+    }
+    components.view(A, win, &g_ctx);
     return .ok;
 }
