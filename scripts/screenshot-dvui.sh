@@ -4,7 +4,7 @@ set -uo pipefail
 
 OUT="${1:-/tmp/components-dvui.png}"
 BIN="./zig-out/bin/zsx-hello-dvui"
-WINDOW_TITLE="ZSX Component Library"
+WINDOW_TITLE="${ZSX_WINDOW_TITLE:-ZSX}"
 
 if [ ! -x "$BIN" ]; then
     echo "ERROR: $BIN not found. Run: zig build build-app-dvui" >&2
@@ -24,7 +24,7 @@ tell application "System Events"
         try
             tell p
                 if (count of windows) > 0 then
-                    if name of window 1 contains "Component" or name of p contains "zsx" then
+                    if name of window 1 contains "ZSX" or name of p contains "zsx" then
                         set position of window 1 to {100, 100}
                         set frontmost to true
                     end if
