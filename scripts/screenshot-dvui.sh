@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Capture the DVUI window by ID. Polls for the window (SDL apps need ~2-3s
-# to register with System Events). Never moves or activates any window.
-# Requires: Screen Recording + Accessibility permissions for Terminal.
+# Capture the DVUI window on macOS. Uses CGWindowListCopyWindowInfo to find
+# the window by PID (SDL3 apps don't reliably register with System Events).
+# This script NEVER moves, activates, or resizes any window.
+# Requires: Screen Recording permission for Terminal.
 # Usage: ./scripts/screenshot-dvui.sh [output.png]
 
 set -uo pipefail
@@ -18,26 +19,21 @@ echo "Launching $BIN"
 "$BIN" &
 APP_PID=$!
 
-# Poll for the window id. SDL apps take a moment to register with System Events.
 WINDOW_ID=""
-for attempt in 1 2 3 4 5 6 7 8; do
+for attempt in 1 2 3 4 5; do
     sleep 1
-    WINDOW_ID=$(osascript <<'APPLESCRIPT' 2>/dev/null || true
-tell application "System Events"
-    repeat with p in (every process whose background only is false)
-        try
-            if name of p contains "zsx-hello" then
-                tell p
-                    if (count of windows) > 0 then
-                        return id of window 1 as text
-                    end if
-                end tell
-            end if
-        end try
-    end repeat
-end tell
-return ""
-APPLESCRIPT
+    WINDOW_ID=$(/usr/bin/python3 <<PYEOF 2>/dev/null || true
+import Quartz, sys
+pid = $APP_PID
+wins = Quartz.CGWindowListCopyWindowInfo(Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID)
+for w in wins:
+    if w.get('kCGWindowOwnerPID') == pid:
+        n = w.get('kCGWindowNumber')
+        if n is not None:
+            print(n)
+            sys.exit(0)
+sys.exit(1)
+PYEOF
 )
     if [ -n "$WINDOW_ID" ]; then
         echo "  window id found on attempt $attempt: $WINDOW_ID"
@@ -47,17 +43,15 @@ APPLESCRIPT
 done
 
 if [ -z "$WINDOW_ID" ]; then
-    echo "ERROR: window not found after 8s for $APP_PID" >&2
+    echo "ERROR: window not found after 5s for PID $APP_PID" >&2
     kill -9 $APP_PID 2>/dev/null || true
     echo "" >&2
-    echo "Check permissions (both required):" >&2
+    echo "If Screen Recording permission is missing:" >&2
     echo "  System Settings → Privacy & Security → Screen Recording → Terminal" >&2
-    echo "  System Settings → Privacy & Security → Accessibility → Terminal" >&2
     exit 1
 fi
 
 echo "Capturing window $WINDOW_ID → $OUT"
-# -l: capture only that window. -o: omit shadow. -x: no sound.
 if ! screencapture -x -o -l "$WINDOW_ID" "$OUT" 2>&1; then
     echo "ERROR: screencapture failed" >&2
     kill -9 $APP_PID 2>/dev/null || true
@@ -77,12 +71,6 @@ DIMS=$(sips -g pixelWidth -g pixelHeight "$OUT" 2>/dev/null | awk '/pixel/{print
 echo "Wrote $OUT ($SIZE bytes, ${DIMS:-unknown dims})"
 
 if [ "$SIZE" -lt 3000 ]; then
-    echo "WARN: file is very small — likely empty" >&2
-    exit 1
-fi
-
-# Sanity: full-screen capture would be ~1920x1080 or larger
-if echo "$DIMS" | grep -qE '^(1920|2560|2880|3840)x'; then
-    echo "WARN: dims $DIMS look like full screen, not window" >&2
+    echo "WARN: file very small — likely empty" >&2
     exit 1
 fi
