@@ -26,10 +26,23 @@ pub fn Adapter(comptime ui: type) type {
                 };
             }
             if (@hasField(@TypeOf(opts), "font_size")) {
-                ts.size = @as(f32, @floatFromInt(opts.font_size));
+                const fs = opts.font_size;
+                if (@TypeOf(fs) == f32) {
+                    ts.size = fs;
+                } else if (@TypeOf(fs) == comptime_float) {
+                    ts.size = @floatCast(fs);
+                } else {
+                    ts.size = @as(f32, @floatFromInt(fs));
+                }
             }
             if (@hasField(@TypeOf(opts), "font_weight")) {
-                const w = @as(u32, opts.font_weight);
+                const fw = opts.font_weight;
+                const w: u32 = if (@TypeOf(fw) == u32)
+                    fw
+                else if (@TypeOf(fw) == comptime_int)
+                    @intCast(fw)
+                else
+                    @as(u32, @intFromFloat(fw));
                 ts.weight = switch (w) {
                     400 => .regular,
                     500 => .medium,
