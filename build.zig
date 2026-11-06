@@ -83,6 +83,23 @@ pub fn build(b: *std.Build) void {
     const build_app_step = b.step("build-app", "Build the real dvui app and install it");
     build_app_step.dependOn(&install_real.step);
 
+    const nanoui_dep = b.dependency("nanoui", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const real_nanoui_mod = b.createModule(.{
+        .root_source_file = b.path("src/hello_nanoui.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    real_nanoui_mod.addImport("nanoui", nanoui_dep.module("nanoui"));
+    const real_nanoui_exe = b.addExecutable(.{ .name = "zsx-hello-nanoui", .root_module = real_nanoui_mod });
+    const install_real_nanoui = b.addInstallArtifact(real_nanoui_exe, .{});
+    b.getInstallStep().dependOn(&install_real_nanoui.step);
+    const build_app_nanoui_step = b.step("build-app-nanoui", "Build the real nanoui app");
+    build_app_nanoui_step.dependOn(&install_real_nanoui.step);
+
     const real_hello_release_mod = b.createModule(.{
         .root_source_file = b.path("src/hello_real.zig"),
         .target = target,
