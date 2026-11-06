@@ -71,16 +71,16 @@ pub fn build(b: *std.Build) void {
         .backend = .sdl3,
     });
     const real_hello_mod = b.createModule(.{
-        .root_source_file = b.path("src/hello_real.zig"),
+        .root_source_file = b.path("src/hello_dvui.zig"),
         .target = target,
         .optimize = optimize,
     });
     real_hello_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
     real_hello_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
-    const real_hello_exe = b.addExecutable(.{ .name = "zsx-hello-real", .root_module = real_hello_mod });
+    const real_hello_exe = b.addExecutable(.{ .name = "zsx-hello-dvui", .root_module = real_hello_mod });
     const install_real = b.addInstallArtifact(real_hello_exe, .{});
     b.getInstallStep().dependOn(&install_real.step);
-    const build_app_step = b.step("build-app", "Build the real dvui app and install it");
+    const build_app_step = b.step("build-app-dvui", "Build DVUI binary (real backend)");
     build_app_step.dependOn(&install_real.step);
 
     const nanoui_dep = b.dependency("nanoui", .{
@@ -99,17 +99,22 @@ pub fn build(b: *std.Build) void {
     b.getInstallStep().dependOn(&install_real_nanoui.step);
     const build_app_nanoui_step = b.step("build-app-nanoui", "Build the real nanoui app");
     build_app_nanoui_step.dependOn(&install_real_nanoui.step);
+    const build_app_alias = b.step("build-app", "Alias for build-app-dvui");
+    build_app_alias.dependOn(&install_real.step);
+    const build_all_step = b.step("build-all", "Build both real binaries");
+    build_all_step.dependOn(&install_real.step);
+    build_all_step.dependOn(&install_real_nanoui.step);
 
     const real_hello_release_mod = b.createModule(.{
-        .root_source_file = b.path("src/hello_real.zig"),
+        .root_source_file = b.path("src/hello_dvui.zig"),
         .target = target,
         .optimize = .ReleaseSafe,
     });
     real_hello_release_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
     real_hello_release_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
-    const real_hello_release_exe = b.addExecutable(.{ .name = "zsx-hello-real-release", .root_module = real_hello_release_mod });
+    const real_hello_release_exe = b.addExecutable(.{ .name = "zsx-hello-dvui-release", .root_module = real_hello_release_mod });
     const install_real_release = b.addInstallArtifact(real_hello_release_exe, .{});
-    const build_app_release_step = b.step("build-app-release", "Build release-safe real dvui app");
+    const build_app_release_step = b.step("build-app-dvui-release", "Build DVUI binary, ReleaseSafe");
     build_app_release_step.dependOn(&install_real_release.step);
 }
 
