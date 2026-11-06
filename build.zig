@@ -20,6 +20,7 @@ pub fn build(b: *std.Build) void {
         "src/views/class_override_demo.zsx",
         "src/views/nested_card_demo.zsx",
         "src/views/dashboard.zsx",
+        "src/views/input_demo.zsx",
         "src/views/component_lib_demo.zsx",
         "src/views/extended_styles_demo.zsx",
     };
@@ -334,9 +335,6 @@ fn emitElement(comptime el: ast.Element, comptime level: usize, comptime start_i
             .next_id = start_id + 1,
         };
     } else if (comptime isUpper(el.tag[0])) {
-        if (comptime !hasElementChildren(el) and !hasTextChild(el)) {
-            @compileError("zsx: <" ++ el.tag ++ "> component must have children");
-        }
         if (comptime hasElementChildren(el)) {
             const inner = comptime emitContentChildren(el.children, 1, start_id + 1, file_index);
             const my_id = inner.next_id;
