@@ -18,6 +18,20 @@ pub fn Adapter(comptime dvui: type) type {
             _ = c;
             return dvui.button(@src(), title, .{}, optionsFrom(dvui, opts));
         }
+
+        pub fn textEntry(c: anytype, buffer: []u8, opts: anytype) void {
+            _ = c;
+            if (@hasDecl(dvui, "TextEntryWidget")) {
+                var init = dvui.TextEntryWidget.InitOptions{};
+                init.text = .{ .buffer = buffer };
+                if (@hasField(@TypeOf(opts), "placeholder")) {
+                    if (opts.placeholder) |p| init.placeholder = p;
+                }
+                _ = dvui.textEntry(@src(), init, optionsFrom(dvui, opts));
+            } else {
+                dvui.textEntry(@src(), buffer, opts);
+            }
+        }
         pub const Box = struct {
             inner: *dvui.BoxWidget,
             pub fn end(self: Box) void {
@@ -108,12 +122,14 @@ pub const StubDvui = struct {
 
     var _box: BoxWidget = .{};
     var _buttons_rendered: usize = 0;
+    var _text_entries_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_button_padding: ?Rect = null;
     var _last_button_radius: ?f32 = null;
     var _queued_clicks: usize = 0;
 
     pub fn buttonsRendered() usize { return _buttons_rendered; }
+    pub fn textEntriesRendered() usize { return _text_entries_rendered; }
     pub fn labelsRendered() usize { return _labels_rendered; }
     pub fn lastButtonPadding() ?Rect { return _last_button_padding; }
     pub fn lastButtonRadius() ?f32 { return _last_button_radius; }
@@ -124,6 +140,7 @@ pub const StubDvui = struct {
         _queued_clicks = 0;
         _last_button_padding = null;
         _last_button_radius = null;
+        _text_entries_rendered = 0;
     }
     pub fn box(src: anytype, init: anytype, opts: Options) *BoxWidget {
         _ = src; _ = init; _ = opts;
@@ -137,6 +154,11 @@ pub const StubDvui = struct {
         _last_button_radius = opts.radius;
         if (_queued_clicks > 0) { _queued_clicks -= 1; return true; }
         return false;
+    }
+
+    pub fn textEntry(src: anytype, buffer: []u8, opts: anytype) void {
+        _ = src; _ = buffer; _ = opts;
+        _text_entries_rendered += 1;
     }
     pub fn labelNoFmt(src: anytype, text: []const u8, init: anytype, opts: Options) void {
         _ = src; _ = text; _ = init; _ = opts;
