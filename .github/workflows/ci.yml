@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - name: Cache zig-pkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            .zig-cache
+            ~/.cache/zig
+            zig-pkg
+          key: ${{ runner.os }}-zig-${{ hashFiles('build.zig.zon') }}
+      - name: Run tests
+        run: zig build test
+      - name: Run stub examples
+        run: |
+          zig build example
+          zig build example-nanoui
+
+  # Real-backend builds only run on macOS (Nanoui is macOS-only, DVUI needs SDL3)
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - name: Install SDL3 + freetype
+        run: brew install sdl3 freetype
+      - name: Cache zig-pkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            .zig-cache
+            ~/.cache/zig
+            zig-pkg
+          key: ${{ runner.os }}-zig-dvui-${{ hashFiles('build.zig.zon') }}
+      - name: Build DVUI binary
+        run: zig build build-app-dvui
+      - name: Build Nanoui binary
+        run: zig build build-app-nanoui
+      - name: Verify binaries exist
+        run: |
+          test -f zig-out/bin/zsx-hello-dvui
+          test -f zig-out/bin/zsx-hello-nanoui
