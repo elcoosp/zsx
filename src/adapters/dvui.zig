@@ -51,6 +51,40 @@ pub fn Adapter(comptime dvui: type) type {
             }
             return false;
         }
+        pub fn progress(c: anytype, value: f32, opts: anytype) void {
+            _ = c;
+            if (@hasDecl(dvui, "progress")) {
+                // Progress_InitOptions.percent is required with no default.
+                // Construct with the field directly; DVUI expects 0-100.
+                const clamped = if (value < 0.0) 0.0 else if (value > 1.0) 1.0 else value;
+                const init = dvui.Progress_InitOptions{ .percent = clamped * 100.0 };
+                dvui.progress(@src(), init, optionsFrom(dvui, opts));
+            }
+        }
+
+        pub fn divider(c: anytype, opts: anytype) void {
+            _ = c;
+            var o = optionsFrom(dvui, opts);
+            if (o.min_size_content == null) {
+                o.min_size_content = .{ .w = 0, .h = 1 };
+            }
+            if (o.color_fill == null) {
+                o.color_fill = .{ .color = .{ .r = 220, .g = 220, .b = 220, .a = 255 } };
+            }
+            var b = dvui.box(@src(), .{ .dir = .horizontal }, o);
+            defer b.deinit();
+        }
+
+        pub fn slider(c: anytype, value: *f32, opts: anytype) bool {
+            _ = c;
+            if (@hasDecl(dvui, "slider")) {
+                // SliderInitOptions.fraction is a required *f32
+                const init = dvui.SliderInitOptions{ .fraction = value };
+                return dvui.slider(@src(), init, optionsFrom(dvui, opts));
+            }
+            return false;
+        }
+
         pub const Box = struct {
             inner: *dvui.BoxWidget,
             pub fn end(self: Box) void {
@@ -144,6 +178,9 @@ pub const StubDvui = struct {
     var _text_entries_rendered: usize = 0;
     var _text_areas_rendered: usize = 0;
     var _checkboxes_rendered: usize = 0;
+    var _progresses_rendered: usize = 0;
+    var _dividers_rendered: usize = 0;
+    var _sliders_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_button_padding: ?Rect = null;
     var _last_button_radius: ?f32 = null;
@@ -151,6 +188,9 @@ pub const StubDvui = struct {
 
     pub fn buttonsRendered() usize { return _buttons_rendered; }
     pub fn textEntriesRendered() usize { return _text_entries_rendered; }
+    pub fn progressesRendered() usize { return _progresses_rendered; }
+    pub fn dividersRendered() usize { return _dividers_rendered; }
+    pub fn slidersRendered() usize { return _sliders_rendered; }
     pub fn labelsRendered() usize { return _labels_rendered; }
     pub fn lastButtonPadding() ?Rect { return _last_button_padding; }
     pub fn lastButtonRadius() ?f32 { return _last_button_radius; }
@@ -190,6 +230,22 @@ pub const StubDvui = struct {
     pub fn checkbox(src: anytype, title: []const u8, value: *bool, opts: anytype) bool {
         _ = src; _ = title; _ = value; _ = opts;
         _checkboxes_rendered += 1;
+        return false;
+    }
+
+    pub fn progress(src: anytype, value: f32, opts: anytype) void {
+        _ = src; _ = value; _ = opts;
+        _progresses_rendered += 1;
+    }
+
+    pub fn divider(src: anytype, opts: anytype) void {
+        _ = src; _ = opts;
+        _dividers_rendered += 1;
+    }
+
+    pub fn slider(src: anytype, value: *f32, opts: anytype) bool {
+        _ = src; _ = value; _ = opts;
+        _sliders_rendered += 1;
         return false;
     }
     pub fn labelNoFmt(src: anytype, text: []const u8, init: anytype, opts: Options) void {
