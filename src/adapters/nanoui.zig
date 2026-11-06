@@ -2,6 +2,8 @@ const std = @import("std");
 
 pub fn Adapter(comptime ui: type) type {
     return struct {
+        var text_buffers: std.AutoHashMapUnmanaged(u64, *ui.TextBuffer) = .empty;
+
         pub fn column(c: anytype, opts: anytype) Box {
             var d = ui.div(c).column();
             d = applyOpts(ui, d, opts);
@@ -71,11 +73,6 @@ pub fn Adapter(comptime ui: type) type {
             if (@hasDecl(ui, "textField")) {
                 const Opts = ui.TextFieldOptions;
                 var o: Opts = .{};
-                const F = @typeInfo(@TypeOf(ui.textField)).@"fn";
-                const takes_buffer_arg = F.params.len >= 3;
-                if (!takes_buffer_arg) {
-                    if (@hasField(Opts, "text")) o.text = .{ .buffer = buffer };
-                }
                 if (@hasField(Opts, "placeholder")) {
                     if (@hasField(@TypeOf(opts), "placeholder")) {
                         if (opts.placeholder) |p| o.placeholder = p;
@@ -84,11 +81,30 @@ pub fn Adapter(comptime ui: type) type {
                 if (@hasField(Opts, "id_extra")) {
                     if (@hasField(@TypeOf(opts), "id_extra")) o.id_extra = opts.id_extra;
                 }
-                if (takes_buffer_arg) {
-                    _ = ui.textField(c, buffer, o);
-                } else {
-                    _ = ui.textField(c, o);
+                const id: u64 = blk: {
+                    if (!@hasField(@TypeOf(opts), "id_extra")) break :blk 0;
+                    const raw = opts.id_extra;
+                    if (@typeInfo(@TypeOf(raw)) == .optional) {
+                        break :blk @as(u64, @intCast(raw orelse 0));
+                    }
+                    break :blk @as(u64, @intCast(raw));
+                };
+                const gop = text_buffers.getOrPut(std.heap.c_allocator, id) catch return;
+                if (!gop.found_existing) {
+                    const tb = std.heap.c_allocator.create(ui.TextBuffer) catch return;
+                    tb.* = .{};
+                    // Seed only if caller's buffer has non-zero prefix
+                    const seed_len = std.mem.indexOfScalar(u8, buffer, 0) orelse buffer.len;
+                    if (seed_len > 0) tb.set(buffer[0..seed_len]);
+                    gop.value_ptr.* = tb;
                 }
+                const tb: *ui.TextBuffer = gop.value_ptr.*;
+                _ = ui.textField(c, tb, o);
+                // Sync back to caller's slice
+                const txt = tb.text();
+                const n = @min(txt.len, buffer.len);
+                @memcpy(buffer[0..n], txt[0..n]);
+                if (n < buffer.len) @memset(buffer[n..], 0);
             } else {
                 ui.textEntry(c, buffer, opts);
             }
