@@ -69,6 +69,10 @@ test {
     _ = @import("views/dashboard_gen.zig");
 }
 
+test {
+    _ = @import("views/input_demo_gen.zig");
+}
+
 
 test {
     _ = @import("views/extended_styles_demo_gen.zig");
@@ -811,4 +815,36 @@ test "component_lib_demo renders nanoui" {
     demo.view(A, &c, &ctx);
     try std.testing.expect(nanoui_adapter.StubNanoui.labelsRendered() > 0);
     try std.testing.expectEqual(@as(usize, 2), nanoui_adapter.StubNanoui.buttonsRendered());
+}
+
+const InputCtx = struct {
+    pub const Heading = @import("lib/shadcn.zig").Heading;
+    pub const Caption = @import("lib/shadcn.zig").Caption;
+    pub const Input = @import("lib/shadcn.zig").Input;
+
+    name: [64]u8 = @splat(0),
+    email: [128]u8 = @splat(0),
+};
+
+test "input_demo renders 2 text entries through dvui stub" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/input_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = InputCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.textEntriesRendered());
+    try std.testing.expect(dvui_adapter.StubDvui.labelsRendered() >= 1);
+}
+
+test "input_demo renders 2 text entries through nanoui stub" {
+    const nanoui_adapter = @import("adapters/nanoui.zig");
+    const demo = @import("views/input_demo_gen.zig");
+    const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
+    var c: nanoui_adapter.StubNanoui.Context = .{};
+    nanoui_adapter.StubNanoui.resetCounters();
+    var ctx = InputCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), nanoui_adapter.StubNanoui.textEntriesRendered());
 }
