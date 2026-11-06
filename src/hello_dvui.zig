@@ -11,26 +11,7 @@ const Ctx = struct {
 };
 
 var g_ctx: Ctx = .{};
-var g_diag_count: u32 = 0;
 const A = adapter.Adapter(dvui);
-
-fn makeLightTheme() dvui.Theme {
-    var theme = dvui.Theme.builtin.adwaita_light;
-    theme.dark = false;
-    const white = dvui.Color{ .r = 250, .g = 250, .b = 250, .a = 255 };
-    const off_white = dvui.Color{ .r = 240, .g = 240, .b = 240, .a = 255 };
-    const blue = dvui.Color{ .r = 59, .g = 130, .b = 246, .a = 255 };
-    // Top-level `fill` IS the content style fill (no `content` field exists)
-    theme.fill = white;
-    theme.window.fill = white;
-    theme.control.fill = off_white;
-    theme.highlight.fill = blue;
-    return theme;
-}
-
-fn applyLightTheme(win: *dvui.Window) void {
-    win.themeSet(makeLightTheme());
-}
 
 pub const dvui_app: dvui.App = .{
     .config = .{ .options = .{
@@ -45,34 +26,32 @@ pub const dvui_app: dvui.App = .{
         },
     } },
     .frameFn = frame,
-    .initFn = appInit,
 };
 
 pub const main = dvui.App.main;
 pub const panic = dvui.App.panic;
 pub const std_options: std.Options = .{ .logFn = dvui.App.logFn };
 
-fn appInit(win: *dvui.Window) !void {
-    applyLightTheme(win);
-    if (g_diag_count < 1) {
-        std.debug.print("[DIAG] appInit: dark={} window.fill.isSet={}\n", .{
-            win.theme.dark, win.theme.window.fill != null,
-        });
-        g_diag_count += 1;
-    }
-}
-
 fn frame() !dvui.App.Result {
     const win = dvui.currentWindow();
-    if (win.theme.dark or win.theme.window.fill == null) {
-        applyLightTheme(win);
-        if (g_diag_count < 3) {
-            std.debug.print("[DIAG] frame force: dark={} window.fill.isSet={}\n", .{
-                win.theme.dark, win.theme.window.fill != null,
-            });
-            g_diag_count += 1;
-        }
-    }
+    // Force a light theme — SDL3 backend clears to black, theme provides widget fills
+    var theme = dvui.Theme.builtin.adwaita_light;
+    theme.dark = false;
+    theme.window.fill = .{ .r = 250, .g = 250, .b = 250, .a = 255 };
+    theme.fill = .{ .r = 250, .g = 250, .b = 250, .a = 255 };
+    theme.control.fill = .{ .r = 240, .g = 240, .b = 240, .a = 255 };
+    win.themeSet(theme);
+
+    // Draw a full-window background box FIRST.
+    // This covers the SDL3 backend's hardcoded black clear.
+    // `.style = .window` pulls `theme.window.fill` (now white).
+    var bg = dvui.box(@src(), .{}, .{
+        .expand = .both,
+        .background = true,
+        .style = .window,
+    });
+    defer bg.deinit();
+
     components.view(A, win, &g_ctx);
     return .ok;
 }
