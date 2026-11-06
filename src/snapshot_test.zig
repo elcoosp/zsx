@@ -42,8 +42,6 @@ test "snapshot: nanoui component library" {
 test "snapshot: dvui component library" {
     var t = try dvui.testing.init(.{ .image_dir = "/tmp" });
     defer t.deinit();
-    // Run a frame first to populate the framebuffer, then save it
-    _ = t.step(dvuiFrame) catch {};
     try t.saveImage(dvuiFrame, null, "components-dvui.png");
     std.debug.print("wrote /tmp/components-dvui.png\n", .{});
 }
