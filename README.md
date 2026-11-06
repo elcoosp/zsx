@@ -207,6 +207,39 @@ If you need routing, state management, or a component model, build them on top o
 
 ---
 
+## Components
+
+Ten components ship with ZSX, all pure compositions of framework primitives.
+
+| Component | Purpose | Key Attributes |
+|-----------|---------|----------------|
+| `Column` | Vertical layout | `padding`, `class`, `flex` |
+| `Row` | Horizontal layout | `gap`, `class` |
+| `Heading` | Bold heading, sizes 1-6 | `size`, `class`, `color` |
+| `Caption` | Small muted text | — |
+| `Link` | Blue inline text | — |
+| `Badge` | Colored text label | `color` (red/green/blue) |
+| `Input` | Single-line text field | `buffer={&ctx.field}`, `placeholder` |
+| `Textarea` | Multi-line text field | `buffer`, `placeholder` |
+| `Checkbox` | Boolean toggle | `checked={&ctx.flag}`, `text` |
+| `Button` | Clickable button | `variant`, `on_click`, `class` |
+| `Card` | Rounded container | children |
+| `Section` | Titled container | `title` |
+
+See [docs/components.md](docs/components.md) for full API reference, examples,
+and known limitations per backend.
+
+### Verified rendering
+
+Both real backends render the same `.zsx` source:
+
+- **DVUI** (SDL3 + freetype, 42MB binary) — `zig build build-app-dvui`
+- **Nanoui** (Metal + CoreText, 4.4MB binary) — `zig build build-app-nanoui`
+
+Screenshots of the 10-component playground rendering on both:
+- `/tmp/playground-dvui.png`
+- `/tmp/playground-nanoui.png`
+
 ## Getting Started
 
 This is a template. Start a project from it:
