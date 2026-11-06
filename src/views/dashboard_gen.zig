@@ -34,6 +34,13 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
                 }
             }
         }
-        ctx.Button(ui, c, .{.id_extra = 1100012, .variant = "primary", .on_click = @field(@TypeOf(ctx.*), "refresh"), .text = "Refresh"});
+        {
+            var b_12 = ui.row(c, .{.id_extra = 1100012, .gap = 8});
+            defer b_12.end();
+            ctx.Button(ui, c, .{.id_extra = 1100013, .variant = "primary", .on_click = @field(@TypeOf(ctx.*), "refresh"), .text = "Refresh"});
+            if (ctx.refresh_count > 0) {
+                ctx.Badge(ui, c, .{.id_extra = 1100014, .color = "green", .text = ctx.count_str});
+            }
+        }
     }
 }
