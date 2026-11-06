@@ -44,7 +44,7 @@ tell application "System Events"
         try
             tell p
                 if (count of windows) > 0 then
-                    if name of window 1 contains "Component" or name of p contains "zsx" then
+                    if name of window 1 contains "ZSX" or name of p contains "zsx" then
                         set pos to position of window 1
                         set sz to size of window 1
                         return ((item 1 of pos) as string) & "," & ((item 2 of pos) as string) & "," & ((item 1 of sz) as string) & "," & ((item 2 of sz) as string)
