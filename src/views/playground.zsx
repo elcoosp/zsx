@@ -1,0 +1,28 @@
+<column padding={16} class="gap-2">
+  <Heading size={1}>ZSX Playground</Heading>
+  <Caption>Eight components, one source, two frameworks.</Caption>
+
+  <row class="gap-2">
+    <Badge color="blue">new</Badge>
+    <Badge color="green">stable</Badge>
+    <Badge color="red">deprecated</Badge>
+  </row>
+
+  <Section title="Forms">
+    <Input buffer={&ctx.name} placeholder="Your name" />
+    <Input buffer={&ctx.email} placeholder="you@example.com" />
+  </Section>
+
+  <Section title="Actions">
+    <row class="gap-2">
+      <Button variant="primary">Install</Button>
+      <Button variant="secondary">Docs</Button>
+      <Button variant="danger">Remove</Button>
+    </row>
+  </Section>
+
+  <Card>
+    <Caption>Card content goes here.</Caption>
+    <Link>Learn more</Link>
+  </Card>
+</column>
