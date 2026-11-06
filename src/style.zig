@@ -114,6 +114,54 @@ fn applyToken(style: *Style, comptime token: []const u8) void {
         style.font_weight = .semibold;
     } else if (std.mem.eql(u8, token, "font-bold")) {
         style.font_weight = .bold;
+    } else if (std.mem.eql(u8, token, "bg-slate-100")) {
+        style.background = .{ .r = 241, .g = 245, .b = 249 };
+    } else if (std.mem.eql(u8, token, "bg-slate-500")) {
+        style.background = .{ .r = 100, .g = 116, .b = 139 };
+    } else if (std.mem.eql(u8, token, "bg-slate-900")) {
+        style.background = .{ .r = 15, .g = 23, .b = 42 };
+    } else if (std.mem.eql(u8, token, "text-slate-500")) {
+        style.foreground = .{ .r = 100, .g = 116, .b = 139 };
+    } else if (std.mem.eql(u8, token, "text-slate-900")) {
+        style.foreground = .{ .r = 15, .g = 23, .b = 42 };
+    } else if (std.mem.eql(u8, token, "p-3")) {
+        style.padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 };
+    } else if (std.mem.eql(u8, token, "p-6")) {
+        style.padding = .{ .x = 24, .y = 24, .w = 24, .h = 24 };
+    } else if (std.mem.eql(u8, token, "p-8")) {
+        style.padding = .{ .x = 32, .y = 32, .w = 32, .h = 32 };
+    } else if (std.mem.eql(u8, token, "px-3")) {
+        const cur: Spacing = style.padding orelse Spacing{};
+        style.padding = .{ .x = 12, .y = cur.y, .w = 12, .h = cur.h };
+    } else if (std.mem.eql(u8, token, "px-6")) {
+        const cur: Spacing = style.padding orelse Spacing{};
+        style.padding = .{ .x = 24, .y = cur.y, .w = 24, .h = cur.h };
+    } else if (std.mem.eql(u8, token, "py-3")) {
+        const cur: Spacing = style.padding orelse Spacing{};
+        style.padding = .{ .x = cur.x, .y = 12, .w = cur.w, .h = 12 };
+    } else if (std.mem.eql(u8, token, "py-6")) {
+        const cur: Spacing = style.padding orelse Spacing{};
+        style.padding = .{ .x = cur.x, .y = 24, .w = cur.w, .h = 24 };
+    } else if (std.mem.eql(u8, token, "rounded-md")) {
+        style.radius = 6;
+    } else if (std.mem.eql(u8, token, "rounded-full")) {
+        style.radius = 9999;
+    } else if (std.mem.eql(u8, token, "text-sm")) {
+        style.font_size = 14;
+    } else if (std.mem.eql(u8, token, "text-xs")) {
+        style.font_size = 12;
+    } else if (std.mem.eql(u8, token, "text-xl")) {
+        style.font_size = 20;
+    } else if (std.mem.eql(u8, token, "text-2xl")) {
+        style.font_size = 24;
+    } else if (std.mem.eql(u8, token, "text-3xl")) {
+        style.font_size = 30;
+    } else if (std.mem.eql(u8, token, "gap-4")) {
+        style.gap = 16;
+    } else if (std.mem.eql(u8, token, "gap-1")) {
+        style.gap = 4;
+    } else if (std.mem.eql(u8, token, "bg-transparent")) {
+        style.background = .{ .r = 0, .g = 0, .b = 0, .a = 0 };
     } else {
         @compileError("unrecognized tailwind class '" ++ token ++ "'");
     }
