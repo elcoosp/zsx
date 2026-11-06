@@ -70,6 +70,26 @@ pub fn build(b: *std.Build) void {
     nanoui_hello_run.has_side_effects = true;
     const nanoui_example_step = b.step("example-nanoui", "Run the nanoui example");
     nanoui_example_step.dependOn(&nanoui_hello_run.step);
+
+    const dvui_dep = b.dependency("dvui", .{
+        .target = target,
+        .optimize = optimize,
+        .backend = .sdl3,
+    });
+    const real_hello_mod = b.createModule(.{
+        .root_source_file = b.path("src/hello_real.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    real_hello_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
+    real_hello_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
+    const real_hello_exe = b.addExecutable(.{
+        .name = "zsx-hello-real",
+        .root_module = real_hello_mod,
+    });
+    b.installArtifact(real_hello_exe);
+    const build_app_step = b.step("build-app", "Build the real dvui app (no run)");
+    build_app_step.dependOn(&real_hello_exe.step);
 }
 
 const EmitResult = struct {
