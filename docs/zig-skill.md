@@ -398,3 +398,114 @@ Before committing any Zig change on 0.17:
 5. All `addTest`/`addExecutable`/`addLibrary` use `.root_module`.
 6. Every file with a `test` block is reachable from `root.zig`.
 7. `.gitignore` includes `.zig-cache/`, `zig-out/`, `zig-pkg/`.
+
+## Build system: addUpdateSourceFiles for source-tree writes
+
+Writing files from `build.zig` via `Dir.writeFile` is an **undeclared side effect** — Zig's Maker cannot track it. Delete a generated file, configure cache warm, `pub fn build()` does not re-run, file stays missing, compile fails "file not found". The `rm -rf .zig-cache` workaround discards the whole build cache to fix one undeclared dependency.
+
+Correct API:
+
+    const update = b.addUpdateSourceFiles();
+    inline for (sources) |src| {
+        const generated = comptime generate(src);
+        update.addBytesToSource(generated, "out/gen.zig");
+    }
+    const gen_step = b.step("gen", "regenerate");
+    gen_step.dependOn(&update.step);
+    tests.step.dependOn(&update.step);
+    exe.step.dependOn(&update.step);
+    b.getInstallStep().dependOn(&update.step);
+
+Generated files become declared outputs. Delete one, step dirty, re-runs, file regenerated. No cache nuke. Second build with no changes, step cached, zero cost. `addUpdateSourceFiles` respects content and mtime.
+
+Diagnostic: if you find yourself running `rm -rf .zig-cache` to fix "file not found", that file was produced by `Dir.writeFile` from `build.zig`. Convert to `addUpdateSourceFiles`.
+
+## Build system: has_side_effects = true on Run steps
+
+`b.addRunArtifact(exe)` caches by input hash. Unchanged exe, Zig skips execution entirely. Step whose purpose is to produce output (files, terminal output, screenshots) silently does nothing.
+
+    const run = b.addRunArtifact(exe);
+    run.has_side_effects = true;
+    const step = b.step("demo", "run demo");
+    step.dependOn(&run.step);
+
+Symptoms: step prints nothing, exits 0, no files. Works once then never again. Fresh clone works, subsequent invocations do not.
+
+Required for any step whose observable output is not a file in `zig-out/` — console output, screenshots, network calls. `addRunArtifact` on `addTest` executables already sets it internally; user-defined run steps need it explicitly.
+
+## Comptime signature detection: @typeInfo(fn).params.len
+
+    const F = @typeInfo(@TypeOf(ui.textField)).@"fn";
+    if (F.params.len >= 3) {
+        _ = ui.textField(c, buffer, opts);
+    } else {
+        _ = ui.textField(c, opts);
+    }
+
+Both branches analyzed at comptime, only taken branch emitted. Useful for library API evolution, multi-backend adapters, stub vs real differences. Both branches must type-check against the same fn; if neither matches, the error names the real signature.
+
+## Structural dispatch: @hasDecl and @hasField
+
+Check at comptime, prune unreachable branch:
+
+    if (@hasDecl(dvui, "TextEntryWidget")) {
+        var init = dvui.TextEntryWidget.InitOptions{};
+        _ = dvui.textEntry(@src(), init, optionsFrom(dvui, opts));
+    } else {
+        dvui.textEntry(@src(), buffer, opts);
+    }
+
+Same for fields, with the load-bearing two-level check:
+
+    if (@hasField(@TypeOf(opts), "color_fill")) {
+        if (@hasField(dvui_mod.Options, "color_fill")) {
+            o.color_fill = opts.color_fill;
+        }
+    }
+
+Source has field AND destination has field. Without destination check, compiles against stub, fails against real backend.
+
+## Optional types: three distinct patterns
+
+    // 1. Nullable value: unwrap required
+    const c = opts.color_fill;
+    if (c) |color| o.color_fill = color;
+
+    // 2. Non-null with default: always present
+    const w: u32 = opts.font_weight;
+
+    // 3. Structurally optional: field may not exist
+    if (@hasField(@TypeOf(opts), "color_fill")) { ... }
+
+Pattern 1 fails at comptime with "optional type '?Color' does not support field access" if you write `c.r`. Fix: `if (c) |color| color.r` or `c.?.r`. Pattern 3 cannot be replaced by `?T` — no slot to store null.
+
+## Bash: do not pipe to grep -q under set -o pipefail
+
+    # WRONG
+    if ! zig build example 2>&1 | grep -qF "success"; then
+
+`grep -q` exits on match, pipe closes, writer gets SIGPIPE, exits 141, `pipefail` propagates 141, `if` fires on success. Correct:
+
+    OUT=$(zig build example 2>&1)
+    RC=$?
+    if [ $RC -ne 0 ]; then printf '%s\n' "$OUT"; exit 1; fi
+    if [[ "$OUT" != *"success"* ]]; then exit 1; fi
+
+`$()` captures in-process, no pipe, no SIGPIPE. `[[ != *pattern* ]]` is bash substring, no subprocess. Alternative: `set +o pipefail` around the pipeline.
+
+## Reading a library's own tests as ground truth
+
+When unsure how to use a third-party feature, read the library's tests. dvui screenshots in `src/testing.zig`, dvui headless backend in `build.zig` (`.backend = .testing`), nanoui headless snapshot in `src/dev.zig`. Drill: `grep -rn 'pub fn' <dep>/src/` for top-level, then `grep -rn '<fn_name>' <dep>/src/` for test call sites.
+
+## Zig 0.17 @splat for array initialization
+
+    // Old (0.16)
+    var buf: [64]u8 = [_]u8{0} ** 64;
+    // New (0.17)
+    var buf: [64]u8 = @splat(0);
+
+Works for any comptime length and value. Nested `@splat(@splat(1.0))` for `[N][M]f32`. `zig fmt` does not migrate; search for `**` in array init contexts.
+
+## Markdown in bash heredocs
+
+Bash scripts containing markdown code blocks must be presented inside an outer fence with **four backticks** or a **tilde fence** (~~~). Three-backtick outer is terminated by three-backtick inner, truncating the block when copy-pasted.
