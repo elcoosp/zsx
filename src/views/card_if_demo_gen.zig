@@ -2,12 +2,12 @@
 // regenerate with: zig build
 // do not edit by hand
 
-inline fn render_Card_0(ui: anytype, c: anytype, ctx: anytype) void {
+inline fn render_Card_2(ui: anytype, c: anytype, ctx: anytype) void {
     if (ctx.show) {
-        ui.text(c, "visible", .{});
+        ui.text(c, "visible", .{.id_extra = 600001});
     }
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Card(ui, c, .{}, render_Card_0);
+    ctx.Card(ui, c, .{.id_extra = 600000}, render_Card_2);
 }
