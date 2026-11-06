@@ -604,3 +604,70 @@ Related: `var x: T = undefined;` where `x` is later fully assigned without
 reading is a different case — that IS considered mutated (from `undefined`
 to a real value) and compiles. The "never mutated" error is about `var`
 locals initialized to a concrete value and then only read.
+
+## macOS: capture a specific window with CoreGraphics and screencapture
+
+AppleScript (`System Events`) is not reliable for SDL3 apps launched from a
+shell. It often cannot find the window by PID, returns wrong bounds (full
+screen instead of window), and `set position of window` **moves other
+applications' windows** — actively destructive.
+
+The native path uses two macOS primitives:
+
+1. **`CGWindowListCopyWindowInfo`** — a CoreGraphics C API that enumerates
+   every window in the window server, keyed by `kCGWindowOwnerPID`. This is
+   the underlying API that System Events wraps, but it works regardless of
+   process registration or bundle presence.
+2. **`screencapture -l <windowID>`** — captures exactly that window's pixels,
+   composited without other windows, with no repositioning or activation.
+
+### The Swift one-liner
+
+Swift ships with macOS and can call CoreGraphics directly:
+
+    WINDOW_ID=$(swift -e '
+    import CoreGraphics
+    import Foundation
+    let pid = Int32($PID)
+    guard let list = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] else {
+        exit(1)
+    }
+    for w in list {
+        if let owner = w[kCGWindowOwnerPID as String] as? Int32, owner == pid {
+            if let num = w[kCGWindowNumber as String] as? UInt32 {
+                print(num)
+                exit(0)
+            }
+        }
+    }
+    exit(1)
+    ' 2>/dev/null)
+
+Then:
+
+    screencapture -x -o -l "$WINDOW_ID" /tmp/out.png
+
+### Why not Python/Quartz
+
+`/usr/bin/python3` on macOS may lack PyObjC (`import Quartz` fails on some
+macOS versions without `pip install`). Swift is guaranteed present (part of
+Command Line Tools) and calls the same API. No third-party dependencies.
+
+### Why not `screencapture -R`
+
+`-R x,y,w,h` captures a **region of the screen**, not a window. Any overlapping
+window (your editor, a browser) appears in the image. `-l <windowID>` captures
+only that window's pixels regardless of z-order.
+
+### Permissions
+
+- **Screen Recording** is required for `screencapture` to read window pixels.
+  macOS caches the permission per process — restart the terminal after granting.
+- **Accessibility** is *not* required for this path (only for AppleScript-based
+  window manipulation, which we do not do).
+
+### Polling
+
+SDL3 apps take 2-3 seconds to create their window. Poll `CGWindowListCopyWindowInfo`
+for up to 5 seconds after launch. A single `sleep 2` races the window creation
+on slower machines.
