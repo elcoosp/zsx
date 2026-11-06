@@ -15,6 +15,7 @@ pub const ButtonOptions = struct {
 pub const TextOptions = struct {
     color_text: Color,
     font_size: f32,
+    font_weight: u32 = 400,
     padding: Padding,
     id_extra: ?usize = null,
 };
@@ -92,5 +93,66 @@ pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anyty
         .radius = 8,
     });
     defer b.end();
+    content(ui, c, self);
+}
+
+pub inline fn Heading(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    const size_u32: u32 = if (@hasField(@TypeOf(props), "size")) props.size else 2;
+    const font_size: f32 = switch (size_u32) {
+        1 => 24, 2 => 20, 3 => 18, 4 => 16, 5 => 14, else => 12,
+    };
+    var opts = TextOptions{
+        .color_text = Color.black,
+        .font_size = font_size,
+        .font_weight = 700,
+        .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+    };
+    if (@hasField(@TypeOf(props), "color")) opts.color_text = props.color;
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    if (@hasField(@TypeOf(props), "class")) {
+        const overrides = comptime style_mod.parseClasses(props.class);
+        if (overrides.foreground) |fg| opts.color_text = fg;
+        if (overrides.font_size) |fs| opts.font_size = fs;
+        if (overrides.font_weight) |fw| opts.font_weight = switch (fw) {
+            .regular => 400, .semibold => 600, .bold => 700,
+        };
+    }
+    ui.text(c, props.text, opts);
+}
+
+pub inline fn Caption(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = TextOptions{
+        .color_text = .{ .r = 107, .g = 114, .b = 128 },
+        .font_size = 12,
+        .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+    };
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    ui.text(c, props.text, opts);
+}
+
+pub inline fn Link(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = TextOptions{
+        .color_text = .{ .r = 59, .g = 130, .b = 246 },
+        .font_size = 14,
+        .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+    };
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    ui.text(c, props.text, opts);
+}
+
+pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
+    var box = ui.column(c, .{
+        .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
+        .gap = 8,
+        .id_extra = @as(?usize, if (@hasField(@TypeOf(props), "id_extra")) props.id_extra else null),
+    });
+    defer box.end();
+    const title: []const u8 = if (@hasField(@TypeOf(props), "title")) props.title else "";
+    if (title.len > 0) {
+        Heading(self, ui, c, .{ .text = title, .size = @as(u32, 3) });
+    }
     content(ui, c, self);
 }

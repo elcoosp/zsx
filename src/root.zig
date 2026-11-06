@@ -69,6 +69,7 @@ test {
     _ = @import("views/dashboard_gen.zig");
 }
 
+
 test {
     _ = @import("views/extended_styles_demo_gen.zig");
 }
@@ -774,4 +775,40 @@ test "extended_styles_demo renders 2 buttons 5 labels" {
     demo.view(A, &c, &nctx);
     try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.buttonsRendered());
     try std.testing.expectEqual(@as(usize, 5), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "component_lib_demo renders dvui" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/component_lib_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    const EmptyCtx = struct {
+        pub const Heading = @import("lib/shadcn.zig").Heading;
+        pub const Caption = @import("lib/shadcn.zig").Caption;
+        pub const Link = @import("lib/shadcn.zig").Link;
+        pub const Section = @import("lib/shadcn.zig").Section;
+    };
+    var ctx: EmptyCtx = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(dvui_adapter.StubDvui.labelsRendered() > 0);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.buttonsRendered());
+}
+
+test "component_lib_demo renders nanoui" {
+    const nanoui_adapter = @import("adapters/nanoui.zig");
+    const demo = @import("views/component_lib_demo_gen.zig");
+    const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
+    var c: nanoui_adapter.StubNanoui.Context = .{};
+    const EmptyCtx = struct {
+        pub const Heading = @import("lib/shadcn.zig").Heading;
+        pub const Caption = @import("lib/shadcn.zig").Caption;
+        pub const Link = @import("lib/shadcn.zig").Link;
+        pub const Section = @import("lib/shadcn.zig").Section;
+    };
+    var ctx: EmptyCtx = .{};
+    nanoui_adapter.StubNanoui.resetCounters();
+    demo.view(A, &c, &ctx);
+    try std.testing.expect(nanoui_adapter.StubNanoui.labelsRendered() > 0);
+    try std.testing.expectEqual(@as(usize, 2), nanoui_adapter.StubNanoui.buttonsRendered());
 }
