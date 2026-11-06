@@ -156,6 +156,9 @@ Adding a backend requires implementing one struct that conforms to the contract.
 
 ## File Format
 
+`zig build test` regenerates every `_gen.zig` from its `.zsx` automatically. `zig build zsx` regenerates without running tests.
+
+
 `.zsx` files use a strict subset of HTML with Zig expressions in `{}`:
 
 | Construct | Example |
