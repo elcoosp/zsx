@@ -659,10 +659,13 @@ const DashboardCtx = struct {
     user_role: []const u8 = "guest",
     error_message: []const u8 = "",
     items: []const DashboardTask = &[_]DashboardTask{},
-    refresh_called: bool = false,
+    refresh_count: usize = 0,
+    count_buf: [16]u8 = undefined,
+    count_str: []const u8 = "",
 
     pub fn refresh(self: *@This()) void {
-        self.refresh_called = true;
+        self.refresh_count += 1;
+        self.count_str = std.fmt.bufPrint(&self.count_buf, "{d}", .{self.refresh_count}) catch "?";
     }
 };
 
@@ -676,7 +679,7 @@ test "dashboard: empty state renders header, no-items, refresh (4 labels, 1 butt
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 4), dvui_adapter.StubDvui.labelsRendered());
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
-    try std.testing.expect(!ctx.refresh_called);
+    try std.testing.expectEqual(@as(usize, 0), ctx.refresh_count);
 }
 
 test "dashboard: three items mixed status renders 9 labels (3x label+badge)" {
@@ -716,7 +719,7 @@ test "dashboard: error + one pending renders 6 labels (with error badge)" {
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
 }
 
-test "dashboard: refresh button fires ctx.refresh when clicked" {
+test "dashboard: refresh button increments refresh_count" {
     const dvui_adapter = @import("adapters/dvui.zig");
     const demo = @import("views/dashboard_gen.zig");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
@@ -725,5 +728,17 @@ test "dashboard: refresh button fires ctx.refresh when clicked" {
     dvui_adapter.StubDvui.queue_click();
     var ctx = DashboardCtx{};
     demo.view(A, &c, &ctx);
-    try std.testing.expect(ctx.refresh_called);
+    try std.testing.expectEqual(@as(usize, 1), ctx.refresh_count);
+}
+
+test "dashboard: refresh_count>0 renders count badge (5 labels)" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/dashboard_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = DashboardCtx{ .refresh_count = 3, .count_str = "3" };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 5), dvui_adapter.StubDvui.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.buttonsRendered());
 }
