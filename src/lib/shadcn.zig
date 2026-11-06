@@ -2,7 +2,6 @@ const std = @import("std");
 const style_mod = @import("../style.zig");
 
 pub const Color = style_mod.Color;
-
 pub const Padding = style_mod.Spacing;
 
 pub const ButtonOptions = struct {
@@ -10,12 +9,14 @@ pub const ButtonOptions = struct {
     color_text: Color,
     padding: Padding,
     radius: f32,
+    id_extra: ?usize = null,
 };
 
 pub const TextOptions = struct {
     color_text: Color,
     font_size: f32,
     padding: Padding,
+    id_extra: ?usize = null,
 };
 
 const VariantStyle = struct {
@@ -48,6 +49,7 @@ pub inline fn Button(self: anytype, ui: anytype, c: anytype, props: anytype) voi
         .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 },
         .radius = 8,
     };
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
     if (@hasField(@TypeOf(props), "class")) {
         const overrides = comptime style_mod.parseClasses(props.class);
         if (overrides.padding) |p| opts.padding = p;
@@ -74,11 +76,13 @@ pub inline fn Badge(self: anytype, ui: anytype, c: anytype, props: anytype) void
         .{ .r = 59, .g = 130, .b = 246 }
     else
         .{ .r = 17, .g = 24, .b = 39 };
-    ui.text(c, props.text, TextOptions{
+    var opts = TextOptions{
         .color_text = text_color,
         .font_size = 14,
         .padding = .{ .x = 8, .y = 4, .w = 8, .h = 4 },
-    });
+    };
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    ui.text(c, props.text, opts);
 }
 
 pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
