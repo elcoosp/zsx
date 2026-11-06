@@ -2,17 +2,17 @@
 // regenerate with: zig build
 // do not edit by hand
 
-inline fn render_Card_1(ui: anytype, c: anytype, ctx: anytype) void {
+inline fn render_Card_4(ui: anytype, c: anytype, ctx: anytype) void {
     _ = ctx;
-    ui.text(c, "Title", .{});
-    ui.text(c, "Subtitle", .{});
+    ui.text(c, "Title", .{.id_extra = 100002});
+    ui.text(c, "Subtitle", .{.id_extra = 100003});
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
+        var b_0 = ui.column(c, .{.id_extra = 100000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
         defer b_0.end();
-        ctx.Card(ui, c, .{}, render_Card_1);
-        ctx.Button(ui, c, .{.text = "Click"});
+        ctx.Card(ui, c, .{.id_extra = 100001}, render_Card_4);
+        ctx.Button(ui, c, .{.id_extra = 100005, .text = "Click"});
     }
 }
