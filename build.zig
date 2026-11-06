@@ -87,9 +87,10 @@ pub fn build(b: *std.Build) void {
         .name = "zsx-hello-real",
         .root_module = real_hello_mod,
     });
-    b.installArtifact(real_hello_exe);
-    const build_app_step = b.step("build-app", "Build the real dvui app (no run)");
-    build_app_step.dependOn(&real_hello_exe.step);
+    const install_real = b.addInstallArtifact(real_hello_exe, .{});
+    b.getInstallStep().dependOn(&install_real.step);
+    const build_app_step = b.step("build-app", "Build the real dvui app and install it");
+    build_app_step.dependOn(&install_real.step);
 }
 
 const EmitResult = struct {
