@@ -12,8 +12,12 @@ const Ctx = struct {
     pub const Link = @import("lib/shadcn.zig").Link;
     pub const Section = @import("lib/shadcn.zig").Section;
     pub const Input = @import("lib/shadcn.zig").Input;
+    pub const Textarea = @import("lib/shadcn.zig").Textarea;
+    pub const Checkbox = @import("lib/shadcn.zig").Checkbox;
 
     name: [64]u8 = @splat(0),
+    notes: [256]u8 = @splat(0),
+    remember: bool = false,
     email: [128]u8 = @splat(0),
 };
 
