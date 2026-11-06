@@ -20,6 +20,7 @@ pub fn build(b: *std.Build) void {
         "src/views/class_override_demo.zsx",
         "src/views/nested_card_demo.zsx",
         "src/views/dashboard.zsx",
+        "src/views/component_lib_demo.zsx",
         "src/views/extended_styles_demo.zsx",
     };
 
@@ -326,8 +327,12 @@ fn emitElement(comptime el: ast.Element, comptime level: usize, comptime start_i
             const render_name = "render_" ++ el.tag ++ "_" ++ fmtInt(@intCast(my_id));
             var decl: []const u8 = "";
             decl = decl ++ "inline fn " ++ render_name ++ "(ui: anytype, c: anytype, ctx: anytype) void {\n";
-            const ui_used = comptime std.mem.indexOf(u8, inner.code, "ui.") != null;
-            const c_used = comptime std.mem.indexOf(u8, inner.code, "(c,") != null or std.mem.indexOf(u8, inner.code, "(c)") != null;
+            const ui_used = comptime std.mem.indexOf(u8, inner.code, "ui.") != null or
+                std.mem.indexOf(u8, inner.code, "ui,") != null or
+                std.mem.indexOf(u8, inner.code, "ui)") != null;
+            const c_used = comptime std.mem.indexOf(u8, inner.code, "(c,") != null or
+                std.mem.indexOf(u8, inner.code, ", c,") != null or
+                std.mem.indexOf(u8, inner.code, "(c)") != null;
             const ctx_used = comptime std.mem.indexOf(u8, inner.code, "ctx.") != null;
             if (!ui_used) decl = decl ++ "    _ = ui;\n";
             if (!c_used) decl = decl ++ "    _ = c;\n";
