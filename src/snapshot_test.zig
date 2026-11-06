@@ -12,17 +12,9 @@ const Ctx = struct {
     pub const Section = @import("lib/shadcn.zig").Section;
 };
 
-var g_ctx: Ctx = .{};
-
 fn nanouiView(ctx: *Ctx, c: *nanoui.ui.Context) void {
     const A = nanoui_adapter.Adapter(nanoui.ui);
     demo.view(A, c, ctx);
-}
-
-fn dvuiFrame() !dvui.App.Result {
-    const A = dvui_adapter.Adapter(dvui);
-    demo.view(A, dvui.currentWindow(), &g_ctx);
-    return .ok;
 }
 
 test "snapshot: nanoui component library" {
@@ -39,9 +31,10 @@ test "snapshot: nanoui component library" {
     std.debug.print("wrote /tmp/components-nanoui.png\n", .{});
 }
 
+// DVUI headless capture is not viable in dvui 0.6.0-dev:
+//  - dvui_testing backend: Picture.start returns null (no offscreen support)
+//  - dvui_sdl3 with hidden window: Metal/GL drawable reads back white on macOS
+// Use scripts/screenshot-dvui.sh (screencapture on running binary) instead.
 test "snapshot: dvui component library" {
-    var t = try dvui.testing.init(.{ .image_dir = "/tmp" });
-    defer t.deinit();
-    try t.saveImage(dvuiFrame, null, "components-dvui.png");
-    std.debug.print("wrote /tmp/components-dvui.png\n", .{});
+    if (@import("builtin").is_test) return error.SkipZigTest;
 }
