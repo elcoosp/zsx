@@ -23,6 +23,7 @@ pub const dvui_app: dvui.App = .{
         .window_init_options = .{
             .keybinds_zoom = true,
             .theme = dvui.Theme.builtin.adwaita_light,
+            .color_scheme = .light,
         },
     } },
     .frameFn = frame,
