@@ -212,7 +212,7 @@ This is a template. Start a project from it:
 ./scripts/new-project.sh ~/code/my-app my-app
 cd ~/code/my-app
 zig build test
-zig build build-app
+zig build build-app-dvui-dvui
 ```
 
 That copies the tree, renames the package, generates a fresh fingerprint, and
