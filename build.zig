@@ -23,16 +23,16 @@ pub fn build(b: *std.Build) void {
         "src/views/extended_styles_demo.zsx",
     };
 
+    const zsx_update = b.addUpdateSourceFiles();
     inline for (zsx_files, 0..) |path, file_idx| {
         const raw = @embedFile(path);
         const source = comptime trimSpace(raw);
         const generated = comptime generateView(source, path, file_idx);
         const out_path = comptime deriveOutputName(path);
-        writeIfChanged(b, out_path, generated) catch |err| {
-            std.debug.print("zsx: write {s}: {}\n", .{ out_path, err });
-            @panic("zsx codegen write failed");
-        };
+        zsx_update.addBytesToSource(generated, out_path);
     }
+    const zsx_step = b.step("zsx", "Regenerate _gen.zig files from .zsx sources");
+    zsx_step.dependOn(&zsx_update.step);
 
     const zsx_mod = b.addModule("zsx", .{
         .root_source_file = b.path("src/root.zig"),
@@ -42,6 +42,7 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
     const tests = b.addTest(.{ .root_module = zsx_mod });
+    tests.step.dependOn(&zsx_update.step);
     test_step.dependOn(&b.addRunArtifact(tests).step);
 
     const hello_mod = b.createModule(.{
@@ -50,6 +51,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     const hello_exe = b.addExecutable(.{ .name = "zsx-hello", .root_module = hello_mod });
+    hello_exe.step.dependOn(&zsx_update.step);
     const hello_run = b.addRunArtifact(hello_exe);
     hello_run.has_side_effects = true;
     const example_step = b.step("example", "Run the hello example");
@@ -61,6 +63,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     const nanoui_hello_exe = b.addExecutable(.{ .name = "zsx-nanoui-hello", .root_module = nanoui_hello_mod });
+    nanoui_hello_exe.step.dependOn(&zsx_update.step);
     const nanoui_hello_run = b.addRunArtifact(nanoui_hello_exe);
     nanoui_hello_run.has_side_effects = true;
     const nanoui_example_step = b.step("example-nanoui", "Run the nanoui example");
@@ -79,6 +82,7 @@ pub fn build(b: *std.Build) void {
     real_hello_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
     real_hello_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
     const real_hello_exe = b.addExecutable(.{ .name = "zsx-hello-dvui", .root_module = real_hello_mod });
+    real_hello_exe.step.dependOn(&zsx_update.step);
     const install_real = b.addInstallArtifact(real_hello_exe, .{});
     b.getInstallStep().dependOn(&install_real.step);
     const build_app_step = b.step("build-app-dvui", "Build DVUI binary (real backend)");
@@ -96,6 +100,7 @@ pub fn build(b: *std.Build) void {
     });
     real_nanoui_mod.addImport("nanoui", nanoui_dep.module("nanoui"));
     const real_nanoui_exe = b.addExecutable(.{ .name = "zsx-hello-nanoui", .root_module = real_nanoui_mod });
+    real_nanoui_exe.step.dependOn(&zsx_update.step);
     const install_real_nanoui = b.addInstallArtifact(real_nanoui_exe, .{});
     b.getInstallStep().dependOn(&install_real_nanoui.step);
     const build_app_nanoui_step = b.step("build-app-nanoui", "Build the real nanoui app");
@@ -114,6 +119,7 @@ pub fn build(b: *std.Build) void {
     real_hello_release_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
     real_hello_release_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
     const real_hello_release_exe = b.addExecutable(.{ .name = "zsx-hello-dvui-release", .root_module = real_hello_release_mod });
+    real_hello_release_exe.step.dependOn(&zsx_update.step);
     const install_real_release = b.addInstallArtifact(real_hello_release_exe, .{});
     const build_app_release_step = b.step("build-app-dvui-release", "Build DVUI binary, ReleaseSafe");
     build_app_release_step.dependOn(&install_real_release.step);
@@ -167,20 +173,6 @@ fn hasTextChild(comptime el: ast.Element) bool {
         }
     }
     return false;
-}
-
-fn writeIfChanged(b: *std.Build, path: []const u8, content: []const u8) !void {
-    const io = b.graph.io;
-    const dir = std.Io.Dir.cwd();
-    if (dir.readFileAlloc(io, path, std.heap.page_allocator, .limited(1 << 20))) |existing| {
-        defer std.heap.page_allocator.free(existing);
-        if (std.mem.eql(u8, existing, content)) return;
-    } else |_| {}
-    try dir.writeFile(io, .{
-        .sub_path = path,
-        .data = content,
-        .flags = .{ .truncate = true },
-    });
 }
 
 fn deriveOutputName(comptime input_path: []const u8) []const u8 {
