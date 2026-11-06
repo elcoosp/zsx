@@ -101,10 +101,11 @@ pub inline fn Badge(self: anytype, ui: anytype, c: anytype, props: anytype) void
 }
 
 pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
-    _ = props;
+    const card_id: ?usize = if (@hasField(@TypeOf(props), "id_extra")) @as(?usize, props.id_extra) else null;
     var b = ui.column(c, .{
         .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
         .radius = 8,
+        .id_extra = card_id,
     });
     defer b.end();
     const SelfT = @TypeOf(self);
@@ -163,9 +164,11 @@ pub inline fn Link(self: anytype, ui: anytype, c: anytype, props: anytype) void 
 }
 
 pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
+    const section_id: ?usize = if (@hasField(@TypeOf(props), "id_extra")) @as(?usize, props.id_extra) else null;
     var box = ui.column(c, .{
         .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
         .gap = 8,
+        .id_extra = section_id,
     });
     defer box.end();
     const title: []const u8 = if (@hasField(@TypeOf(props), "title")) props.title else "";
