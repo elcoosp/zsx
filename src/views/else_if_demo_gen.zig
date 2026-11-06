@@ -4,17 +4,17 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
+        var b_0 = ui.column(c, .{.id_extra = 700000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
         defer b_0.end();
         if (ctx.a) {
-            ui.text(c, "A", .{});
+            ui.text(c, "A", .{.id_extra = 700001});
         } else if (ctx.b) {
-            ui.text(c, "B1", .{});
-            ui.text(c, "B2", .{});
+            ui.text(c, "B1", .{.id_extra = 700002});
+            ui.text(c, "B2", .{.id_extra = 700003});
         } else {
-            ui.text(c, "C1", .{});
-            ui.text(c, "C2", .{});
-            ui.text(c, "C3", .{});
+            ui.text(c, "C1", .{.id_extra = 700004});
+            ui.text(c, "C2", .{.id_extra = 700005});
+            ui.text(c, "C3", .{.id_extra = 700006});
         }
     }
 }
