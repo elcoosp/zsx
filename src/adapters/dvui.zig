@@ -60,6 +60,9 @@ pub fn Adapter(comptime dvui: type) type {
                     };
                 }
             }
+            if (@hasField(@TypeOf(opts), "id_extra")) {
+                if (@hasField(dvui_mod.Options, "id_extra")) o.id_extra = opts.id_extra;
+            }
             return o;
         }
     };
@@ -79,6 +82,7 @@ pub const StubDvui = struct {
         radius: ?f32 = null,
         gap: ?f32 = null,
         expand: ?Expand = null,
+        id_extra: ?usize = null,
     };
     pub const BoxWidget = struct {
         ended: bool = false,
