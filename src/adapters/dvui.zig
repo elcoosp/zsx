@@ -33,6 +33,19 @@ pub fn Adapter(comptime dvui: type) type {
                 dvui.textEntry(@src(), buffer, opts);
             }
         }
+
+        pub fn textArea(c: anytype, buffer: []u8, opts: anytype) void {
+            // DVUI's TextEntryWidget handles multiline natively
+            textEntry(c, buffer, opts);
+        }
+
+        pub fn checkbox(c: anytype, title: []const u8, value: *bool, opts: anytype) bool {
+            _ = c;
+            if (@hasDecl(dvui, "checkbox")) {
+                return dvui.checkbox(@src(), value, title, optionsFrom(dvui, opts));
+            }
+            return false;
+        }
         pub const Box = struct {
             inner: *dvui.BoxWidget,
             pub fn end(self: Box) void {
@@ -124,6 +137,8 @@ pub const StubDvui = struct {
     var _box: BoxWidget = .{};
     var _buttons_rendered: usize = 0;
     var _text_entries_rendered: usize = 0;
+    var _text_areas_rendered: usize = 0;
+    var _checkboxes_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_button_padding: ?Rect = null;
     var _last_button_radius: ?f32 = null;
@@ -160,6 +175,17 @@ pub const StubDvui = struct {
     pub fn textEntry(src: anytype, buffer: []u8, opts: anytype) void {
         _ = src; _ = buffer; _ = opts;
         _text_entries_rendered += 1;
+    }
+
+    pub fn textArea(src: anytype, buffer: []u8, opts: anytype) void {
+        _ = src; _ = buffer; _ = opts;
+        _text_areas_rendered += 1;
+    }
+
+    pub fn checkbox(src: anytype, title: []const u8, value: *bool, opts: anytype) bool {
+        _ = src; _ = title; _ = value; _ = opts;
+        _checkboxes_rendered += 1;
+        return false;
     }
     pub fn labelNoFmt(src: anytype, text: []const u8, init: anytype, opts: Options) void {
         _ = src; _ = text; _ = init; _ = opts;
