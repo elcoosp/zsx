@@ -20,6 +20,11 @@ pub const TextOptions = struct {
     id_extra: ?usize = null,
 };
 
+pub const InputOptions = struct {
+    placeholder: ?[]const u8 = null,
+    id_extra: ?usize = null,
+};
+
 const VariantStyle = struct {
     fill: Color,
     text: Color,
@@ -155,4 +160,16 @@ pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: an
         Heading(self, ui, c, .{ .text = title, .size = @as(u32, 3) });
     }
     content(ui, c, self);
+}
+
+/// Editable single-line text field.
+/// Pass a mutable buffer via `<Input buffer={&ctx.field} placeholder="..." />`.
+/// The buffer's bytes are edited in place; the caller owns the storage.
+pub inline fn Input(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = InputOptions{};
+    if (@hasField(@TypeOf(props), "placeholder")) opts.placeholder = props.placeholder;
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    const buf: []u8 = props.buffer;
+    ui.textEntry(c, buf, opts);
 }
