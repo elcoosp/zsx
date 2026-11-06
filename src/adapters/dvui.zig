@@ -63,6 +63,22 @@ pub fn Adapter(comptime dvui: type) type {
             if (@hasField(@TypeOf(opts), "id_extra")) {
                 if (@hasField(dvui_mod.Options, "id_extra")) o.id_extra = opts.id_extra;
             }
+                        if (@hasField(dvui_mod.Options, "font")) {
+                var needs_font = false;
+                var font = dvui_mod.Font.theme(.body);
+                if (@hasField(@TypeOf(opts), "font_size")) {
+                    const fs = opts.font_size;
+                    font.size = if (@TypeOf(fs) == f32) fs else if (@TypeOf(fs) == comptime_float) @floatCast(fs) else @as(f32, @floatFromInt(fs));
+                    needs_font = true;
+                }
+                if (@hasField(@TypeOf(opts), "font_weight")) {
+                    const fw = opts.font_weight;
+                    const w: u32 = if (@TypeOf(fw) == u32) fw else if (@TypeOf(fw) == comptime_int) @intCast(fw) else @as(u32, @intFromFloat(fw));
+                    font.weight = if (w >= 600) .bold else .normal;
+                    needs_font = true;
+                }
+                if (needs_font) o.font = font;
+            }
             return o;
         }
     };
