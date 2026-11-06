@@ -2,26 +2,26 @@
 // regenerate with: zig build
 // do not edit by hand
 
-inline fn render_Card_1(ui: anytype, c: anytype, ctx: anytype) void {
+inline fn render_Card_4(ui: anytype, c: anytype, ctx: anytype) void {
     _ = ctx;
-    ui.text(c, "inner", .{});
+    ui.text(c, "inner", .{.id_extra = 1000003});
 }
 
-inline fn render_Card_2(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Card(ui, c, .{}, render_Card_1);
-    ui.text(c, "mid", .{});
+inline fn render_Card_6(ui: anytype, c: anytype, ctx: anytype) void {
+    ctx.Card(ui, c, .{.id_extra = 1000002}, render_Card_4);
+    ui.text(c, "mid", .{.id_extra = 1000005});
 }
 
-inline fn render_Card_3(ui: anytype, c: anytype, ctx: anytype) void {
+inline fn render_Card_9(ui: anytype, c: anytype, ctx: anytype) void {
     _ = ctx;
-    ui.text(c, "sibling", .{});
+    ui.text(c, "sibling", .{.id_extra = 1000008});
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
+        var b_0 = ui.column(c, .{.id_extra = 1000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
         defer b_0.end();
-        ctx.Card(ui, c, .{}, render_Card_2);
-        ctx.Card(ui, c, .{}, render_Card_3);
+        ctx.Card(ui, c, .{.id_extra = 1000001}, render_Card_6);
+        ctx.Card(ui, c, .{.id_extra = 1000007}, render_Card_9);
     }
 }
