@@ -1,34 +1,13 @@
 const std = @import("std");
 const dvui = @import("dvui");
-const dashboard = @import("views/dashboard_gen.zig");
+const components = @import("views/component_lib_demo_gen.zig");
 const adapter = @import("adapters/dvui.zig");
 
-const Task = struct {
-    name: []const u8,
-    urgent: bool = false,
-    pending: bool = false,
-};
-
 const Ctx = struct {
-    pub const Badge = @import("lib/shadcn.zig").Badge;
-    pub const Button = @import("lib/shadcn.zig").Button;
-
-    user_role: []const u8 = "admin",
-    error_message: []const u8 = "",
-    items: []const Task = &[_]Task{
-        .{ .name = "write docs", .pending = true },
-        .{ .name = "fix bug", .urgent = true },
-        .{ .name = "ship it" },
-    },
-    refresh_count: usize = 0,
-    count_buf: [16]u8 = undefined,
-    count_str: []const u8 = "",
-
-    pub fn refresh(self: *@This()) void {
-        self.refresh_count += 1;
-        self.count_str = std.fmt.bufPrint(&self.count_buf, "{d}", .{self.refresh_count}) catch "?";
-        dvui.currentWindow().refreshWindow(@src(), null);
-    }
+    pub const Heading = @import("lib/shadcn.zig").Heading;
+    pub const Caption = @import("lib/shadcn.zig").Caption;
+    pub const Link = @import("lib/shadcn.zig").Link;
+    pub const Section = @import("lib/shadcn.zig").Section;
 };
 
 var g_ctx: Ctx = .{};
@@ -40,7 +19,11 @@ pub const dvui_app: dvui.App = .{
         .min_size = .{ .w = 350, .h = 250 },
         .org = "com.example.zsx",
         .app = "zsx-dashboard",
-        .title = "ZSX Dashboard",
+        .title = "ZSX Component Library",
+        .window_init_options = .{
+            .keybinds_zoom = true,
+            .theme = dvui.Theme.builtin.adwaita_light,
+        },
     } },
     .frameFn = frame,
 };
@@ -50,6 +33,6 @@ pub const panic = dvui.App.panic;
 pub const std_options: std.Options = .{ .logFn = dvui.App.logFn };
 
 fn frame() !dvui.App.Result {
-    dashboard.view(A, dvui.currentWindow(), &g_ctx);
+    components.view(A, dvui.currentWindow(), &g_ctx);
     return .ok;
 }
