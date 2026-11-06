@@ -20,10 +20,14 @@ const Ctx = struct {
         .{ .name = "fix bug", .urgent = true },
         .{ .name = "ship it" },
     },
-    refresh_called: bool = false,
+    refresh_count: usize = 0,
+    count_buf: [16]u8 = undefined,
+    count_str: []const u8 = "",
 
     pub fn refresh(self: *@This()) void {
-        self.refresh_called = true;
+        self.refresh_count += 1;
+        self.count_str = std.fmt.bufPrint(&self.count_buf, "{d}", .{self.refresh_count}) catch "?";
+        dvui.currentWindow().refreshWindow(@src(), null);
     }
 };
 
