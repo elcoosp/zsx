@@ -23,5 +23,10 @@
       </row>
     {endfor}
   {endif}
-  <Button variant="primary" on_click={ctx.refresh()}>Refresh</Button>
+  <row class="gap-2">
+    <Button variant="primary" on_click={ctx.refresh()}>Refresh</Button>
+    {if ctx.refresh_count > 0}
+      <Badge color="green">{ctx.count_str}</Badge>
+    {endif}
+  </row>
 </column>
