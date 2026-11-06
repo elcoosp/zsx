@@ -158,6 +158,35 @@ pub fn Adapter(comptime ui: type) type {
             return false;
         }
 
+        pub fn progress(c: anytype, value: f32, opts: anytype) void {
+            _ = opts;
+            if (@hasDecl(ui, "progress")) {
+                const clamped = if (value < 0.0) 0.0 else if (value > 1.0) 1.0 else value;
+                ui.progress(c, clamped, .fill);
+            }
+        }
+
+        pub fn divider(c: anytype, opts: anytype) void {
+            _ = opts;
+            var d = ui.div(c).wFull().h(1.0);
+            d = d.bg(.{ .r = 0.86, .g = 0.86, .b = 0.86, .a = 1.0 });
+            defer d.end();
+        }
+
+        pub fn slider(c: anytype, value: *f32, opts: anytype) bool {
+            _ = opts;
+            if (@hasDecl(ui, "slider")) {
+                return ui.slider(c, value, .{});
+            }
+            return false;
+        }
+
+
+
+
+
+
+
         pub const Box = struct {
             inner: ui.Div,
 
@@ -277,6 +306,9 @@ pub const StubNanoui = struct {
     var _text_entries_rendered: usize = 0;
     var _text_areas_rendered: usize = 0;
     var _checkboxes_rendered: usize = 0;
+    var _progresses_rendered: usize = 0;
+    var _dividers_rendered: usize = 0;
+    var _sliders_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_text_size: f32 = 0;
     var _last_text_weight: Weight = .regular;
@@ -286,6 +318,15 @@ pub const StubNanoui = struct {
     }
     pub fn textEntriesRendered() usize {
         return _text_entries_rendered;
+    }
+    pub fn progressesRendered() usize {
+        return _progresses_rendered;
+    }
+    pub fn dividersRendered() usize {
+        return _dividers_rendered;
+    }
+    pub fn slidersRendered() usize {
+        return _sliders_rendered;
     }
 
     pub fn labelsRendered() usize {
@@ -344,6 +385,28 @@ pub const StubNanoui = struct {
         _checkboxes_rendered += 1;
         return false;
     }
+
+    pub fn progress(c: *Context, value: f32, opts: anytype) void {
+        _ = c; _ = value; _ = opts;
+        _progresses_rendered += 1;
+    }
+
+    pub fn divider(c: *Context, opts: anytype) void {
+        _ = c; _ = opts;
+        _dividers_rendered += 1;
+    }
+
+    pub fn slider(c: *Context, value: *f32, opts: anytype) bool {
+        _ = c; _ = value; _ = opts;
+        _sliders_rendered += 1;
+        return false;
+    }
+
+
+
+
+
+
 };
 
 test "nanoui adapter column opens and ends" {
