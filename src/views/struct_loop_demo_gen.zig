@@ -4,14 +4,14 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
+        var b_0 = ui.column(c, .{.id_extra = 500000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
         defer b_0.end();
-        for (ctx.users) |user| {
+        for (ctx.users, 0..) |user, idx_0| {
             {
-                var b_1 = ui.row(c, .{.gap = 8});
+                var b_1 = ui.row(c, .{.id_extra = 500001 + idx_0, .gap = 8});
                 defer b_1.end();
-                ui.text(c, user.name, .{.font_size = 18, .font_weight = 700});
-                ctx.Badge(ui, c, .{.color = user.role, .text = user.role});
+                ui.text(c, user.name, .{.id_extra = 500002 + idx_0, .font_size = 18, .font_weight = 700});
+                ctx.Badge(ui, c, .{.id_extra = 500003 + idx_0, .color = user.role, .text = user.role});
             }
         }
     }
