@@ -55,8 +55,16 @@ pub fn Adapter(comptime ui: type) type {
         }
 
         pub fn button(c: anytype, title: []const u8, opts: anytype) bool {
-            _ = opts;
-            return ui.button(c, title, .{}).clicked;
+            var bo = ui.ButtonOptions{};
+            if (@hasField(@TypeOf(opts), "color_fill")) {
+                const col = opts.color_fill;
+                if (col.r > 200 and col.g < 100 and col.b < 100) {
+                    bo.variant = .danger;
+                } else if (col.b > 200 and col.r < 150) {
+                    bo.variant = .primary;
+                }
+            }
+            return ui.button(c, title, bo).clicked;
         }
 
         pub const Box = struct {
