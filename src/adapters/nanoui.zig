@@ -67,6 +67,33 @@ pub fn Adapter(comptime ui: type) type {
             return ui.button(c, title, bo).clicked;
         }
 
+        pub fn textEntry(c: anytype, buffer: []u8, opts: anytype) void {
+            if (@hasDecl(ui, "textField")) {
+                const Opts = ui.TextFieldOptions;
+                var o: Opts = .{};
+                const F = @typeInfo(@TypeOf(ui.textField)).@"fn";
+                const takes_buffer_arg = F.params.len >= 3;
+                if (!takes_buffer_arg) {
+                    if (@hasField(Opts, "text")) o.text = .{ .buffer = buffer };
+                }
+                if (@hasField(Opts, "placeholder")) {
+                    if (@hasField(@TypeOf(opts), "placeholder")) {
+                        if (opts.placeholder) |p| o.placeholder = p;
+                    }
+                }
+                if (@hasField(Opts, "id_extra")) {
+                    if (@hasField(@TypeOf(opts), "id_extra")) o.id_extra = opts.id_extra;
+                }
+                if (takes_buffer_arg) {
+                    _ = ui.textField(c, buffer, o);
+                } else {
+                    _ = ui.textField(c, o);
+                }
+            } else {
+                ui.textEntry(c, buffer, opts);
+            }
+        }
+
         pub const Box = struct {
             inner: ui.Div,
 
@@ -183,12 +210,16 @@ pub const StubNanoui = struct {
     };
 
     var _buttons_rendered: usize = 0;
+    var _text_entries_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_text_size: f32 = 0;
     var _last_text_weight: Weight = .regular;
 
     pub fn buttonsRendered() usize {
         return _buttons_rendered;
+    }
+    pub fn textEntriesRendered() usize {
+        return _text_entries_rendered;
     }
 
     pub fn labelsRendered() usize {
@@ -205,6 +236,7 @@ pub const StubNanoui = struct {
 
     pub fn resetCounters() void {
         _buttons_rendered = 0;
+        _text_entries_rendered = 0;
         _labels_rendered = 0;
         _last_text_size = 0;
         _last_text_weight = .regular;
@@ -229,6 +261,11 @@ pub const StubNanoui = struct {
         _ = opts;
         _buttons_rendered += 1;
         return .{};
+    }
+
+    pub fn textEntry(c: *Context, buffer: []u8, opts: anytype) void {
+        _ = c; _ = buffer; _ = opts;
+        _text_entries_rendered += 1;
     }
 };
 
