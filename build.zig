@@ -20,6 +20,7 @@ pub fn build(b: *std.Build) void {
         "src/views/class_override_demo.zsx",
         "src/views/nested_card_demo.zsx",
         "src/views/dashboard.zsx",
+        "src/views/extended_styles_demo.zsx",
     };
 
     inline for (zsx_files, 0..) |path, file_idx| {
@@ -251,6 +252,22 @@ fn generateView(comptime source: []const u8, comptime path: []const u8, comptime
     out = out ++ "// do not edit by hand\n\n";
     out = out ++ result.preamble;
     out = out ++ "pub fn view(ui: anytype, c: anytype, ctx: anytype) void {\n";
+    const ui_used = comptime std.mem.indexOf(u8, result.code, "ui.") != null or
+        std.mem.indexOf(u8, result.code, "ui,") != null or
+        std.mem.indexOf(u8, result.code, "ui)") != null;
+    const c_used = comptime std.mem.indexOf(u8, result.code, "(c,") != null or
+        std.mem.indexOf(u8, result.code, ", c,") != null or
+        std.mem.indexOf(u8, result.code, "(c)") != null;
+    const ctx_used = comptime std.mem.indexOf(u8, result.code, "ctx.") != null;
+    if (!ui_used) {
+        out = out ++ "    _ = ui;\n";
+    }
+    if (!c_used) {
+        out = out ++ "    _ = c;\n";
+    }
+    if (!ctx_used) {
+        out = out ++ "    _ = ctx;\n";
+    }
     out = out ++ result.code;
     out = out ++ "}\n";
     return out;
