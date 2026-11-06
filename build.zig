@@ -75,6 +75,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .backend = .sdl3,
     });
+
+    const dvui_testing_dep = b.dependency("dvui", .{
+        .target = target,
+        .optimize = optimize,
+        .backend = .testing,
+    });
     const real_hello_mod = b.createModule(.{
         .root_source_file = b.path("src/hello_dvui.zig"),
         .target = target,
@@ -112,8 +118,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    snapshot_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
-    snapshot_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
+    snapshot_mod.addImport("dvui", dvui_testing_dep.module("dvui_testing"));
     snapshot_mod.addImport("nanoui", nanoui_dep.module("nanoui"));
     const snapshot_test = b.addTest(.{ .root_module = snapshot_mod });
     snapshot_test.step.dependOn(&zsx_update.step);
