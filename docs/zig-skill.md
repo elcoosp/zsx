@@ -494,3 +494,41 @@ When unsure how to use a third-party feature, read the library's tests. dvui scr
     var buf: [64]u8 = @splat(0);
 
 Works for any comptime length and value. Nested `@splat(@splat(1.0))` for `[N][M]f32`. `zig fmt` does not migrate; search for `**` in array init contexts.
+
+## Never patch zig-pkg/ — adapt or wrap
+
+When a third-party library's API does not fit, the fix is always in the adapter, never in `zig-pkg/<lib>-*/src/`. The library is a read-only cache entry. Modifying it:
+
+- Breaks on `zig fetch` (new hash, old hash orphaned)
+- Breaks for every other consumer of the project
+- Disappears on `rm -rf .zig-cache` or `rm -rf zig-pkg`
+- Silently diverges from the pinned URL hash
+
+If the API is genuinely wrong for your use case, options in order:
+
+1. `@hasDecl` / `@hasField` dispatch to a compatible shape
+2. Wrapper that constructs the library's expected type from yours
+3. Runtime state cache to bridge across calls (e.g., persistent `TextBuffer` keyed by widget id)
+4. File an upstream issue
+5. Fork the library
+
+Never option 0 (edit `zig-pkg/`). Compile errors that reference paths inside `zig-pkg/` are the compiler naming the *library's* API — that is documentation of the expected shape, not permission to change it.
+
+## Optional argument unwrap before @intCast
+
+`@intCast(?usize)` fails with "expected integer or vector, found '?usize'". Unwrap first:
+
+    const n: u64 = @intCast(opts.id_extra orelse 0);
+
+If the field might be either `?T` or `T` depending on caller version, dispatch at comptime:
+
+    const n: u64 = blk: {
+        if (!@hasField(@TypeOf(opts), "id_extra")) break :blk 0;
+        const raw = opts.id_extra;
+        if (@typeInfo(@TypeOf(raw)) == .optional) {
+            break :blk @as(u64, @intCast(raw orelse 0));
+        }
+        break :blk @as(u64, @intCast(raw));
+    };
+
+`orelse` on a non-optional is a compile error, so the branch must be pruned with `@typeInfo` — not blind `orelse`.
