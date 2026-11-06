@@ -82,6 +82,18 @@ pub fn build(b: *std.Build) void {
     b.getInstallStep().dependOn(&install_real.step);
     const build_app_step = b.step("build-app", "Build the real dvui app and install it");
     build_app_step.dependOn(&install_real.step);
+
+    const real_hello_release_mod = b.createModule(.{
+        .root_source_file = b.path("src/hello_real.zig"),
+        .target = target,
+        .optimize = .ReleaseSafe,
+    });
+    real_hello_release_mod.addImport("dvui", dvui_dep.module("dvui_sdl3"));
+    real_hello_release_mod.addImport("sdl-backend", dvui_dep.module("sdl3"));
+    const real_hello_release_exe = b.addExecutable(.{ .name = "zsx-hello-real-release", .root_module = real_hello_release_mod });
+    const install_real_release = b.addInstallArtifact(real_hello_release_exe, .{});
+    const build_app_release_step = b.step("build-app-release", "Build release-safe real dvui app");
+    build_app_release_step.dependOn(&install_real_release.step);
 }
 
 const EmitResult = struct {
