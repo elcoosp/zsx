@@ -1,14 +1,17 @@
 ---
+
 name: zig-0-17
 description: Zig 0.17.0 build-system, comptime, and test-harness pitfalls. Use when writing or debugging Zig 0.17.x code. Each entry is a real compiler error followed by the minimal fix.
 license: MIT
 compatibility:
-  - opencode
-  - claude-code
-metadata:
+
+- opencode
+- claude-code
+  metadata:
   version: "0.17.0"
   language: "zig"
   category: "programming-language"
+
 ---
 
 # Zig 0.17.0 Skill
@@ -17,21 +20,21 @@ Version scope: 0.17.0 / 0.17.1. Every entry is a compiler error you can hit, fol
 
 ## Quick reference: 0.16 to 0.17
 
-| Old | New |
-|---|---|
-| `.name = "foo"` | `.name = .foo` |
-| no `fingerprint` | `.fingerprint = 0x...` required |
-| `addTest(.{ .root_source_file = ... })` | `addTest(.{ .root_module = mod })` |
-| `std.fs.cwd()` | `std.Io.Dir.cwd()` with explicit `io` |
-| `readFileAlloc(a, path, max)` | `readFileAlloc(io, path, a, .limited(max))` |
-| `writeFile(.{ .sub_path, .data })` | `writeFile(io, .{ .sub_path, .data, .flags })` |
-| `b.build_root` | `b.root` |
-| `b.findProgram` | `b.findProgramLazy` |
-| `run.addArgs(b.args)` | `run.addPassthruArgs()` |
-| `@intFromEnum` / `@enumFromInt` | `@backingInt` / `@fromBackingInt` |
-| `[1]T{v} ** n` | `@splat(v)` |
-| `i0` | `u0` |
-| `@cImport` | external `translate_c` package |
+| Old                                     | New                                            |
+| --------------------------------------- | ---------------------------------------------- |
+| `.name = "foo"`                         | `.name = .foo`                                 |
+| no `fingerprint`                        | `.fingerprint = 0x...` required                |
+| `addTest(.{ .root_source_file = ... })` | `addTest(.{ .root_module = mod })`             |
+| `std.fs.cwd()`                          | `std.Io.Dir.cwd()` with explicit `io`          |
+| `readFileAlloc(a, path, max)`           | `readFileAlloc(io, path, a, .limited(max))`    |
+| `writeFile(.{ .sub_path, .data })`      | `writeFile(io, .{ .sub_path, .data, .flags })` |
+| `b.build_root`                          | `b.root`                                       |
+| `b.findProgram`                         | `b.findProgramLazy`                            |
+| `run.addArgs(b.args)`                   | `run.addPassthruArgs()`                        |
+| `@intFromEnum` / `@enumFromInt`         | `@backingInt` / `@fromBackingInt`              |
+| `[1]T{v} ** n`                          | `@splat(v)`                                    |
+| `i0`                                    | `u0`                                           |
+| `@cImport`                              | external `translate_c` package                 |
 
 ## Build system
 
@@ -479,20 +482,6 @@ Source has field AND destination has field. Without destination check, compiles 
 
 Pattern 1 fails at comptime with "optional type '?Color' does not support field access" if you write `c.r`. Fix: `if (c) |color| color.r` or `c.?.r`. Pattern 3 cannot be replaced by `?T` — no slot to store null.
 
-## Bash: do not pipe to grep -q under set -o pipefail
-
-    # WRONG
-    if ! zig build example 2>&1 | grep -qF "success"; then
-
-`grep -q` exits on match, pipe closes, writer gets SIGPIPE, exits 141, `pipefail` propagates 141, `if` fires on success. Correct:
-
-    OUT=$(zig build example 2>&1)
-    RC=$?
-    if [ $RC -ne 0 ]; then printf '%s\n' "$OUT"; exit 1; fi
-    if [[ "$OUT" != *"success"* ]]; then exit 1; fi
-
-`$()` captures in-process, no pipe, no SIGPIPE. `[[ != *pattern* ]]` is bash substring, no subprocess. Alternative: `set +o pipefail` around the pipeline.
-
 ## Reading a library's own tests as ground truth
 
 When unsure how to use a third-party feature, read the library's tests. dvui screenshots in `src/testing.zig`, dvui headless backend in `build.zig` (`.backend = .testing`), nanoui headless snapshot in `src/dev.zig`. Drill: `grep -rn 'pub fn' <dep>/src/` for top-level, then `grep -rn '<fn_name>' <dep>/src/` for test call sites.
@@ -505,7 +494,3 @@ When unsure how to use a third-party feature, read the library's tests. dvui scr
     var buf: [64]u8 = @splat(0);
 
 Works for any comptime length and value. Nested `@splat(@splat(1.0))` for `[N][M]f32`. `zig fmt` does not migrate; search for `**` in array init contexts.
-
-## Markdown in bash heredocs
-
-Bash scripts containing markdown code blocks must be presented inside an outer fence with **four backticks** or a **tilde fence** (~~~). Three-backtick outer is terminated by three-backtick inner, truncating the block when copy-pasted.
