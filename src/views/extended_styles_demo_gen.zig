@@ -3,24 +3,25 @@
 // do not edit by hand
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
-    _ = ctx;
     {
-        var b_0 = ui.column(c, .{.id_extra = 150000000000000, .color_fill = .{ .r = 241, .g = 245, .b = 249, .a = 255 }, .padding = .{ .x = 24, .y = 24, .w = 24, .h = 24 }, .gap = 16});
+        var b_0 = ui.column(c, .{.id_extra = 1500000000000000000, .color_fill = .{ .r = 241, .g = 245, .b = 249, .a = 255 }, .padding = .{ .x = 24, .y = 24, .w = 24, .h = 24 }, .gap = 16});
         defer b_0.end();
-        ui.text(c, "Extended Styles", .{.id_extra = 150000000000001, .color_text = .{ .r = 15, .g = 23, .b = 42, .a = 255 }, .font_size = 30, .font_weight = 700});
-        ui.text(c, "Subheading, muted", .{.id_extra = 150000000000002, .color_text = .{ .r = 100, .g = 116, .b = 139, .a = 255 }, .font_size = 20});
+        ui.text(c, "Extended Styles", .{.id_extra = 1500000000000000001, .color_text = .{ .r = 15, .g = 23, .b = 42, .a = 255 }, .font_size = 30, .font_weight = 700});
+        ui.text(c, "Subheading, muted", .{.id_extra = 1500000000000000002, .color_text = .{ .r = 100, .g = 116, .b = 139, .a = 255 }, .font_size = 20});
         {
-            var b_3 = ui.row(c, .{.id_extra = 150000000000003, .gap = 16});
+            var b_3 = ui.row(c, .{.id_extra = 1500000000000000003, .gap = 16});
             defer b_3.end();
-            ui.text(c, "small", .{.id_extra = 150000000000004, .font_size = 14});
-            ui.text(c, "caption", .{.id_extra = 150000000000005, .font_size = 12});
-            ui.text(c, "large", .{.id_extra = 150000000000006, .font_size = 24});
+            ui.text(c, "small", .{.id_extra = 1500000000000000004, .font_size = 14});
+            ui.text(c, "caption", .{.id_extra = 1500000000000000005, .font_size = 12});
+            ui.text(c, "large", .{.id_extra = 1500000000000000006, .font_size = 24});
         }
         {
-            var b_7 = ui.row(c, .{.id_extra = 150000000000007, .gap = 4});
+            var b_7 = ui.row(c, .{.id_extra = 1500000000000000007, .gap = 4});
             defer b_7.end();
-            _ = ui.button(c, "Action", .{.id_extra = 150000000000008, .color_fill = .{ .r = 100, .g = 116, .b = 139, .a = 255 }, .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 }, .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 }, .radius = 6});
-            _ = ui.button(c, "Pill", .{.id_extra = 150000000000009, .color_fill = .{ .r = 15, .g = 23, .b = 42, .a = 255 }, .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 }, .padding = .{ .x = 24, .y = 24, .w = 24, .h = 24 }, .radius = 9999});
+            _ = ui.button(c, "Action", .{.id_extra = 1500000000000000008, .color_fill = .{ .r = 100, .g = 116, .b = 139, .a = 255 }, .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 }, .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 }, .radius = 6});
+            _ = ui.button(c, "Pill", .{.id_extra = 1500000000000000009, .color_fill = .{ .r = 15, .g = 23, .b = 42, .a = 255 }, .color_text = .{ .r = 255, .g = 255, .b = 255, .a = 255 }, .padding = .{ .x = 24, .y = 24, .w = 24, .h = 24 }, .radius = 9999});
         }
     }
+
+    _ = ctx;
 }

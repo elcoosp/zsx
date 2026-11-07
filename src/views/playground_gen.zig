@@ -3,67 +3,68 @@
 // do not edit by hand
 
 inline fn render_Section_13(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Input(ui, c, .{.id_extra = 130000000000008, .buffer = &ctx.name, .placeholder = "Your name"});
-    ctx.Input(ui, c, .{.id_extra = 130000000000009, .buffer = &ctx.email, .placeholder = "you@example.com"});
-    ctx.Textarea(ui, c, .{.id_extra = 130000000000010, .buffer = &ctx.notes, .placeholder = "Notes..."});
-    ctx.Checkbox(ui, c, .{.id_extra = 130000000000011, .checked = &ctx.remember, .text = "Remember me"});
-    ctx.Switch(ui, c, .{.id_extra = 130000000000012, .checked = &ctx.notifications, .text = "Notifications"});
+    ctx.Input(ui, c, .{.id_extra = 1300000000000000008, .buffer = &ctx.name, .placeholder = "Your name"});
+    ctx.Input(ui, c, .{.id_extra = 1300000000000000009, .buffer = &ctx.email, .placeholder = "you@example.com"});
+    ctx.Textarea(ui, c, .{.id_extra = 1300000000000000010, .buffer = &ctx.notes, .placeholder = "Notes..."});
+    ctx.Checkbox(ui, c, .{.id_extra = 1300000000000000011, .checked = &ctx.remember, .text = "Remember me"});
+    ctx.Switch(ui, c, .{.id_extra = 1300000000000000012, .checked = &ctx.notifications, .text = "Notifications"});
 }
 
 inline fn render_Section_17(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Progress(ui, c, .{.id_extra = 130000000000015, .value = ctx.completion});
-    ctx.Caption(ui, c, .{.id_extra = 130000000000016, .text = "Completion progress"});
+    ctx.Progress(ui, c, .{.id_extra = 1300000000000000015, .value = ctx.completion});
+    ctx.Caption(ui, c, .{.id_extra = 1300000000000000016, .text = "Completion progress"});
 }
 
 inline fn render_Section_23(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_20 = ui.row(c, .{.id_extra = 130000000000020, .gap = 8});
+        var b_20 = ui.row(c, .{.id_extra = 1300000000000000020, .gap = 8});
         defer b_20.end();
-        ctx.Caption(ui, c, .{.id_extra = 130000000000021, .text = "Volume:"});
-        ctx.Slider(ui, c, .{.id_extra = 130000000000022, .value = &ctx.volume});
+        ctx.Caption(ui, c, .{.id_extra = 1300000000000000021, .text = "Volume:"});
+        ctx.Slider(ui, c, .{.id_extra = 1300000000000000022, .value = &ctx.volume});
     }
 }
 
 inline fn render_Section_28(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Skeleton(ui, c, .{.id_extra = 130000000000025, .width = 320, .height = 24});
-    ctx.Skeleton(ui, c, .{.id_extra = 130000000000026, .width = 220, .height = 16});
-    ctx.Skeleton(ui, c, .{.id_extra = 130000000000027, .width = 280, .height = 16});
+    ctx.Skeleton(ui, c, .{.id_extra = 1300000000000000025, .width = 320, .height = 24});
+    ctx.Skeleton(ui, c, .{.id_extra = 1300000000000000026, .width = 220, .height = 16});
+    ctx.Skeleton(ui, c, .{.id_extra = 1300000000000000027, .width = 280, .height = 16});
 }
 
 inline fn render_Section_34(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_30 = ui.row(c, .{.id_extra = 130000000000030, .gap = 8});
+        var b_30 = ui.row(c, .{.id_extra = 1300000000000000030, .gap = 8});
         defer b_30.end();
-        ctx.Button(ui, c, .{.id_extra = 130000000000031, .variant = "primary", .text = "Install"});
-        ctx.Button(ui, c, .{.id_extra = 130000000000032, .variant = "secondary", .text = "Docs"});
-        ctx.Button(ui, c, .{.id_extra = 130000000000033, .variant = "danger", .text = "Remove"});
+        ctx.Button(ui, c, .{.id_extra = 1300000000000000031, .variant = "primary", .text = "Install"});
+        ctx.Button(ui, c, .{.id_extra = 1300000000000000032, .variant = "secondary", .text = "Docs"});
+        ctx.Button(ui, c, .{.id_extra = 1300000000000000033, .variant = "danger", .text = "Remove"});
     }
 }
 
 inline fn render_Card_38(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Caption(ui, c, .{.id_extra = 130000000000036, .text = "Card content goes here."});
-    ctx.Link(ui, c, .{.id_extra = 130000000000037, .text = "Learn more"});
+    ctx.Caption(ui, c, .{.id_extra = 1300000000000000036, .text = "Card content goes here."});
+    ctx.Link(ui, c, .{.id_extra = 1300000000000000037, .text = "Learn more"});
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 130000000000000, .padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 }, .gap = 8});
+        var b_0 = ui.column(c, .{.id_extra = 1300000000000000000, .padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 }, .gap = 8});
         defer b_0.end();
-        ctx.Heading(ui, c, .{.id_extra = 130000000000001, .size = 1, .text = "ZSX Playground"});
-        ctx.Caption(ui, c, .{.id_extra = 130000000000002, .text = "Fifteen components, one source, two frameworks."});
+        ctx.Heading(ui, c, .{.id_extra = 1300000000000000001, .size = 1, .text = "ZSX Playground"});
+        ctx.Caption(ui, c, .{.id_extra = 1300000000000000002, .text = "Fifteen components, one source, two frameworks."});
         {
-            var b_3 = ui.row(c, .{.id_extra = 130000000000003, .gap = 8});
+            var b_3 = ui.row(c, .{.id_extra = 1300000000000000003, .gap = 8});
             defer b_3.end();
-            ctx.Badge(ui, c, .{.id_extra = 130000000000004, .color = "blue", .text = "new"});
-            ctx.Badge(ui, c, .{.id_extra = 130000000000005, .color = "green", .text = "stable"});
-            ctx.Badge(ui, c, .{.id_extra = 130000000000006, .color = "red", .text = "deprecated"});
+            ctx.Badge(ui, c, .{.id_extra = 1300000000000000004, .color = "blue", .text = "new"});
+            ctx.Badge(ui, c, .{.id_extra = 1300000000000000005, .color = "green", .text = "stable"});
+            ctx.Badge(ui, c, .{.id_extra = 1300000000000000006, .color = "red", .text = "deprecated"});
         }
-        ctx.Section(ui, c, .{.id_extra = 130000000000007, .title = "Forms"}, render_Section_13);
-        ctx.Section(ui, c, .{.id_extra = 130000000000014, .title = "Progress"}, render_Section_17);
-        ctx.Divider(ui, c, .{.id_extra = 130000000000018});
-        ctx.Section(ui, c, .{.id_extra = 130000000000019, .title = "Settings"}, render_Section_23);
-        ctx.Section(ui, c, .{.id_extra = 130000000000024, .title = "Loading"}, render_Section_28);
-        ctx.Section(ui, c, .{.id_extra = 130000000000029, .title = "Actions"}, render_Section_34);
-        ctx.Card(ui, c, .{.id_extra = 130000000000035}, render_Card_38);
+        ctx.Section(ui, c, .{.id_extra = 1300000000000000007, .title = "Forms"}, render_Section_13);
+        ctx.Section(ui, c, .{.id_extra = 1300000000000000014, .title = "Progress"}, render_Section_17);
+        ctx.Divider(ui, c, .{.id_extra = 1300000000000000018});
+        ctx.Section(ui, c, .{.id_extra = 1300000000000000019, .title = "Settings"}, render_Section_23);
+        ctx.Section(ui, c, .{.id_extra = 1300000000000000024, .title = "Loading"}, render_Section_28);
+        ctx.Section(ui, c, .{.id_extra = 1300000000000000029, .title = "Actions"}, render_Section_34);
+        ctx.Card(ui, c, .{.id_extra = 1300000000000000035}, render_Card_38);
     }
+
 }

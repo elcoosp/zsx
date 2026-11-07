@@ -1,19 +1,26 @@
 //! ZSX pre-processor: expands `zsx!{ <markup> }` blocks inline.
 //!
-//! Under the new format a `.zsx` file is ordinary Zig that contains one or
-//! more `zsx!{ ... }` blocks. `preprocess` returns a `.zig` source string
-//! where every block is replaced by the emitter's output for the single
-//! root element inside it. Surrounding Zig is preserved verbatim.
+//! A `.zsx` file is ordinary Zig that contains one or more `zsx!{ ... }`
+//! blocks. `preprocess` returns a `.zig` source string where every block is
+//! replaced by the emitter's output for the single root element inside it.
+//! Surrounding Zig is preserved verbatim.
+//!
+//! Two post-processing steps are applied per block:
+//!   1. Preamble hoisting. When a block contains component children
+//!      (`<Card>...</Card>`), the emitter returns a `preamble` with helper
+//!      functions like `inline fn render_Card_N(...)`. These are collected
+//!      and prepended at module scope, since Zig forbids nested fn decls.
+//!   2. Indent shift. The emitter always starts at `makeIndent(1)=4sp`. We
+//!      dedent by `(block_source_column - 4)` so the block's `{` lines up
+//!      with the `zsx!{` in the source.
 //!
 //! Contract for the enclosing scope:
 //!   - Parameters must be named `ui`, `c`, `ctx` (any types).
 //!   - `ctx` must expose the methods/fields the markup references.
-//!   - Do not `_ = ui;` / `_ = c;` / `_ = ctx;` at the same scope as a
-//!     block that references them (Zig rejects pointless discards).
+//!   - Do not `_ = ui;` / `_ = c;` / `_ = ctx;` if the block uses them.
+//!     Only discard `ctx` in a wrapper whose block never references it.
 //!
-//! The block itself is wrapped by the emitter (`column`/`row` open `{ ... }`
-//! so `var b_0` stays local). Leaf emitters produce single statements. An
-//! optional trailing `;` after the block close is consumed.
+//! Optional trailing `;` after the block close is consumed.
 
 const std = @import("std");
 const ast = @import("ast.zig");
@@ -25,6 +32,7 @@ pub const BLOCK_STRIDE: usize = 10_000;
 pub fn preprocess(comptime source: []const u8, comptime file_index: usize) []const u8 {
     @setEvalBranchQuota(2_000_000);
     var out: []const u8 = "";
+    var preamble_acc: []const u8 = "";
     var pos: usize = 0;
     var block_idx: usize = 0;
 
@@ -58,8 +66,12 @@ pub fn preprocess(comptime source: []const u8, comptime file_index: usize) []con
             const blk = parseBlock(source, pos);
             const block_file_index = file_index * BLOCK_STRIDE + block_idx;
             const result = codegen.emitElement(blk.el, 1, 0, 0, block_file_index);
-            out = out ++ result.preamble;
-            out = out ++ result.code;
+            preamble_acc = preamble_acc ++ result.preamble;
+            var lead: usize = 0;
+            while (lead < out.len and out[out.len - 1 - lead] == ' ') lead += 1;
+            out = out[0 .. out.len - lead];
+            const delta: isize = @as(isize, @intCast(lead)) - 4;
+            out = out ++ shiftLines(result.code, delta);
             pos = blk.end;
             block_idx += 1;
             continue;
@@ -69,7 +81,7 @@ pub fn preprocess(comptime source: []const u8, comptime file_index: usize) []con
         while (pos < source.len and !isSpecial(source[pos])) pos += 1;
         out = out ++ source[chunk_start..pos];
     }
-    return out;
+    return preamble_acc ++ out;
 }
 
 const Block = struct {
@@ -88,6 +100,33 @@ fn parseBlock(comptime source: []const u8, comptime start: usize) Block {
     pos += 1;
     if (pos < source.len and source[pos] == ';') pos += 1;
     return .{ .el = el, .end = pos };
+}
+
+fn shiftLines(comptime code: []const u8, comptime delta: isize) []const u8 {
+    @setEvalBranchQuota(1_000_000);
+    if (delta == 0) return code;
+    const d: usize = @intCast(if (delta > 0) delta else -delta);
+    const add = delta > 0;
+    var out: []const u8 = "";
+    var pos: usize = 0;
+    while (pos < code.len) {
+        if (add) {
+            for (0..d) |_| out = out ++ " ";
+        } else {
+            var strip: usize = 0;
+            while (strip < d and pos + strip < code.len and code[pos + strip] == ' ') strip += 1;
+            pos += strip;
+        }
+        const nl = std.mem.indexOfScalarPos(u8, code, pos, '\n') orelse code.len;
+        out = out ++ code[pos..nl];
+        if (nl < code.len) {
+            out = out ++ "\n";
+            pos = nl + 1;
+        } else {
+            pos = nl;
+        }
+    }
+    return out;
 }
 
 fn skipStringLit(comptime source: []const u8, comptime start: usize) usize {
@@ -187,7 +226,6 @@ test "preprocess two blocks use distinct ids" {
 test "preprocess block at nonzero file index uses that base" {
     const src = "zsx!{<label>x</label>}";
     const out = comptime preprocess(src, 3);
-    // block_file_index = 3 * 10000 + 0 = 30000, base_id = 30000 * 1e13 = 3e17
     try std.testing.expect(std.mem.indexOf(u8, out, ".id_extra = 300000000000000000") != null);
 }
 
@@ -213,4 +251,24 @@ test "preprocess handles escaped quote in string literal" {
     const src = "const s = \"a\\\"zsx!{\";\n";
     const out = comptime preprocess(src, 0);
     try std.testing.expectEqualStrings(src, out);
+}
+
+test "preprocess hoists component preamble to top" {
+    const src = "pub fn view(ui: anytype, c: anytype, ctx: anytype) void {\n    zsx!{<Card><label>Title</label><label>Sub</label></Card>}\n}\n";
+    const out = comptime preprocess(src, 0);
+    const view_idx = std.mem.indexOf(u8, out, "pub fn view") orelse unreachable;
+    const render_idx = std.mem.indexOf(u8, out, "inline fn render_Card_") orelse unreachable;
+    try std.testing.expect(render_idx < view_idx);
+}
+
+test "preprocess shifts block to match source column" {
+    const src = "    zsx!{<label>x</label>}\n";
+    const out = comptime preprocess(src, 0);
+    try std.testing.expect(std.mem.startsWith(u8, out, "    ui.text(c, "));
+}
+
+test "preprocess block at col 0 starts at col 0" {
+    const src = "zsx!{<column><label>x</label></column>}\n";
+    const out = comptime preprocess(src, 0);
+    try std.testing.expect(std.mem.startsWith(u8, out, "{\n"));
 }

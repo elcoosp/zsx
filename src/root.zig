@@ -1,9 +1,5 @@
 const std = @import("std");
 
-pub const Feature = @import("feature.zig").Feature;
-pub const Capabilities = @import("capabilities.zig").Capabilities;
-pub const StyleRef = @import("style_ref.zig").StyleRef;
-pub const Backend = @import("backend.zig").Backend;
 
 pub const ast = @import("ast.zig");
 pub const parser = @import("parser.zig");

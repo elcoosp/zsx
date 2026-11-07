@@ -4,24 +4,25 @@
 
 inline fn render_Card_4(ui: anytype, c: anytype, ctx: anytype) void {
     _ = ctx;
-    ui.text(c, "inner", .{.id_extra = 100000000000003});
+    ui.text(c, "inner", .{.id_extra = 1000000000000000003});
 }
 
 inline fn render_Card_6(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Card(ui, c, .{.id_extra = 100000000000002}, render_Card_4);
-    ui.text(c, "mid", .{.id_extra = 100000000000005});
+    ctx.Card(ui, c, .{.id_extra = 1000000000000000002}, render_Card_4);
+    ui.text(c, "mid", .{.id_extra = 1000000000000000005});
 }
 
 inline fn render_Card_9(ui: anytype, c: anytype, ctx: anytype) void {
     _ = ctx;
-    ui.text(c, "sibling", .{.id_extra = 100000000000008});
+    ui.text(c, "sibling", .{.id_extra = 1000000000000000008});
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 100000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
+        var b_0 = ui.column(c, .{.id_extra = 1000000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
         defer b_0.end();
-        ctx.Card(ui, c, .{.id_extra = 100000000000001}, render_Card_6);
-        ctx.Card(ui, c, .{.id_extra = 100000000000007}, render_Card_9);
+        ctx.Card(ui, c, .{.id_extra = 1000000000000000001}, render_Card_6);
+        ctx.Card(ui, c, .{.id_extra = 1000000000000000007}, render_Card_9);
     }
+
 }

@@ -4,15 +4,16 @@
 
 inline fn render_Card_4(ui: anytype, c: anytype, ctx: anytype) void {
     _ = ctx;
-    ui.text(c, "Title", .{.id_extra = 10000000000002});
-    ui.text(c, "Subtitle", .{.id_extra = 10000000000003});
+    ui.text(c, "Title", .{.id_extra = 100000000000000002});
+    ui.text(c, "Subtitle", .{.id_extra = 100000000000000003});
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 10000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
+        var b_0 = ui.column(c, .{.id_extra = 100000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
         defer b_0.end();
-        ctx.Card(ui, c, .{.id_extra = 10000000000001}, render_Card_4);
-        ctx.Button(ui, c, .{.id_extra = 10000000000005, .text = "Click"});
+        ctx.Card(ui, c, .{.id_extra = 100000000000000001}, render_Card_4);
+        ctx.Button(ui, c, .{.id_extra = 100000000000000005, .text = "Click"});
     }
+
 }

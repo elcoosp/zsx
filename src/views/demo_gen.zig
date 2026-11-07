@@ -15,4 +15,5 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
             ui.text(c, item, .{.id_extra = 3 + idx_0 * 1000000, .font_size = 18, .font_weight = 700});
         }
     }
+
 }

@@ -4,12 +4,13 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 80000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
+        var b_0 = ui.column(c, .{.id_extra = 800000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
         defer b_0.end();
         if (ctx.verbose) {
-            ui.text(c, "one", .{.id_extra = 80000000000001});
-            ui.text(c, "two", .{.id_extra = 80000000000002});
+            ui.text(c, "one", .{.id_extra = 800000000000000001});
+            ui.text(c, "two", .{.id_extra = 800000000000000002});
         }
-        ui.text(c, "always", .{.id_extra = 80000000000003});
+        ui.text(c, "always", .{.id_extra = 800000000000000003});
     }
+
 }
