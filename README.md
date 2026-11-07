@@ -275,3 +275,17 @@ MIT. See [LICENSE](LICENSE).
 ## Acknowledgments
 
 ZSX draws on the design of `gpui-rsx` for the JSX-to-builder lowering model, on Ziex and `zt` for demonstrating file-based declarative authoring in Zig, and on the comptime parser patterns established by the broader ecosystem. The backend contract is informed by the styling models of DVUI, Nanoui, zigui, Capy, and Gooey.
+
+## Status
+
+As of session ending `2026-11-07`, the following are verified — not claimed:
+
+- **CI green**: `.github/workflows/ci.yml` passes on Linux + macOS for HEAD `f649162`
+  (run id `42363400405`). Real-backend builds (DVUI + SDL3/freetype, Nanoui) pass on macOS.
+- **Fork verification**: `./scripts/new-project.sh /tmp/verify_x verify_x` produces a
+  standalone project whose `zig build test` passes in a fresh directory. The
+  template claim is proven, not assumed.
+- **15 components** on two real backends (DVUI + SDL3, Nanoui + Metal), single `.zsx`
+  source, both rendered screenshots captured via native macOS APIs.
+
+See `docs/session-handoff.md` and `docs/zig-skill.md` for context.
