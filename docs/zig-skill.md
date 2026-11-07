@@ -671,3 +671,89 @@ only that window's pixels regardless of z-order.
 SDL3 apps take 2-3 seconds to create their window. Poll `CGWindowListCopyWindowInfo`
 for up to 5 seconds after launch. A single `sleep 2` races the window creation
 on slower machines.
+
+## Python regex catastrophic backtracking on multi-KB files
+
+A regex like `(?:.*\n)*?        \}\n` used to match "everything up to the next
+closing brace at this indent" is **O(2^n)** on large files. The `.*` inside
+`(?:...)*?` makes the engine try every possible partition of every line
+before giving up. On a 12KB file, this hangs for minutes or forever — no
+error, no partial output, just a hung process.
+
+    # HANGS on multi-KB files
+    pattern = re.compile(
+        r'        pub fn skeleton\(c: anytype, opts: anytype\) void \{\n(?:.*\n)*?        \}\n',
+        re.DOTALL
+    )
+
+### The rule
+
+**Never use `.*` or `(?:.*\n)*` to match a variable-length block on files
+over ~2KB.** Regex for block matching is only safe when the block length is
+bounded and small.
+
+### The fix: line-based scanning
+
+Read the file as lines, find the start line by substring match, then scan
+forward counting braces until depth returns to zero:
+
+    with open(path) as f:
+        lines = f.readlines()
+
+    start_idx = None
+    for i, line in enumerate(lines):
+        if 'pub fn skeleton(' in line:
+            start_idx = i
+            break
+
+    depth = 0
+    end_idx = None
+    for i in range(start_idx, len(lines)):
+        depth += lines[i].count('{')
+        depth -= lines[i].count('}')
+        if depth == 0 and i > start_idx:
+            end_idx = i
+            break
+
+    lines[start_idx:end_idx+1] = [new_content]
+    with open(path, 'w') as f:
+        f.writelines(lines)
+
+This is **O(n) linear** in file size. No backtracking, no hang, no hidden
+catastrophic failure mode.
+
+### When brace counting is not enough
+
+If the block has braces inside strings or comments, brace counting is wrong.
+For Zig source that has been through `zig fmt`, this is rare — string literals
+and comments are usually on their own lines or balanced. If in doubt, fall
+back to a proper tokenizer or a byte-level scan that tracks `"` and `//`
+state (the approach used in `zig fmt` itself).
+
+### Detection
+
+If a bash script calling `python3 <<EOF` hangs with no output and no error,
+the most likely cause is regex backtracking. Kill the process with
+`pkill -9 -f python3`, then rewrite the block-finding logic as a line scan.
+
+### Related: timeout is not on macOS
+
+`timeout` is GNU coreutils, not part of macOS. Portable replacement:
+
+    run_with_timeout() {
+        local secs="$1"; shift
+        "$@" &
+        local pid=$!
+        ( sleep "$secs"; kill -9 "$pid" 2>/dev/null; touch "/tmp/.t.$pid" ) &
+        local watchdog=$!
+        wait "$pid" 2>/dev/null
+        local rc=$?
+        kill -9 "$watchdog" 2>/dev/null
+        wait "$watchdog" 2>/dev/null || true
+        [ -f "/tmp/.t.$pid" ] && { rm -f "/tmp/.t.$pid"; return 124; }
+        return $rc
+    }
+
+Always wrap `zig build test`, `zig build build-app-*`, and any `python3`
+heredoc in `run_with_timeout` so hangs surface as exit 124 instead of
+blocking the terminal.
