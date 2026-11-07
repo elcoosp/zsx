@@ -140,7 +140,7 @@ fn parseChild(comptime src: []const u8, pos: *usize) Child {
 }
 
 fn isTagChar(c: u8) bool {
-    return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c == '_' or c == '-';
+    return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c == '_' or c == '-' or c == '.';
 }
 
 fn isAttrNameChar(c: u8) bool {

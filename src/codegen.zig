@@ -296,6 +296,8 @@ pub fn emitElement(
             .preamble = "",
             .next_id = start_id + 1,
         };
+    } else if (comptime std.mem.indexOf(u8, el.tag, ".") != null) {
+        return comptime emitPathComponent(el, level, start_id, loop_depth, file_index);
     } else if (comptime isUpper(el.tag[0])) {
         if (comptime hasElementChildren(el)) {
             const inner = comptime emitContentChildren(el.children, 1, start_id + 1, file_index);
@@ -708,4 +710,91 @@ test "generate loop body uses strided ids" {
     ;
     const out = comptime generate(src, "t.zsx", 0);
     try std.testing.expect(std.mem.indexOf(u8, out, ".id_extra = 1 + idx_0 * 1000000") != null);
+}
+
+fn sanitizeTag(comptime tag: []const u8) []const u8 {
+    var out: []const u8 = "";
+    for (tag) |ch| {
+        if (ch == '.') {
+            out = out ++ "_";
+        } else {
+            out = out ++ [_]u8{ch};
+        }
+    }
+    return out;
+}
+
+fn emitPathComponent(
+    comptime el: ast.Element,
+    comptime level: usize,
+    comptime start_id: usize,
+    comptime loop_depth: usize,
+    comptime file_index: usize,
+) EmitResult {
+    @setEvalBranchQuota(500_000);
+    const indent = makeIndent(level);
+    if (comptime hasElementChildren(el)) {
+        const inner = comptime emitContentChildren(el.children, 1, start_id + 1, file_index);
+        const my_id = inner.next_id;
+        const render_name = "render_" ++ sanitizeTag(el.tag) ++ "_" ++ fmtInt(@intCast(my_id));
+        var decl: []const u8 = "";
+        decl = decl ++ "inline fn " ++ render_name ++ "(ui: anytype, c: anytype, ctx: anytype) void {\n";
+        const ui_used = comptime std.mem.indexOf(u8, inner.code, "ui.") != null or
+            std.mem.indexOf(u8, inner.code, "ui,") != null or
+            std.mem.indexOf(u8, inner.code, "ui)") != null;
+        const c_used = comptime std.mem.indexOf(u8, inner.code, "(c,") != null or
+            std.mem.indexOf(u8, inner.code, ", c,") != null or
+            std.mem.indexOf(u8, inner.code, "(c)") != null;
+        const ctx_used = comptime std.mem.indexOf(u8, inner.code, "ctx.") != null;
+        if (!ui_used) decl = decl ++ "    _ = ui;\n";
+        if (!c_used) decl = decl ++ "    _ = c;\n";
+        if (!ctx_used) decl = decl ++ "    _ = ctx;\n";
+        decl = decl ++ inner.code;
+        decl = decl ++ "}\n\n";
+        return .{
+            .code = indent ++ el.tag ++ "(ctx, ui, c, " ++ componentPropsLiteral(el, false, start_id, loop_depth, file_index) ++ ", " ++ render_name ++ ");\n",
+            .preamble = inner.preamble ++ decl,
+            .next_id = my_id + 1,
+        };
+    } else {
+        return .{
+            .code = indent ++ el.tag ++ "(ctx, ui, c, " ++ componentPropsLiteral(el, true, start_id, loop_depth, file_index) ++ ");\n",
+            .preamble = "",
+            .next_id = start_id + 1,
+        };
+    }
+}
+
+test "emitElement path-qualified component emits ctx-first call" {
+    const el = comptime ast.Element{
+        .tag = "shadcn.Button",
+        .attributes = &[_]ast.Attribute{},
+        .children = &[_]ast.Child{.{ .text = "Save" }},
+    };
+    const r = comptime emitElement(el, 1, 0, 0, 0);
+    try std.testing.expect(std.mem.indexOf(u8, r.code, "shadcn.Button(ctx, ui, c, ") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r.code, ".text = \"Save\"") != null);
+}
+
+test "emitElement path-qualified with element children emits render helper" {
+    const inner_el = comptime ast.Element{
+        .tag = "shadcn.Button",
+        .attributes = &[_]ast.Attribute{},
+        .children = &[_]ast.Child{.{ .text = "X" }},
+    };
+    const el = comptime ast.Element{
+        .tag = "shadcn.Card",
+        .attributes = &[_]ast.Attribute{},
+        .children = &[_]ast.Child{.{ .element = inner_el }},
+    };
+    const r = comptime emitElement(el, 1, 0, 0, 0);
+    try std.testing.expect(std.mem.indexOf(u8, r.code, "shadcn.Card(ctx, ui, c, ") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r.preamble, "inline fn render_shadcn_Card_") != null);
+    try std.testing.expect(std.mem.indexOf(u8, r.preamble, "shadcn.Button(ctx, ui, c, ") != null);
+}
+
+test "sanitizeTag replaces dots with underscores" {
+    try std.testing.expectEqualStrings("shadcn_Button", comptime sanitizeTag("shadcn.Button"));
+    try std.testing.expectEqualStrings("a_b_c", comptime sanitizeTag("a.b.c"));
+    try std.testing.expectEqualStrings("Button", comptime sanitizeTag("Button"));
 }
