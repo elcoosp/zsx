@@ -181,6 +181,26 @@ pub fn Adapter(comptime ui: type) type {
             return false;
         }
 
+        pub fn toggle(c: anytype, label: []const u8, value: *bool, opts: anytype) bool {
+            _ = opts;
+            if (@hasDecl(ui, "toggle")) {
+                return ui.toggle(c, label, value);
+            }
+            return false;
+        }
+
+        pub fn skeleton(c: anytype, opts: anytype) void {
+            if (@hasDecl(ui, "div")) {
+                var d = ui.div(c);
+                if (@hasField(@TypeOf(opts), "width")) d = d.w(opts.width);
+                if (@hasField(@TypeOf(opts), "height")) d = d.h(opts.height);
+                if (@hasField(@TypeOf(opts), "radius")) d = d.rounded(opts.radius);
+                d = d.bg(.{ .r = 0.9, .g = 0.91, .b = 0.92, .a = 1.0 });
+                d.end();
+            }
+        }
+
+
 
 
 
@@ -309,6 +329,8 @@ pub const StubNanoui = struct {
     var _progresses_rendered: usize = 0;
     var _dividers_rendered: usize = 0;
     var _sliders_rendered: usize = 0;
+    var _toggles_rendered: usize = 0;
+    var _skeletons_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_text_size: f32 = 0;
     var _last_text_weight: Weight = .regular;
@@ -400,6 +422,16 @@ pub const StubNanoui = struct {
         _ = c; _ = value; _ = opts;
         _sliders_rendered += 1;
         return false;
+    }
+    pub fn toggle(c: *Context, label: []const u8, value: *bool, opts: anytype) bool {
+        _ = c; _ = label; _ = value; _ = opts;
+        _toggles_rendered += 1;
+        return false;
+    }
+
+    pub fn skeleton(c: *Context, opts: anytype) void {
+        _ = c; _ = opts;
+        _skeletons_rendered += 1;
     }
 
 

@@ -85,6 +85,31 @@ pub fn Adapter(comptime dvui: type) type {
             return false;
         }
 
+        pub fn toggle(c: anytype, label: []const u8, value: *bool, opts: anytype) bool {
+            _ = c;
+            if (@hasDecl(dvui, "checkbox")) {
+                return dvui.checkbox(@src(), value, label, optionsFrom(dvui, opts));
+            }
+            return false;
+        }
+
+        pub fn skeleton(c: anytype, opts: anytype) void {
+            _ = c;
+            // optionsFrom handles radius->corners translation and any field
+            // that differs between stub and real backend. Do not access
+            // framework Options fields directly after this returns.
+            var o = optionsFrom(dvui, opts);
+            if (@hasField(@TypeOf(opts), "width") and @hasField(@TypeOf(opts), "height")) {
+                o.min_size_content = .{ .w = opts.width, .h = opts.height };
+            }
+            if (o.color_fill == null) {
+                o.color_fill = .{ .color = .{ .r = 229, .g = 231, .b = 235, .a = 255 } };
+            }
+            var b = dvui.box(@src(), .{ .dir = .horizontal }, o);
+            defer b.deinit();
+        }
+
+
         pub const Box = struct {
             inner: *dvui.BoxWidget,
             pub fn end(self: Box) void {
@@ -181,6 +206,8 @@ pub const StubDvui = struct {
     var _progresses_rendered: usize = 0;
     var _dividers_rendered: usize = 0;
     var _sliders_rendered: usize = 0;
+    var _toggles_rendered: usize = 0;
+    var _skeletons_rendered: usize = 0;
     var _labels_rendered: usize = 0;
     var _last_button_padding: ?Rect = null;
     var _last_button_radius: ?f32 = null;
@@ -247,6 +274,16 @@ pub const StubDvui = struct {
         _ = src; _ = value; _ = opts;
         _sliders_rendered += 1;
         return false;
+    }
+    pub fn toggle(src: anytype, label: []const u8, value: *bool, opts: anytype) bool {
+        _ = src; _ = label; _ = value; _ = opts;
+        _toggles_rendered += 1;
+        return false;
+    }
+
+    pub fn skeleton(src: anytype, opts: anytype) void {
+        _ = src; _ = opts;
+        _skeletons_rendered += 1;
     }
     pub fn labelNoFmt(src: anytype, text: []const u8, init: anytype, opts: Options) void {
         _ = src; _ = text; _ = init; _ = opts;

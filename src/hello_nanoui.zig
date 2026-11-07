@@ -17,12 +17,15 @@ const Ctx = struct {
     pub const Progress = @import("lib/shadcn.zig").Progress;
     pub const Divider = @import("lib/shadcn.zig").Divider;
     pub const Slider = @import("lib/shadcn.zig").Slider;
+    pub const Switch = @import("lib/shadcn.zig").Switch;
+    pub const Skeleton = @import("lib/shadcn.zig").Skeleton;
 
     name: [64]u8 = @splat(0),
     notes: [256]u8 = @splat(0),
     remember: bool = false,
     completion: f32 = 0.42,
     volume: f32 = 0.5,
+    notifications: bool = true,
     email: [128]u8 = @splat(0),
 };
 

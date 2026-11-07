@@ -1,6 +1,6 @@
 <column padding={16} class="gap-2">
   <Heading size={1}>ZSX Playground</Heading>
-  <Caption>Thirteen components, one source, two frameworks.</Caption>
+  <Caption>Fifteen components, one source, two frameworks.</Caption>
 
   <row class="gap-2">
     <Badge color="blue">new</Badge>
@@ -13,6 +13,7 @@
     <Input buffer={&ctx.email} placeholder="you@example.com" />
     <Textarea buffer={&ctx.notes} placeholder="Notes..." />
     <Checkbox checked={&ctx.remember} text="Remember me" />
+    <Switch checked={&ctx.notifications} text="Notifications" />
   </Section>
 
   <Section title="Progress">
@@ -27,6 +28,12 @@
       <Caption>Volume:</Caption>
       <Slider value={&ctx.volume} />
     </row>
+  </Section>
+
+  <Section title="Loading">
+    <Skeleton width={320} height={24} />
+    <Skeleton width={220} height={16} />
+    <Skeleton width={280} height={16} />
   </Section>
 
   <Section title="Actions">

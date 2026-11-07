@@ -236,3 +236,33 @@ pub inline fn Slider(self: anytype, ui: anytype, c: anytype, props: anytype) voi
     const value: *f32 = props.value;
     _ = ui.slider(c, value, .{});
 }
+
+pub const SwitchOptions = struct {
+    id_extra: ?usize = null,
+};
+
+pub const SkeletonOptions = struct {
+    width: f32 = 200,
+    height: f32 = 16,
+    radius: f32 = 4,
+    id_extra: ?usize = null,
+};
+
+pub inline fn Switch(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = SwitchOptions{};
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    const val: *bool = props.checked;
+    const label: []const u8 = if (@hasField(@TypeOf(props), "text")) props.text else "";
+    _ = ui.toggle(c, label, val, opts);
+}
+
+pub inline fn Skeleton(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = SkeletonOptions{};
+    if (@hasField(@TypeOf(props), "width")) opts.width = props.width;
+    if (@hasField(@TypeOf(props), "height")) opts.height = props.height;
+    if (@hasField(@TypeOf(props), "radius")) opts.radius = props.radius;
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    ui.skeleton(c, opts);
+}
