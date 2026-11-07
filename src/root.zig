@@ -854,5 +854,5 @@ test {
 }
 
 test {
-    _ = @import("codegen.zig");
+    _ = @import("preprocess.zig");
 }

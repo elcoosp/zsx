@@ -75,7 +75,7 @@ pub fn generate(
     return out;
 }
 
-const EmitResult = struct {
+pub const EmitResult = struct {
     code: []const u8,
     preamble: []const u8,
     next_id: usize,
@@ -239,7 +239,7 @@ fn findAttr(comptime el: ast.Element, comptime name: []const u8) ?[]const u8 {
     return null;
 }
 
-fn emitElement(
+pub fn emitElement(
     comptime el: ast.Element,
     comptime level: usize,
     comptime start_id: usize,

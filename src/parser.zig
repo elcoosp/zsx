@@ -15,7 +15,7 @@ pub fn parse(comptime src: []const u8) Element {
     };
 }
 
-fn parseElement(comptime src: []const u8, pos: *usize) Element {
+pub fn parseElement(comptime src: []const u8, pos: *usize) Element {
     if (pos.* >= src.len or src[pos.*] != '<') @compileError("expected '<'");
     pos.* += 1;
     const tag_start = pos.*;
