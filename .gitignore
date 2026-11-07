@@ -10,3 +10,7 @@ zig-out/
 *.exe
 wr.sh
 zig-pkg/
+=== ZSX Phase 3: move _gen.zig out of git; document fresh-clone flow ===
+Untracking src/views/*_gen.zig from git index (files stay on disk for now)
+Adding src/views/*_gen.zig to .gitignore
+src/views/*_gen.zig
