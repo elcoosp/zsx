@@ -4,10 +4,10 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 200000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
+        var b_0 = ui.column(c, .{.id_extra = 20000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
         defer b_0.end();
-        ctx.Button(ui, c, .{.id_extra = 200001, .variant = "primary", .text = "Save"});
-        ctx.Button(ui, c, .{.id_extra = 200002, .variant = "ghost", .text = "Cancel"});
-        ctx.Badge(ui, c, .{.id_extra = 200003, .color = "green", .text = "new"});
+        ctx.Button(ui, c, .{.id_extra = 20000000000001, .variant = "primary", .text = "Save"});
+        ctx.Button(ui, c, .{.id_extra = 20000000000002, .variant = "ghost", .text = "Cancel"});
+        ctx.Badge(ui, c, .{.id_extra = 20000000000003, .color = "green", .text = "new"});
     }
 }

@@ -12,7 +12,7 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
             ui.text(c, "No actions", .{.id_extra = 2, .color_text = .{ .r = 107, .g = 114, .b = 128, .a = 255 }});
         }
         for (ctx.items, 0..) |item, idx_0| {
-            ui.text(c, item, .{.id_extra = 3 + idx_0, .font_size = 18, .font_weight = 700});
+            ui.text(c, item, .{.id_extra = 3 + idx_0 * 1000000, .font_size = 18, .font_weight = 700});
         }
     }
 }

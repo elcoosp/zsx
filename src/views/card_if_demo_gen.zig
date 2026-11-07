@@ -4,10 +4,10 @@
 
 inline fn render_Card_2(ui: anytype, c: anytype, ctx: anytype) void {
     if (ctx.show) {
-        ui.text(c, "visible", .{.id_extra = 600001});
+        ui.text(c, "visible", .{.id_extra = 60000000000001});
     }
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Card(ui, c, .{.id_extra = 600000}, render_Card_2);
+    ctx.Card(ui, c, .{.id_extra = 60000000000000}, render_Card_2);
 }

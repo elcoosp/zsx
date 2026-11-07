@@ -4,42 +4,42 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 1100000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
+        var b_0 = ui.column(c, .{.id_extra = 110000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
         defer b_0.end();
         {
-            var b_1 = ui.row(c, .{.id_extra = 1100001, .gap = 8});
+            var b_1 = ui.row(c, .{.id_extra = 110000000000001, .gap = 8});
             defer b_1.end();
-            ui.text(c, "Dashboard", .{.id_extra = 1100002, .font_size = 18, .font_weight = 700});
-            ctx.Badge(ui, c, .{.id_extra = 1100003, .color = ctx.user_role, .text = ctx.user_role});
+            ui.text(c, "Dashboard", .{.id_extra = 110000000000002, .font_size = 18, .font_weight = 700});
+            ctx.Badge(ui, c, .{.id_extra = 110000000000003, .color = ctx.user_role, .text = ctx.user_role});
         }
         if (ctx.error_message.len > 0) {
-            ctx.Badge(ui, c, .{.id_extra = 1100004, .color = "red", .text = ctx.error_message});
+            ctx.Badge(ui, c, .{.id_extra = 110000000000004, .color = "red", .text = ctx.error_message});
         }
-        ui.text(c, "Items", .{.id_extra = 1100005, .color_text = .{ .r = 107, .g = 114, .b = 128, .a = 255 }});
+        ui.text(c, "Items", .{.id_extra = 110000000000005, .color_text = .{ .r = 107, .g = 114, .b = 128, .a = 255 }});
         if (ctx.items.len == 0) {
-            ui.text(c, "No items", .{.id_extra = 1100006, .color_text = .{ .r = 107, .g = 114, .b = 128, .a = 255 }});
+            ui.text(c, "No items", .{.id_extra = 110000000000006, .color_text = .{ .r = 107, .g = 114, .b = 128, .a = 255 }});
         } else {
             for (ctx.items, 0..) |item, idx_0| {
                 {
-                    var b_7 = ui.row(c, .{.id_extra = 1100007 + idx_0, .gap = 8});
+                    var b_7 = ui.row(c, .{.id_extra = 110000000000007 + idx_0 * 1000000, .gap = 8});
                     defer b_7.end();
-                    ui.text(c, item.name, .{.id_extra = 1100008 + idx_0});
+                    ui.text(c, item.name, .{.id_extra = 110000000000008 + idx_0 * 1000000});
                     if (item.urgent) {
-                        ctx.Badge(ui, c, .{.id_extra = 1100009 + idx_0, .color = "red", .text = "urgent"});
+                        ctx.Badge(ui, c, .{.id_extra = 110000000000009 + idx_0 * 1000000, .color = "red", .text = "urgent"});
                     } else if (item.pending) {
-                        ctx.Badge(ui, c, .{.id_extra = 1100010 + idx_0, .color = "blue", .text = "pending"});
+                        ctx.Badge(ui, c, .{.id_extra = 110000000000010 + idx_0 * 1000000, .color = "blue", .text = "pending"});
                     } else {
-                        ctx.Badge(ui, c, .{.id_extra = 1100011 + idx_0, .color = "green", .text = "done"});
+                        ctx.Badge(ui, c, .{.id_extra = 110000000000011 + idx_0 * 1000000, .color = "green", .text = "done"});
                     }
                 }
             }
         }
         {
-            var b_12 = ui.row(c, .{.id_extra = 1100012, .gap = 8});
+            var b_12 = ui.row(c, .{.id_extra = 110000000000012, .gap = 8});
             defer b_12.end();
-            ctx.Button(ui, c, .{.id_extra = 1100013, .variant = "primary", .on_click = @field(@TypeOf(ctx.*), "refresh"), .text = "Refresh"});
+            ctx.Button(ui, c, .{.id_extra = 110000000000013, .variant = "primary", .on_click = @field(@TypeOf(ctx.*), "refresh"), .text = "Refresh"});
             if (ctx.refresh_count > 0) {
-                ctx.Badge(ui, c, .{.id_extra = 1100014, .color = "green", .text = ctx.count_str});
+                ctx.Badge(ui, c, .{.id_extra = 110000000000014, .color = "green", .text = ctx.count_str});
             }
         }
     }

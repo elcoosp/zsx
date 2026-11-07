@@ -3,5 +3,5 @@
 // do not edit by hand
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Button(ui, c, .{.id_extra = 400000, .on_click = @field(@TypeOf(ctx.*), "save"), .text = "Save"});
+    ctx.Button(ui, c, .{.id_extra = 40000000000000, .on_click = @field(@TypeOf(ctx.*), "save"), .text = "Save"});
 }

@@ -848,3 +848,11 @@ test "input_demo renders 2 text entries through nanoui stub" {
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 2), nanoui_adapter.StubNanoui.textEntriesRendered());
 }
+
+test {
+    _ = @import("codegen.zig");
+}
+
+test {
+    _ = @import("codegen.zig");
+}

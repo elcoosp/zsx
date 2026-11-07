@@ -148,86 +148,106 @@ fn isAttrNameChar(c: u8) bool {
 }
 
 test "parse simple element" {
-    const el = parse("<column></column>");
-    try std.testing.expectEqualStrings("column", el.tag);
-    try std.testing.expectEqual(@as(usize, 0), el.attributes.len);
-    try std.testing.expectEqual(@as(usize, 0), el.children.len);
+    comptime {
+        const el = parse("<column></column>");
+        if (!std.mem.eql(u8, el.tag, "column")) @compileError("tag should be column");
+        if (el.attributes.len != 0) @compileError("should have 0 attributes");
+        if (el.children.len != 0) @compileError("should have 0 children");
+    }
 }
 
 test "parse boolean attribute" {
-    const el = parse("<column flex></column>");
-    try std.testing.expectEqual(@as(usize, 1), el.attributes.len);
-    try std.testing.expectEqualStrings("flex", el.attributes[0].name);
-    const v = el.attributes[0].value;
-    switch (v) {
-        .boolean => {},
-        else => return error.TestUnexpectedResult,
+    comptime {
+        const el = parse("<column flex></column>");
+        if (el.attributes.len != 1) @compileError("should have 1 attribute");
+        if (!std.mem.eql(u8, el.attributes[0].name, "flex")) @compileError("attr name should be flex");
+        switch (el.attributes[0].value) {
+            .boolean => {},
+            else => @compileError("expected boolean attribute"),
+        }
     }
 }
 
 test "parse expression attribute" {
-    const el = parse("<div gap={8}></div>");
-    try std.testing.expectEqualStrings("gap", el.attributes[0].name);
-    const v = el.attributes[0].value;
-    switch (v) {
-        .expression => |expr| try std.testing.expectEqualStrings("8", expr),
-        else => return error.TestUnexpectedResult,
+    comptime {
+        const el = parse("<div gap={8}></div>");
+        if (!std.mem.eql(u8, el.attributes[0].name, "gap")) @compileError("attr name should be gap");
+        switch (el.attributes[0].value) {
+            .expression => |expr| {
+                if (!std.mem.eql(u8, expr, "8")) @compileError("expr should be 8");
+            },
+            else => @compileError("expected expression attribute"),
+        }
     }
 }
 
 test "parse string attribute" {
-    const el = parse("<div class=\"p-4\"></div>");
-    try std.testing.expectEqualStrings("class", el.attributes[0].name);
-    const v = el.attributes[0].value;
-    switch (v) {
-        .string => |s| try std.testing.expectEqualStrings("p-4", s),
-        else => return error.TestUnexpectedResult,
+    comptime {
+        const el = parse("<div class=\"p-4\"></div>");
+        if (!std.mem.eql(u8, el.attributes[0].name, "class")) @compileError("attr name should be class");
+        switch (el.attributes[0].value) {
+            .string => |s| {
+                if (!std.mem.eql(u8, s, "p-4")) @compileError("string should be p-4");
+            },
+            else => @compileError("expected string attribute"),
+        }
     }
 }
 
 test "parse self-closing" {
-    const el = parse("<input />");
-    try std.testing.expectEqualStrings("input", el.tag);
-    try std.testing.expectEqual(@as(usize, 0), el.children.len);
+    comptime {
+        const el = parse("<input />");
+        if (!std.mem.eql(u8, el.tag, "input")) @compileError("tag should be input");
+        if (el.children.len != 0) @compileError("should have 0 children");
+    }
 }
 
 test "parse text child" {
-    const el = parse("<label>Hello</label>");
-    try std.testing.expectEqual(@as(usize, 1), el.children.len);
-    const c = el.children[0];
-    switch (c) {
-        .text => |t| try std.testing.expectEqualStrings("Hello", t),
-        else => return error.TestUnexpectedResult,
+    comptime {
+        const el = parse("<label>Hello</label>");
+        if (el.children.len != 1) @compileError("should have 1 child");
+        switch (el.children[0]) {
+            .text => |t| {
+                if (!std.mem.eql(u8, t, "Hello")) @compileError("text should be Hello");
+            },
+            else => @compileError("expected text child"),
+        }
     }
 }
 
 test "parse nested element" {
-    const el = parse("<column><label>Hi</label></column>");
-    try std.testing.expectEqual(@as(usize, 1), el.children.len);
-    const c = el.children[0];
-    switch (c) {
-        .element => |child_el| {
-            try std.testing.expectEqualStrings("label", child_el.tag);
-            try std.testing.expectEqual(@as(usize, 1), child_el.children.len);
-        },
-        else => return error.TestUnexpectedResult,
+    comptime {
+        const el = parse("<column><label>Hi</label></column>");
+        if (el.children.len != 1) @compileError("should have 1 child");
+        switch (el.children[0]) {
+            .element => |child_el| {
+                if (!std.mem.eql(u8, child_el.tag, "label")) @compileError("child tag should be label");
+                if (child_el.children.len != 1) @compileError("child should have 1 child");
+            },
+            else => @compileError("expected element child"),
+        }
     }
 }
 
 test "parse expression child" {
-    const el = parse("<label>{greeting}</label>");
-    try std.testing.expectEqual(@as(usize, 1), el.children.len);
-    const c = el.children[0];
-    switch (c) {
-        .expression => |expr| try std.testing.expectEqualStrings("greeting", expr),
-        else => return error.TestUnexpectedResult,
+    comptime {
+        const el = parse("<label>{greeting}</label>");
+        if (el.children.len != 1) @compileError("should have 1 child");
+        switch (el.children[0]) {
+            .expression => |expr| {
+                if (!std.mem.eql(u8, expr, "greeting")) @compileError("expr should be greeting");
+            },
+            else => @compileError("expected expression child"),
+        }
     }
 }
 
 test "parse multiple attributes" {
-    const el = parse("<button class=\"bg-blue-500\" on_click={save} disabled></button>");
-    try std.testing.expectEqual(@as(usize, 3), el.attributes.len);
-    try std.testing.expectEqualStrings("class", el.attributes[0].name);
-    try std.testing.expectEqualStrings("on_click", el.attributes[1].name);
-    try std.testing.expectEqualStrings("disabled", el.attributes[2].name);
+    comptime {
+        const el = parse("<button class=\"bg-blue-500\" on_click={save} disabled></button>");
+        if (el.attributes.len != 3) @compileError("should have 3 attributes");
+        if (!std.mem.eql(u8, el.attributes[0].name, "class")) @compileError("attr 0 should be class");
+        if (!std.mem.eql(u8, el.attributes[1].name, "on_click")) @compileError("attr 1 should be on_click");
+        if (!std.mem.eql(u8, el.attributes[2].name, "disabled")) @compileError("attr 2 should be disabled");
+    }
 }

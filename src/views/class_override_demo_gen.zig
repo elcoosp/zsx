@@ -4,9 +4,9 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 900000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
+        var b_0 = ui.column(c, .{.id_extra = 90000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }});
         defer b_0.end();
-        ctx.Button(ui, c, .{.id_extra = 900001, .text = "Default"});
-        ctx.Button(ui, c, .{.id_extra = 900002, .class = "p-4", .text = "Overridden"});
+        ctx.Button(ui, c, .{.id_extra = 90000000000001, .text = "Default"});
+        ctx.Button(ui, c, .{.id_extra = 90000000000002, .class = "p-4", .text = "Overridden"});
     }
 }
