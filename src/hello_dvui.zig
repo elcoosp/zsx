@@ -34,7 +34,7 @@ const A = adapter.Adapter(dvui);
 
 pub const dvui_app: dvui.App = .{
     .config = .{ .options = .{
-        .size = .{ .w = 700, .h = 900 },
+        .size = .{ .w = 700, .h = 1000 },
         .min_size = .{ .w = 350, .h = 600 },
         .org = "com.example.zsx",
         .app = "zsx-playground",
