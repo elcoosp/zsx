@@ -290,6 +290,44 @@ fn frame() !dvui.App.Result {
 
 To add a view: create `src/views/your_view.zsx`, add its path to `zsx_files` in `build.zig`, run `zig build test`. `_gen.zig` never appears in source tree — the module is available as `@import("your_view")`. See [docs/components.md](docs/components.md) for component details and per-backend limitations.
 
+## Formatting
+
+`scripts/zsx-fmt.py` reformats the markup inside `zsx!{ }` blocks. Zig code outside blocks is preserved byte-for-byte. Idempotent.
+
+```bash
+python3 scripts/zsx-fmt.py            # dry-run: list files that need formatting
+python3 scripts/zsx-fmt.py --write    # apply
+python3 scripts/zsx-fmt.py --check    # exit 1 if anything needs formatting (CI-friendly)
+```
+
+What it normalizes:
+- 4-space indentation per nesting level inside `zsx!{ }` blocks
+- Bodies of `{if}`, `{for}`, `{switch}` get +1 indent
+- `{/if}`, `{/for}`, `{/switch}`, `{:else}`, `{:case}`, `</>` adjust accordingly
+- Trailing whitespace stripped
+- Leading/trailing blank lines in blocks removed
+
+## Validation
+
+`scripts/zsx-check.py` validates `.zsx` structure (balanced tags, control-flow nesting) in **<100ms**, without compiling. Catches errors `zig build test` takes ~30s to surface.
+
+```bash
+python3 scripts/zsx-check.py             # validate all .zsx in repo
+python3 scripts/zsx-check.py file.zsx    # validate one file
+```
+
+Detects:
+- `<column>...</row>` — mismatched close
+- `<column>` never closed
+- `{if}` without `{/if}`
+- `{:case}` outside `{switch}`
+- `{:else}` outside `{if}` / `{switch}`
+- Unknown CSS classes (warning)
+
+Exit codes: 0 clean, 1 structural errors found.
+
+Both scripts run on every push via CI.
+
 ## Contributing
 
 Working on ZSX itself — the emitter, adapters, or components — follows the same flow as any Zig project:
@@ -346,12 +384,3 @@ zig build snapshot                    # generate playground screenshot (macOS)
 - [CHANGELOG.md](CHANGELOG.md) — what shipped in each release.
 - [docs/zig-skill.md](docs/zig-skill.md) — Zig 0.17 compiler errors and fixes discovered while building this.
 - [`examples/consumer/`](examples/consumer/) — minimal fetchable project.
-
-### zsx-check
-
-`scripts/zsx-check.py` validates `.zsx` structure (balanced tags, control-flow nesting) in <100ms, without compiling.
-
-```bash
-python3 scripts/zsx-check.py             # validate all .zsx in repo
-python3 scripts/zsx-check.py file.zsx    # validate one file
-```
