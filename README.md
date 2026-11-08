@@ -4,7 +4,7 @@
     <strong>A JSX-like view syntax for Zig that compiles to native GUI code at build time</strong><br/>
     Zsx turns <code>.zsx</code> files into plain Zig at build time — no runtime parser, no dynamic dispatch,
     no interpreter in your release binary. It is for Zig developers building apps with dvui, nanoui,
-    or HTML who want declarative views without giving up their toolkit. The 15-component playground in
+    or HTML who want declarative views without giving up their toolkit. The 20-component playground in
     <code>src/views/playground.zsx</code> renders from one source through all three adapters.
   </p>
   <p>
@@ -12,7 +12,7 @@
     <a href="https://github.com/elcoosp/zsx/blob/main/build.zig.zon"><img src="https://img.shields.io/badge/zig-0.17.0%2B-F7A41D?style=flat-square&logo=zig&logoColor=white" alt="Zig version"/></a>
     <a href="https://github.com/elcoosp/zsx/tree/main/src/adapters"><img src="https://img.shields.io/badge/backends-dvui%20%7C%20nanoui%20%7C%20html-lightgrey?style=flat-square" alt="Supported backends"/></a>
     <a href="https://github.com/elcoosp/zsx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/></a>
-    <a href="https://github.com/elcoosp/zsx/releases/tag/v0.1.0"><img src="https://img.shields.io/badge/distribution-fetchable-orange?style=flat-square" alt="Fetchable"/></a>
+    <a href="https://github.com/elcoosp/zsx/releases/tag/v0.2.0"><img src="https://img.shields.io/badge/distribution-fetchable-orange?style=flat-square" alt="Fetchable"/></a>
   </p>
 </div>
 
@@ -43,7 +43,7 @@ zig build build-app-nanoui    # macOS only; renders through Metal
 ./zig-out/bin/zsx-hello-nanoui
 ```
 
-Both binaries render the same 15-component playground defined once in `src/views/playground.zsx`.
+Both binaries render the same 20-component playground defined once in `src/views/playground.zsx`.
 
 **See the fetchable path end-to-end:**
 
@@ -84,7 +84,7 @@ Add `zsx` to `build.zig.zon`:
 ```zig
 .dependencies = .{
     .zsx = .{
-        .url = "git+https://github.com/elcoosp/zsx#v0.1.0",
+        .url = "git+https://github.com/elcoosp/zsx#v0.2.0",
         .hash = "zsx-0.1.0-AAAA...",
     },
 },
@@ -158,7 +158,7 @@ See [`examples/consumer/`](examples/consumer/) for a working end-to-end project.
 
 - **Styling resolved at build time.** A Tailwind-named class subset (`bg-blue-500`, `p-4`, `gap-2`, `font-bold`, `rounded-lg`, ...) maps to concrete colors, spacing, and font values during code generation. An unrecognized class is a build error (`error.ZsxUnknownClass`), not a silently unstyled widget.
 
-- **15 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives.
+- **20 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives.
 
 - **Named slots.** `<Card><Slot name="header">...</Slot><Slot name="body">...</Slot></Card>` compiles to an `.header` / `.body` fn field in the props struct. `Card` and `Section` iterate slots and call whichever are present.
 
@@ -328,7 +328,7 @@ zig build snapshot                    # generate playground screenshot (macOS)
 ## Status
 
 > [!NOTE]
-> Version **0.1.0**, tagged and released. The single runtime pipeline is the only pipeline; the earlier comptime pipeline was removed in `v0.1.0`. The `.zsx` grammar and the adapter primitive surface may still change between 0.x releases.
+> Version **0.2.0**, tagged and released. The single runtime pipeline is the only pipeline; the earlier comptime pipeline was removed in `v0.2.0`. The `.zsx` grammar and the adapter primitive surface may still change between 0.x releases.
 >
 > Targets Zig **0.17.0+**, tested on 0.17.1 across ubuntu-latest and macos-latest. Both real binaries build on macOS every push; Nanoui is macOS-only (Metal), DVUI needs SDL3 and freetype.
 >
@@ -340,7 +340,7 @@ zig build snapshot                    # generate playground screenshot (macOS)
 
 ## Learn more
 
-- [docs/components.md](docs/components.md) — API reference for all 15 components, with examples and per-backend notes.
+- [docs/components.md](docs/components.md) — API reference for all 20 components, with examples and per-backend notes.
 - [TEMPLATE.md](TEMPLATE.md) — fetchable-vs-fork decision tree.
 - [ROADMAP.md](ROADMAP.md) — shipped items, rejected designs, remaining work.
 - [CHANGELOG.md](CHANGELOG.md) — what shipped in each release.
