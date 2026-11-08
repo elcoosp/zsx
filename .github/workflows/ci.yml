@@ -28,6 +28,10 @@ jobs:
           key: ${{ runner.os }}-zig-${{ hashFiles('build.zig.zon') }}
       - name: Run tests
         run: zig build test
+      - name: Validate .zsx structure
+        run: python3 scripts/zsx-check.py
+      - name: Check .zsx formatting
+        run: python3 scripts/zsx-fmt.py --check
       - name: Consumer example
         run: cd examples/consumer && zig build run
       - name: Consumer example test
