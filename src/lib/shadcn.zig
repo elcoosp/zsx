@@ -439,6 +439,14 @@ pub inline fn Pagination(self: anytype, ui: anytype, c: anytype, props: anytype)
     });
     if (prev_clicked and selected.* > 0) selected.* -= 1;
 
+    // Comptime string literals for page labels. A stack buffer from
+    // bufPrint goes out of scope at end of each loop iteration, and Nanoui
+    // holds the label pointer for rendering after the fn returns — the
+    // stack slot gets overwritten and renders as "?" (invalid UTF-8).
+    const page_labels = [_][]const u8{
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+        "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+    };
     var i: usize = 0;
     while (i < total) : (i += 1) {
         const is_active = i == selected.*;
@@ -450,8 +458,7 @@ pub inline fn Pagination(self: anytype, ui: anytype, c: anytype, props: anytype)
             Color{ .r = 255, .g = 255, .b = 255 }
         else
             Color{ .r = 17, .g = 24, .b = 39 };
-        var buf: [8]u8 = undefined;
-        const label = std.fmt.bufPrint(&buf, "{d}", .{i + 1}) catch continue;
+        const label: []const u8 = if (i < page_labels.len) page_labels[i] else "?";
         const clicked = ui.button(c, label, .{
             .color_fill = fill,
             .color_text = text_col,
