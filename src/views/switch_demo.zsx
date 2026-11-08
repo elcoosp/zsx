@@ -1,0 +1,17 @@
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8}>
+          {switch ctx.status}
+            {case "ok"}
+              <label>All good</label>
+            {endcase}
+            {case "warn"}
+              <label>Warning</label>
+            {endcase}
+            {else}
+              <label>Error</label>
+            {endcase}
+          {endswitch}
+        </column>
+    }
+}
