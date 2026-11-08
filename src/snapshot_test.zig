@@ -8,7 +8,7 @@ const shadcn = @import("shadcn");
 // nanoui's internal log.err calls as test failures.
 pub const std_options: std.Options = .{ .logFn = logFn };
 
-fn logFn(comptime level: std.log.Level, comptime scope: @Type(.enum_literal), comptime fmt: []const u8, args: anytype) void {
+fn logFn(comptime level: std.log.Level, comptime scope: @TypeOf(.enum_literal), comptime fmt: []const u8, args: anytype) void {
     _ = level;
     _ = scope;
     std.debug.print(fmt ++ "\n", args);
@@ -63,12 +63,4 @@ test "snapshot: nanoui playground" {
     try t.screenshot(full);
     std.debug.print("wrote {s}\n", .{full});
 
-    // Downscale for README embedding (best-effort; sips is macOS-only)
-    var child = std.process.Child.init(
-        &.{ "sips", "-Z", "900", full, "--out", "docs/screenshots/playground-nanoui-small.png" },
-        std.heap.page_allocator,
-    );
-    child.stdout_behavior = .Ignore;
-    child.stderr_behavior = .Ignore;
-    _ = child.spawnAndWait() catch {};
 }

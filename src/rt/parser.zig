@@ -30,7 +30,7 @@ const Parser = struct {
     }
     fn fail(self: *const Parser, msg: []const u8) error{ZsxParseError} {
         const l = self.loc();
-        std.log.err("{s}:{d}:{d}: zsx: {s}", .{ self.src_name, l.line, l.col, msg });
+        std.debug.print("{s}:{d}:{d}: zsx: {s}\n", .{ self.src_name, l.line, l.col, msg });
         return error.ZsxParseError;
     }
 
@@ -153,3 +153,106 @@ fn isTagChar(c: u8) bool {
     return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c == '_' or c == '-' or c == '.';
 }
 fn isAttrNameChar(c: u8) bool { return isTagChar(c) or c == ':' or c == '.'; }
+
+test "rt parser: simple element" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<column></column>", "test.zsx");
+    try std.testing.expectEqualStrings("column", el.tag);
+    try std.testing.expectEqual(@as(usize, 0), el.attributes.len);
+    try std.testing.expectEqual(@as(usize, 0), el.children.len);
+}
+
+test "rt parser: boolean attribute" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<column flex></column>", "test.zsx");
+    try std.testing.expectEqual(@as(usize, 1), el.attributes.len);
+    try std.testing.expectEqualStrings("flex", el.attributes[0].name);
+    try std.testing.expect(el.attributes[0].value == .boolean);
+}
+
+test "rt parser: expression attribute" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<div gap={8}></div>", "test.zsx");
+    try std.testing.expectEqualStrings("gap", el.attributes[0].name);
+    switch (el.attributes[0].value) {
+        .expression => |e| try std.testing.expectEqualStrings("8", e),
+        else => return error.TestUnexpected,
+    }
+}
+
+test "rt parser: string attribute" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<div class=\"p-4\"></div>", "test.zsx");
+    switch (el.attributes[0].value) {
+        .string => |s| try std.testing.expectEqualStrings("p-4", s),
+        else => return error.TestUnexpected,
+    }
+}
+
+test "rt parser: self-closing" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<input />", "test.zsx");
+    try std.testing.expectEqualStrings("input", el.tag);
+    try std.testing.expectEqual(@as(usize, 0), el.children.len);
+}
+
+test "rt parser: text child" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<label>Hello</label>", "test.zsx");
+    switch (el.children[0]) {
+        .text => |t| try std.testing.expectEqualStrings("Hello", t),
+        else => return error.TestUnexpected,
+    }
+}
+
+test "rt parser: expression child" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<label>{greeting}</label>", "test.zsx");
+    switch (el.children[0]) {
+        .expression => |e| try std.testing.expectEqualStrings("greeting", e),
+        else => return error.TestUnexpected,
+    }
+}
+
+test "rt parser: nested element" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<column><label>Hi</label></column>", "test.zsx");
+    switch (el.children[0]) {
+        .element => |child| try std.testing.expectEqualStrings("label", child.tag),
+        else => return error.TestUnexpected,
+    }
+}
+
+test "rt parser: path-qualified tag" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<shadcn.Button>Save</shadcn.Button>", "test.zsx");
+    try std.testing.expectEqualStrings("shadcn.Button", el.tag);
+}
+
+test "rt parser: multiple attributes" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const el = try parse(arena.allocator(), "<button class=\"bg-blue-500\" on_click={save} disabled></button>", "test.zsx");
+    try std.testing.expectEqual(@as(usize, 3), el.attributes.len);
+}
+
+test "rt parser: mismatched closing tag fails" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    try std.testing.expectError(error.ZsxParseError, parse(arena.allocator(), "<column></row>", "test.zsx"));
+}
+
+test "rt parser: trailing input fails" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    try std.testing.expectError(error.ZsxParseError, parse(arena.allocator(), "<column></column>extra", "test.zsx"));
+}

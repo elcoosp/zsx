@@ -41,8 +41,15 @@ pub fn build(b: *std.Build) void {
     const test_mod = b.createModule(.{ .root_source_file = b.path("src/root.zig"), .target = target, .optimize = optimize });
     test_mod.addImport("shadcn", shadcn_mod);
     for (views) |v| test_mod.addImport(v.name, v.module);
+    const rt_parser_test = b.addTest(.{ .root_module = b.createModule(.{
+        .root_source_file = b.path("src/rt/parser.zig"),
+        .target = target,
+        .optimize = optimize,
+    }) });
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = test_mod })).step);
+    test_step.dependOn(&b.addRunArtifact(rt_parser_test).step);
 
     const hello_mod = b.createModule(.{ .root_source_file = b.path("src/hello.zig"), .target = target, .optimize = optimize });
     hello_mod.addImport("shadcn", shadcn_mod);
