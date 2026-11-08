@@ -52,7 +52,7 @@ Each adapter also ships a `StubX` that records primitive calls for fast tests.
 
 ### Component library
 
-15 components, all pure compositions of adapter primitives: `Button`, `Badge`, `Card`, `Heading`, `Caption`, `Link`, `Section`, `Input`, `Textarea`, `Checkbox`, `Progress`, `Divider`, `Slider`, `Switch`, `Skeleton`.
+20 components, all pure compositions of adapter primitives: `Button`, `Badge`, `Card`, `Heading`, `Caption`, `Link`, `Section`, `Input`, `Textarea`, `Checkbox`, `Progress`, `Divider`, `Slider`, `Switch`, `Skeleton`.
 
 ### Named slots
 
