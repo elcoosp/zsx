@@ -92,3 +92,43 @@ Remove the `**/*_gen.zig` key from `.vscode/settings.json` `files.exclude` (or `
 The `.zsx` file type is registered as Zig syntax highlight in both VS Code (`.vscode/settings.json`) and Zed (`.zed/settings.json`). Markup inside `zsx!{ ... }` won't get special highlighting — it's Zig highlight applied to Zig-shaped content — but the surrounding Zig gets correct colors.
 
 For full `.zsx` highlighting (markup-aware), a proper tree-sitter grammar would need to ship. That's a separate, larger project (`ROADMAP.md` "Next C" territory, if anyone wants it).
+
+## For external consumers (fetchable path)
+
+When zsx is used as a dependency in another project, the comptime pipeline above doesn't apply. `zsx.addViews` runs `zsx-gen` at build time, and generated `.zig` files land in `.zig-cache`, not `src/views/`.
+
+**What the consumer's `src/` contains:**
+
+```
+consumer/src/
+├── main.zig         ← @import("home"), @import("about")
+├── views/
+│   ├── home.zsx     ← you write this
+│   └── about.zsx    ← you write this
+├── shadcn.zig       ← your component library
+└── stub.zig         ← your adapter
+```
+
+No `_gen.zig`. No generated files in source tree. `.zig-cache/` regenerates on every build.
+
+**One rule that changes from in-repo usage:**
+
+Relative imports (`@import("../lib/shadcn.zig")`) break — generated files are in `.zig-cache/<hash>/<name>.zig`, and `../` from there doesn't reach your source tree.
+
+Use named imports:
+
+```zsx
+const shadcn = @import("shadcn");   // ✓
+```
+
+Wire them via `zsx.addViews(b, .{ .imports = &.{ .{ .name = "shadcn", .module = shadcn_mod } } })`.
+
+**Fresh clone of a consumer project:**
+
+1. `git clone my-app`
+2. First `zig build` triggers `zsx-gen` — every `.zig` in `.zig-cache` appears
+3. Subsequent builds are cached
+
+No manual regeneration step. The build step IS the editor's data source.
+
+**See also:** [`examples/consumer/`](../examples/consumer/) for a working demo.
