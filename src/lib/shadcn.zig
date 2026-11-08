@@ -272,3 +272,202 @@ inline fn callComponentFns(self: anytype, ui: anytype, c: anytype, comptime prop
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────
+// v0.2.0 additions: Label, Alert, Breadcrumb, Tabs, Pagination
+// ─────────────────────────────────────────────────────────────
+
+/// Form label — bold small-caps text styled for field headings.
+pub inline fn Label(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    var opts = TextOptions{
+        .color_text = Color{ .r = 17, .g = 24, .b = 39 },
+        .font_size = 14,
+        .font_weight = 600,
+        .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+    };
+    if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
+    ui.text(c, props.text, opts);
+}
+
+/// Alert block — colored border + title + text. Variants: info, success, warning, error.
+pub inline fn Alert(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    const variant: []const u8 = if (@hasField(@TypeOf(props), "variant")) props.variant else "info";
+    const border: Color = if (std.mem.eql(u8, variant, "error"))
+        Color{ .r = 239, .g = 68, .b = 68 }
+    else if (std.mem.eql(u8, variant, "warning"))
+        Color{ .r = 234, .g = 179, .b = 8 }
+    else if (std.mem.eql(u8, variant, "success"))
+        Color{ .r = 34, .g = 197, .b = 94 }
+    else
+        Color{ .r = 59, .g = 130, .b = 246 };
+
+    const alert_id: ?usize = if (@hasField(@TypeOf(props), "id_extra")) @as(?usize, props.id_extra) else null;
+    var box = ui.column(c, .{
+        .padding = .{ .x = 12, .y = 8, .w = 12, .h = 8 },
+        .radius = 6,
+        .id_extra = alert_id,
+    });
+    defer box.end();
+
+    if (@hasField(@TypeOf(props), "title")) {
+        ui.text(c, props.title, .{
+            .color_text = border,
+            .font_size = 14,
+            .font_weight = 700,
+            .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+            .id_extra = if (alert_id) |id| id + 1 else null,
+        });
+    }
+    if (@hasField(@TypeOf(props), "text") and props.text.len > 0) {
+        ui.text(c, props.text, .{
+            .color_text = Color{ .r = 17, .g = 24, .b = 39 },
+            .font_size = 14,
+            .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+            .id_extra = if (alert_id) |id| id + 2 else null,
+        });
+    }
+}
+
+/// Breadcrumb navigation — "Home / Users / Alice" rendered as path.
+/// Takes a slash-separated string in `path`.
+pub inline fn Breadcrumb(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    const path: []const u8 = props.path;
+    const base_id: usize = if (@hasField(@TypeOf(props), "id_extra")) props.id_extra else 0;
+
+    var b = ui.row(c, .{
+        .gap = 4,
+        .id_extra = base_id,
+    });
+    defer b.end();
+
+    var it = std.mem.splitScalar(u8, path, '/');
+    var first = true;
+    var seg_idx: usize = 0;
+    while (it.next()) |seg| : (seg_idx += 1) {
+        const trimmed = std.mem.trim(u8, seg, " \t");
+        if (trimmed.len == 0) continue;
+        if (!first) {
+            ui.text(c, " / ", .{
+                .color_text = Color{ .r = 107, .g = 114, .b = 128 },
+                .font_size = 14,
+                .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+            });
+        }
+        first = false;
+        ui.text(c, trimmed, .{
+            .color_text = Color{ .r = 59, .g = 130, .b = 246 },
+            .font_size = 14,
+            .padding = .{ .x = 0, .y = 0, .w = 0, .h = 0 },
+        });
+    }
+}
+
+/// Tabs — labels is a comma-separated string, selected is a `*usize`.
+/// Content is the `.content` fn field (emitted by the generator when the tag has children).
+pub inline fn Tabs(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    const labels_str: []const u8 = props.labels;
+    const selected: *usize = props.selected;
+    const base_id: usize = if (@hasField(@TypeOf(props), "id_extra")) props.id_extra else 0;
+
+    var b = ui.row(c, .{
+        .gap = 2,
+        .id_extra = base_id,
+    });
+    defer b.end();
+
+    var it = std.mem.splitScalar(u8, labels_str, ',');
+    var idx: usize = 0;
+    while (it.next()) |raw| : (idx += 1) {
+        const label = std.mem.trim(u8, raw, " \t");
+        if (label.len == 0) continue;
+        const is_active = idx == selected.*;
+        const fill: Color = if (is_active)
+            Color{ .r = 59, .g = 130, .b = 246 }
+        else
+            Color{ .r = 243, .g = 244, .b = 246 };
+        const text_col: Color = if (is_active)
+            Color{ .r = 255, .g = 255, .b = 255 }
+        else
+            Color{ .r = 17, .g = 24, .b = 39 };
+        const clicked = ui.button(c, label, .{
+            .color_fill = fill,
+            .color_text = text_col,
+            .padding = .{ .x = 12, .y = 6, .w = 12, .h = 6 },
+            .radius = 4,
+            .id_extra = base_id + 1000 + idx,
+        });
+        if (clicked) selected.* = idx;
+    }
+
+    // Render content if the generator passed a .content fn field.
+    const SelfT = @TypeOf(self);
+    const is_double_ptr = @typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer;
+    inline for ([_][]const u8{ "content" }) |slot_name| {
+        if (comptime @hasField(@TypeOf(props), slot_name)) {
+            const f = @field(props, slot_name);
+            if (comptime is_double_ptr) {
+                f(ui, c, self.*);
+            } else {
+                f(ui, c, self);
+            }
+        }
+    }
+}
+
+/// Pagination — "‹ 1 2 3 4 5 ›". total is count, selected is a `*usize` (0-indexed).
+pub inline fn Pagination(self: anytype, ui: anytype, c: anytype, props: anytype) void {
+    _ = self;
+    const total: usize = props.total;
+    const selected: *usize = props.selected;
+    const base_id: usize = if (@hasField(@TypeOf(props), "id_extra")) props.id_extra else 0;
+
+    var b = ui.row(c, .{
+        .gap = 4,
+        .id_extra = base_id,
+    });
+    defer b.end();
+
+    const prev_clicked = ui.button(c, "<", .{
+        .color_fill = Color{ .r = 243, .g = 244, .b = 246 },
+        .color_text = Color{ .r = 17, .g = 24, .b = 39 },
+        .padding = .{ .x = 8, .y = 4, .w = 8, .h = 4 },
+        .radius = 4,
+        .id_extra = base_id + 2000,
+    });
+    if (prev_clicked and selected.* > 0) selected.* -= 1;
+
+    var i: usize = 0;
+    while (i < total) : (i += 1) {
+        const is_active = i == selected.*;
+        const fill: Color = if (is_active)
+            Color{ .r = 59, .g = 130, .b = 246 }
+        else
+            Color{ .r = 243, .g = 244, .b = 246 };
+        const text_col: Color = if (is_active)
+            Color{ .r = 255, .g = 255, .b = 255 }
+        else
+            Color{ .r = 17, .g = 24, .b = 39 };
+        var buf: [8]u8 = undefined;
+        const label = std.fmt.bufPrint(&buf, "{d}", .{i + 1}) catch continue;
+        const clicked = ui.button(c, label, .{
+            .color_fill = fill,
+            .color_text = text_col,
+            .padding = .{ .x = 8, .y = 4, .w = 8, .h = 4 },
+            .radius = 4,
+            .id_extra = base_id + 2100 + i,
+        });
+        if (clicked) selected.* = i;
+    }
+
+    const next_clicked = ui.button(c, ">", .{
+        .color_fill = Color{ .r = 243, .g = 244, .b = 246 },
+        .color_text = Color{ .r = 17, .g = 24, .b = 39 },
+        .padding = .{ .x = 8, .y = 4, .w = 8, .h = 4 },
+        .radius = 4,
+        .id_extra = base_id + 2200,
+    });
+    if (next_clicked and selected.* + 1 < total) selected.* += 1;
+}

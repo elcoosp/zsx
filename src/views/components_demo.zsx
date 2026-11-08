@@ -1,0 +1,26 @@
+const shadcn = @import("shadcn");
+
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={16} class="gap-4">
+          <shadcn.Heading size={1}>More components</shadcn.Heading>
+          <shadcn.Caption>Label, Alert, Breadcrumb, Tabs, Pagination</shadcn.Caption>
+
+          <shadcn.Label>Full name</shadcn.Label>
+          <shadcn.Input buffer={&ctx.name} placeholder="Your name" />
+
+          <shadcn.Alert variant="info" title="Info">This is an informational alert.</shadcn.Alert>
+          <shadcn.Alert variant="success" title="Success">Operation completed successfully.</shadcn.Alert>
+          <shadcn.Alert variant="warning" title="Warning">Check your input.</shadcn.Alert>
+          <shadcn.Alert variant="error" title="Error">Something went wrong.</shadcn.Alert>
+
+          <shadcn.Breadcrumb path="Home / Users / Alice" />
+
+          <shadcn.Tabs labels="Overview,Details,Settings" selected={&ctx.active_tab}>
+            <shadcn.Caption>Active tab content goes here.</shadcn.Caption>
+          </shadcn.Tabs>
+
+          <shadcn.Pagination total={5} selected={&ctx.active_page} />
+        </column>
+    }
+}

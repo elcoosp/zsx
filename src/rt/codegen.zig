@@ -5,7 +5,7 @@ const style = @import("style.zig");
 fn writeFmt(a: std.mem.Allocator, out: *std.array_list.Managed(u8), comptime fmt: []const u8, args: anytype) !void {
     try out.appendSlice(try std.fmt.allocPrint(a, fmt, args));
 }
-fn usesParam(code: []const u8, name: []const u8) bool {
+fn usesParam(code: []const u8, comptime name: []const u8) bool {
     if (std.mem.indexOf(u8, code, name ++ ".") != null) return true;
     if (std.mem.indexOf(u8, code, name ++ ",") != null) return true;
     if (std.mem.indexOf(u8, code, name ++ ")") != null) return true;
@@ -529,13 +529,9 @@ fn fixDiscardPrefixes(a: std.mem.Allocator, preamble: []const u8) ![]const u8 {
                 }
             }
 
-            const uses_ui = std.mem.indexOf(u8, body_iter, "ui.") != null or
-                std.mem.indexOf(u8, body_iter, "ui,") != null or
-                std.mem.indexOf(u8, body_iter, "ui)") != null;
-            const uses_c = std.mem.indexOf(u8, body_iter, "(c,") != null or
-                std.mem.indexOf(u8, body_iter, ", c,") != null or
-                std.mem.indexOf(u8, body_iter, "(c)") != null;
-            const uses_ctx = std.mem.indexOf(u8, body_iter, "ctx.") != null;
+            const uses_ui = usesParam(body_iter, "ui");
+            const uses_c = usesParam(body_iter, "c");
+            const uses_ctx = usesParam(body_iter, "ctx");
 
             if (!uses_ui) try out.appendSlice("\n    _ = ui;");
             if (!uses_c) try out.appendSlice("\n    _ = c;");

@@ -27,6 +27,7 @@ pub fn build(b: *std.Build) void {
         "src/views/path_demo.zsx",
         "src/views/switch_demo.zsx",
         "src/views/slots_demo.zsx",
+        "src/views/components_demo.zsx",
     };
 
     const shadcn_mod = b.createModule(.{ .root_source_file = b.path("src/lib/shadcn.zig"), .target = target, .optimize = optimize });
