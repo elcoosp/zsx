@@ -1,6 +1,6 @@
 # ZSX Components
 
-Ten components ship with ZSX. Each is a Zig inline function callable from
+Fifteen components ship with ZSX. Each is a Zig inline function callable from
 generated code as `<Component>...</Component>` in `.zsx` markup.
 
 All components are pure compositions of framework primitives — no
@@ -162,6 +162,59 @@ Card variant with a heading title. Uses an inline heading, not the
   <Input buffer={&ctx.name} placeholder="Name" />
 </Section>
 ```
+
+## Feedback and loading
+
+### Progress
+
+Horizontal progress bar. Takes a `value` in `[0.0, 1.0]`.
+
+```zsx
+<Progress value={ctx.completion} />
+```
+
+Calls `ui.progress(c, value, .{})`. Adapters clamp out-of-range values.
+
+### Divider
+
+Thin horizontal rule, useful between `Section`s.
+
+```zsx
+<Divider />
+```
+
+Calls `ui.divider(c, .{})`. Takes no attributes.
+
+### Skeleton
+
+Loading placeholder rectangle. Accepts `width`, `height`, `radius` (numeric).
+
+```zsx
+<Skeleton width={320} height={24} />
+<Skeleton width={220} height={16} radius={4} />
+```
+
+Backed by `ui.skeleton(c, opts)`; each adapter decides the visual (flat grey or shimmer).
+
+### Switch
+
+Boolean toggle with label, visually distinct from `Checkbox`. Binds a `*bool`.
+
+```zsx
+<Switch checked={&ctx.notifications} text="Notifications" />
+```
+
+Maps to `ui.toggle(c, label, value, opts)`. On DVUI this is a checkbox with a toggle appearance; on Nanoui a native toggle widget.
+
+### Slider
+
+Continuous numeric input. Binds a `*f32` in `[0.0, 1.0]`.
+
+```zsx
+<Slider value={&ctx.volume} />
+```
+
+Calls `ui.slider(c, value, .{})`. The pointed-to `f32` is the current fraction; the backend updates it in place as the user drags.
 
 ## Path-qualified tags
 
