@@ -944,3 +944,7 @@ test "html adapter: demo view renders button and labels" {
 test {
     _ = @import("adapters/html.zig");
 }
+
+test {
+    _ = @import("rt/preprocess.zig");
+}

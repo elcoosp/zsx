@@ -40,6 +40,17 @@ pub fn build(b: *std.Build) void {
         const out_path = comptime codegen.deriveOutputName(path);
         zsx_update.addBytesToSource(generated, out_path);
     }
+    const gen_exe = b.addExecutable(.{
+        .name = "zsx-gen",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/gen.zig"),
+            .target = b.graph.host,
+            .optimize = .ReleaseFast,
+        }),
+    });
+    const gen_step = b.step("zsx-gen", "Build the zsx generator binary (used by external consumers)");
+    gen_step.dependOn(&b.addInstallArtifact(gen_exe, .{}).step);
+
     const zsx_step = b.step("zsx", "Regenerate _gen.zig files from .zsx sources");
     zsx_step.dependOn(&zsx_update.step);
 
