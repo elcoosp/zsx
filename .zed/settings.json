@@ -1,0 +1,11 @@
+{
+  "file_scan_exclusions": [
+    "**/*_gen.zig",
+    "**/.zig-cache",
+    "**/zig-out",
+    "**/zig-pkg"
+  ],
+  "file_types": {
+    "Zig": ["zsx"]
+  }
+}

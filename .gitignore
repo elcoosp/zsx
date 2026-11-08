@@ -14,3 +14,35 @@ zig-pkg/
 Untracking src/views/*_gen.zig from git index (files stay on disk for now)
 Adding src/views/*_gen.zig to .gitignore
 src/views/*_gen.zig
+
+# Editor configs: ignore everything except what we ship
+.vscode/*
+!.vscode/settings.json
+.zed/*
+!.zed/settings.json
+.idea/*
+!.idea/.gitignore
+
+# Editor configs: ignore everything except what we ship
+.vscode/*
+!.vscode/settings.json
+.zed/*
+!.zed/settings.json
+.idea/*
+!.idea/.gitignore
+
+# Editor configs: ignore everything except what we ship
+.vscode/*
+!.vscode/settings.json
+.zed/*
+!.zed/settings.json
+.idea/*
+!.idea/.gitignore
+
+# Editor configs: ignore everything except what we ship
+.vscode/*
+!.vscode/settings.json
+.zed/*
+!.zed/settings.json
+.idea/*
+!.idea/.gitignore

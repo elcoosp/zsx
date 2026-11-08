@@ -79,6 +79,14 @@ Closest mainstream analog: **Svelte** or **Vue SFC** (`.svelte` / `.vue` → `.j
 - **13 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, and `Slider` as pure compositions of adapter primitives. A view exposes them by declaring them on its context struct — no codegen changes needed.
 - **Errors surface in your markup, not at runtime.** Unknown tags, bare text children, unclosed control flow, and non-comptime classes all fail compilation with targeted messages such as `zsx: bare text child; wrap in <label>`.
 
+## Developer workflow
+
+`_gen.zig` files are generated, gitignored, and hidden from the editor by the configs shipped in this repo (`.vscode/`, `.zed/`, `.idea/`). See [docs/DX.md](docs/DX.md) for:
+- What's on disk vs. what you see in the editor
+- Fresh-clone behavior (ZLS regenerates automatically on first save)
+- How to commit generated files if your team prefers that
+- How to see generated files in the editor anyway
+
 ## How it works
 
 Each `.zsx` file listed in `build.zig` is embedded and parsed at comptime into a neutral element tree (`src/ast.zig`). The emitter in `build.zig` walks that tree and appends a generated `view(ui, c, ctx)` function to `src/views/<name>_gen.zig`. At runtime, your app calls that function once per frame with an adapter and your context struct; the adapter translates the primitive calls into dvui or nanoui widget code. Component tags (`<Button ...>`) compile to calls back into your context, so components are resolved by Zig's own comptime dispatch.
