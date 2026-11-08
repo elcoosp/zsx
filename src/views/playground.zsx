@@ -2,7 +2,7 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={16} class="gap-2">
             <Heading size={1}>ZSX Playground</Heading>
-            <Caption>Fifteen components, one source, two frameworks.</Caption>
+            <Caption>Twenty components, one source, two frameworks.</Caption>
 
             <row class="gap-2">
                 <Badge color="blue">new</Badge>
