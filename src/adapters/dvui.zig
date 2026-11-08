@@ -54,11 +54,13 @@ pub fn Adapter(comptime dvui: type) type {
         pub fn progress(c: anytype, value: f32, opts: anytype) void {
             _ = c;
             if (@hasDecl(dvui, "progress")) {
-                // Progress_InitOptions.percent is required with no default.
-                // Construct with the field directly; DVUI expects 0-100.
                 const clamped = if (value < 0.0) 0.0 else if (value > 1.0) 1.0 else value;
                 const init = dvui.Progress_InitOptions{ .percent = clamped * 100.0 };
-                dvui.progress(@src(), init, optionsFrom(dvui, opts));
+                var o = optionsFrom(dvui, opts);
+                if (o.min_size_content == null) {
+                    o.min_size_content = .{ .w = 240, .h = 8 };
+                }
+                dvui.progress(@src(), init, o);
             }
         }
 
@@ -78,9 +80,12 @@ pub fn Adapter(comptime dvui: type) type {
         pub fn slider(c: anytype, value: *f32, opts: anytype) bool {
             _ = c;
             if (@hasDecl(dvui, "slider")) {
-                // SliderInitOptions.fraction is a required *f32
                 const init = dvui.SliderInitOptions{ .fraction = value };
-                return dvui.slider(@src(), init, optionsFrom(dvui, opts));
+                var o = optionsFrom(dvui, opts);
+                if (o.min_size_content == null) {
+                    o.min_size_content = .{ .w = 240, .h = 24 };
+                }
+                return dvui.slider(@src(), init, o);
             }
             return false;
         }
@@ -95,15 +100,16 @@ pub fn Adapter(comptime dvui: type) type {
 
         pub fn skeleton(c: anytype, opts: anytype) void {
             _ = c;
-            // optionsFrom handles radius->corners translation and any field
-            // that differs between stub and real backend. Do not access
-            // framework Options fields directly after this returns.
             var o = optionsFrom(dvui, opts);
             if (@hasField(@TypeOf(opts), "width") and @hasField(@TypeOf(opts), "height")) {
                 o.min_size_content = .{ .w = opts.width, .h = opts.height };
+            } else if (o.min_size_content == null) {
+                o.min_size_content = .{ .w = 200, .h = 16 };
             }
             if (o.color_fill == null) {
-                o.color_fill = .{ .color = .{ .r = 229, .g = 231, .b = 235, .a = 255 } };
+                // Darker than theme background (250) so the block is visibly
+                // distinct, not just an alpha blob on white.
+                o.color_fill = .{ .color = .{ .r = 200, .g = 205, .b = 212, .a = 255 } };
             }
             var b = dvui.box(@src(), .{ .dir = .horizontal }, o);
             defer b.deinit();
