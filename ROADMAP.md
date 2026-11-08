@@ -106,6 +106,14 @@ Tailwind-named class subset (`bg-*`, `text-*`, `p-*`, `px-*`, `py-*`,
 `gap-*`, `rounded-*`, `font-*`) resolved at comptime to `Style` struct
 fields. Unknown class → compile error.
 
+### Source-span errors
+
+Every parser `@compileError` cites the `.zsx` file, line, and column:
+`src/views/dashboard.zsx:14:8: mismatched closing tag: <column> closed by </row>`.
+Line/col are computed from byte offsets by `formatSpan` in `src/parser.zig`;
+the `.zsx` path is threaded from `build.zig` → `preprocess` → `parse`.
+Compile errors now point at the user's source, not the generated `_gen.zig`.
+
 ### Tooling and distribution
 
 - `scripts/new-project.sh`: fork workflow (rename package, regenerate
@@ -180,14 +188,6 @@ expected effort:
 
 Adding any one of these does not touch the parser, AST, preprocessor,
 emitter, or component library. That is the point of the adapter model.
-
-### C — Source-span error reporting
-
-`@compileError` in `preprocess.zig` currently cites generated lines in
-`_gen.zig`, not the `.zsx` source line. A span map (byte offset in source
-→ line/col) threaded through `parseElement` would give every error a
-`file:line:col` prefix pointing at the user's `.zsx`. This is the largest
-remaining DX gap.
 
 ### D — ZLS / editor integration
 
