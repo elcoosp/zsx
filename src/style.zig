@@ -188,30 +188,30 @@ pub fn firstText(comptime el: ast.Element) ?[]const u8 {
     return null;
 }
 
-pub fn styleFrom(comptime el: ast.Element) Style {
+pub fn styleFromWith(comptime el: ast.Element, comptime resolver: type) Style {
     var style = Style{};
     inline for (el.attributes) |attr| {
         if (comptime std.mem.eql(u8, attr.name, "class")) {
             switch (attr.value) {
-                .string => |s| mergeStyle(&style, comptime parseClasses(s)),
+                .string => |s| mergeStyle(&style, comptime resolver.parseClasses(s)),
                 else => @compileError("class attribute must be a string"),
             }
         } else if (comptime std.mem.eql(u8, attr.name, "padding")) {
             switch (attr.value) {
                 .expression => |e| {
-                    const v = comptime parseNumeric(e);
+                    const v = comptime resolver.parseNumeric(e);
                     style.padding = .{ .x = v, .y = v, .w = v, .h = v };
                 },
                 else => @compileError("padding must be an expression"),
             }
         } else if (comptime std.mem.eql(u8, attr.name, "width")) {
             switch (attr.value) {
-                .expression => |e| style.width = comptime parseNumeric(e),
+                .expression => |e| style.width = comptime resolver.parseNumeric(e),
                 else => @compileError("width must be an expression"),
             }
         } else if (comptime std.mem.eql(u8, attr.name, "height")) {
             switch (attr.value) {
-                .expression => |e| style.height = comptime parseNumeric(e),
+                .expression => |e| style.height = comptime resolver.parseNumeric(e),
                 else => @compileError("height must be an expression"),
             }
         } else if (comptime std.mem.eql(u8, attr.name, "flex")) {
@@ -222,6 +222,50 @@ pub fn styleFrom(comptime el: ast.Element) Style {
         }
     }
     return style;
+}
+
+pub fn styleFrom(comptime el: ast.Element) Style {
+    return styleFromWith(el, DefaultResolver());
+}
+
+pub fn DefaultResolver() type {
+    return struct {
+        pub const parseClasses = @import("style.zig").parseClasses;
+        pub const parseNumeric = @import("style.zig").parseNumeric;
+    };
+}
+
+test "styleFromWith delegates to DefaultResolver" {
+    const el = comptime ast.Element{
+        .tag = "div",
+        .attributes = &[_]ast.Attribute{
+            .{ .name = "padding", .value = .{ .expression = "16" } },
+        },
+        .children = &[_]ast.Child{},
+    };
+    const s = comptime styleFromWith(el, DefaultResolver());
+    try std.testing.expectEqual(@as(f32, 16), s.padding.?.x);
+}
+
+test "custom resolver overrides parseNumeric" {
+    const Custom = struct {
+        pub fn parseClasses(comptime class: []const u8) Style {
+            return @import("style.zig").parseClasses(class);
+        }
+        pub fn parseNumeric(comptime s: []const u8) f32 {
+            _ = s;
+            return 99;
+        }
+    };
+    const el = comptime ast.Element{
+        .tag = "div",
+        .attributes = &[_]ast.Attribute{
+            .{ .name = "padding", .value = .{ .expression = "16" } },
+        },
+        .children = &[_]ast.Child{},
+    };
+    const s = comptime styleFromWith(el, Custom);
+    try std.testing.expectEqual(@as(f32, 99), s.padding.?.x);
 }
 
 fn mergeStyle(dst: *Style, src: Style) void {
