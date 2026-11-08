@@ -1,5 +1,5 @@
 const std = @import("std");
-const demo = @import("views/demo_gen.zig");
+const demo = @import("demo");
 const nanoui_adapter = @import("adapters/nanoui.zig");
 
 pub fn main() !void {

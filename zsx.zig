@@ -7,25 +7,17 @@
 //!     pub fn build(b: *std.Build) void {
 //!         const target = b.standardTargetOptions(.{});
 //!         const optimize = b.standardOptimizeOption(.{});
-//!
 //!         const app = b.createModule(.{
 //!             .root_source_file = b.path("src/main.zig"),
 //!             .target = target, .optimize = optimize,
 //!         });
-//!
 //!         const views = zsx.addViews(b, .{
 //!             .paths = &.{ "src/views/dashboard.zsx" },
 //!             .target = target, .optimize = optimize,
 //!         });
 //!         for (views) |v| app.addImport(v.name, v.module);
-//!
-//!         const exe = b.addExecutable(.{ .name = "app", .root_module = app });
-//!         b.installArtifact(exe);
+//!         b.installArtifact(b.addExecutable(.{ .name = "app", .root_module = app }));
 //!     }
-//!
-//! In `.zsx` files, use named imports (`@import("shadcn")`), not relative
-//! paths — generated files live in `.zig-cache` and cannot resolve `../`
-//! relative to your source tree. Wire the named imports via `.imports`.
 
 const std = @import("std");
 
@@ -37,20 +29,26 @@ pub const Options = struct {
     paths: []const []const u8,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    /// Extra named imports available to every generated view module.
     imports: []const NamedImport = &.{},
 };
+
+pub fn addViewsLocal(b: *std.Build, opts: Options) []View {
+    return addViewsFrom(b, opts, b.path("src/gen.zig"));
+}
 
 pub fn addViews(b: *std.Build, opts: Options) []View {
     const zsx_dep = b.dependency("zsx", .{
         .target = b.graph.host,
         .optimize = .ReleaseFast,
     });
+    return addViewsFrom(b, opts, zsx_dep.path("src/gen.zig"));
+}
 
+fn addViewsFrom(b: *std.Build, opts: Options, gen_path: std.Build.LazyPath) []View {
     const gen_exe = b.addExecutable(.{
         .name = "zsx-gen",
         .root_module = b.createModule(.{
-            .root_source_file = zsx_dep.path("src/gen.zig"),
+            .root_source_file = gen_path,
             .target = b.graph.host,
             .optimize = .ReleaseFast,
         }),

@@ -1,5 +1,6 @@
 const std = @import("std");
-const style_mod = @import("../style.zig");
+const style_mod = @import("style.zig");
+pub const style = style_mod;
 
 pub const Color = style_mod.Color;
 pub const Padding = style_mod.Spacing;
@@ -57,16 +58,16 @@ fn variantStyle(name: []const u8) VariantStyle {
 
 pub inline fn Button(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     const variant: []const u8 = if (@hasField(@TypeOf(props), "variant")) props.variant else "primary";
-    const style = variantStyle(variant);
+    const btn_style = variantStyle(variant);
     var opts = ButtonOptions{
-        .color_fill = style.fill,
-        .color_text = style.text,
+        .color_fill = btn_style.fill,
+        .color_text = btn_style.text,
         .padding = .{ .x = 16, .y = 8, .w = 16, .h = 8 },
         .radius = 8,
     };
     if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
     if (@hasField(@TypeOf(props), "class")) {
-        const overrides = comptime style_mod.parseClasses(props.class);
+        const overrides = comptime (style_mod.parseClasses(props.class) catch @compileError("zsx: unknown class"));
         if (overrides.padding) |p| opts.padding = p;
         if (overrides.radius) |r| opts.radius = r;
         if (overrides.background) |bg| opts.color_fill = bg;
@@ -126,7 +127,7 @@ pub inline fn Heading(self: anytype, ui: anytype, c: anytype, props: anytype) vo
     if (@hasField(@TypeOf(props), "color")) opts.color_text = props.color;
     if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
     if (@hasField(@TypeOf(props), "class")) {
-        const overrides = comptime style_mod.parseClasses(props.class);
+        const overrides = comptime (style_mod.parseClasses(props.class) catch @compileError("zsx: unknown class"));
         if (overrides.foreground) |fg| opts.color_text = fg;
         if (overrides.font_size) |fs| opts.font_size = fs;
         if (overrides.font_weight) |fw| opts.font_weight = switch (fw) {

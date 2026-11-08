@@ -1,12 +1,10 @@
 const std = @import("std");
 
 
-pub const ast = @import("ast.zig");
-pub const parser = @import("parser.zig");
-pub const style = @import("style.zig");
+pub const style = @import("shadcn").style;
 
 test {
-    _ = @import("style.zig");
+    _ = @import("shadcn").style;
 }
 
 test {
@@ -18,60 +16,60 @@ test {
 }
 
 test {
-    _ = @import("views/demo_gen.zig");
+    _ = @import("demo");
 }
 
 test {
-    _ = @import("views/component_demo_gen.zig");
+    _ = @import("component_demo");
 }
 
 test {
-    _ = @import("views/shadcn_demo_gen.zig");
+    _ = @import("shadcn_demo");
 }
 
 test {
-    _ = @import("views/shadcn_lib_demo_gen.zig");
+    _ = @import("shadcn_lib_demo");
 }
 
 test {
-    _ = @import("views/onclick_demo_gen.zig");
+    _ = @import("onclick_demo");
 }
 
 test {
-    _ = @import("views/struct_loop_demo_gen.zig");
+    _ = @import("struct_loop_demo");
 }
 
 test {
-    _ = @import("views/card_if_demo_gen.zig");
+    _ = @import("card_if_demo");
 }
 
 test {
-    _ = @import("views/else_if_demo_gen.zig");
+    _ = @import("else_if_demo");
 }
 
 test {
-    _ = @import("views/fragment_demo_gen.zig");
+    _ = @import("fragment_demo");
 }
 
 test {
-    _ = @import("views/class_override_demo_gen.zig");
+    _ = @import("class_override_demo");
 }
 
 test {
-    _ = @import("views/nested_card_demo_gen.zig");
+    _ = @import("nested_card_demo");
 }
 
 test {
-    _ = @import("views/dashboard_gen.zig");
+    _ = @import("dashboard");
 }
 
 test {
-    _ = @import("views/input_demo_gen.zig");
+    _ = @import("input_demo");
 }
 
 
 test {
-    _ = @import("views/extended_styles_demo_gen.zig");
+    _ = @import("extended_styles_demo");
 }
 
 const User = struct { name: []const u8 };
@@ -111,7 +109,7 @@ const CtxWithComponents = struct {
 
 test "dvui: if-true with items" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/demo_gen.zig");
+    const demo = @import("demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -128,7 +126,7 @@ test "dvui: if-true with items" {
 
 test "dvui: if-false with no items" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/demo_gen.zig");
+    const demo = @import("demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -145,7 +143,7 @@ test "dvui: if-false with no items" {
 
 test "nanoui: if-true with items, font_weight flows as bold" {
     const nanoui_adapter = @import("adapters/nanoui.zig");
-    const demo = @import("views/demo_gen.zig");
+    const demo = @import("demo");
     const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
     var c: nanoui_adapter.StubNanoui.Context = .{};
     nanoui_adapter.StubNanoui.resetCounters();
@@ -164,7 +162,7 @@ test "nanoui: if-true with items, font_weight flows as bold" {
 
 test "nanoui: if-false with no items, font_weight stays regular" {
     const nanoui_adapter = @import("adapters/nanoui.zig");
-    const demo = @import("views/demo_gen.zig");
+    const demo = @import("demo");
     const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
     var c: nanoui_adapter.StubNanoui.Context = .{};
     nanoui_adapter.StubNanoui.resetCounters();
@@ -183,7 +181,7 @@ test "nanoui: if-false with no items, font_weight stays regular" {
 
 test "component: Card content renders two labels via comptime content fn" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/component_demo_gen.zig");
+    const demo = @import("component_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -196,7 +194,7 @@ test "component: Card content renders two labels via comptime content fn" {
 
 test "component: Button leaf fires without content fn" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/component_demo_gen.zig");
+    const demo = @import("component_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -208,7 +206,7 @@ test "component: Button leaf fires without content fn" {
 
 test "component: content fn receives ctx pointer, can read its fields" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/component_demo_gen.zig");
+    const demo = @import("component_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
 
@@ -266,7 +264,7 @@ const ShadcnCtx = struct {
 
 test "shadcn: Button variant primary renders via ctx.Button" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/shadcn_demo_gen.zig");
+    const demo = @import("shadcn_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -278,7 +276,7 @@ test "shadcn: Button variant primary renders via ctx.Button" {
 
 test "shadcn: Button variant ghost fires separately" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/shadcn_demo_gen.zig");
+    const demo = @import("shadcn_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     var ctx = ShadcnCtx{};
@@ -289,7 +287,7 @@ test "shadcn: Button variant ghost fires separately" {
 
 test "shadcn: Badge color green passes through" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/shadcn_demo_gen.zig");
+    const demo = @import("shadcn_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     var ctx = ShadcnCtx{};
@@ -368,7 +366,7 @@ const ShadcnLibCtx = struct {
 
 test "shadcn-lib: Button variants dispatch correctly" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/shadcn_lib_demo_gen.zig");
+    const demo = @import("shadcn_lib_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -383,7 +381,7 @@ test "shadcn-lib: Button variants dispatch correctly" {
 
 test "shadcn-lib: Badge colors dispatch correctly" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/shadcn_lib_demo_gen.zig");
+    const demo = @import("shadcn_lib_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -414,7 +412,7 @@ const OnClickCtx = struct {
 
 test "onclick: queued click fires on_click via props" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/onclick_demo_gen.zig");
+    const demo = @import("onclick_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -428,7 +426,7 @@ test "onclick: queued click fires on_click via props" {
 
 test "onclick: no queued click means no save" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/onclick_demo_gen.zig");
+    const demo = @import("onclick_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -439,8 +437,8 @@ test "onclick: no queued click means no save" {
 }
 
 const ShadcnLibraryCtx = struct {
-    pub const Button = @import("lib/shadcn.zig").Button;
-    pub const Badge = @import("lib/shadcn.zig").Badge;
+    pub const Button = @import("shadcn").Button;
+    pub const Badge = @import("shadcn").Badge;
 
     save_called: bool = false,
     button_count: usize = 0,
@@ -453,7 +451,7 @@ const ShadcnLibraryCtx = struct {
 
 test "shadcn-lib-file: Button variant dispatches via library" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/shadcn_lib_demo_gen.zig");
+    const demo = @import("shadcn_lib_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -465,7 +463,7 @@ test "shadcn-lib-file: Button variant dispatches via library" {
 
 test "shadcn-lib-file: Button on_click via library fires handler" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/onclick_demo_gen.zig");
+    const demo = @import("onclick_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -478,7 +476,7 @@ test "shadcn-lib-file: Button on_click via library fires handler" {
 
 test "shadcn-lib-file: Button on_click not fired without queue" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/onclick_demo_gen.zig");
+    const demo = @import("onclick_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -503,13 +501,13 @@ const StructLoopCtx = struct {
             self.badge_colors[self.badge_count] = color;
             self.badge_count += 1;
         }
-        @import("lib/shadcn.zig").Badge(self, ui, c, props);
+        @import("shadcn").Badge(self, ui, c, props);
     }
 };
 
 test "struct-loop: iterates user records with field access" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/struct_loop_demo_gen.zig");
+    const demo = @import("struct_loop_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -529,13 +527,13 @@ test "struct-loop: iterates user records with field access" {
 }
 
 const CardIfCtx = struct {
-    pub const Card = @import("lib/shadcn.zig").Card;
+    pub const Card = @import("shadcn").Card;
     show: bool = true,
 };
 
 test "card-if: show=true renders one label" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/card_if_demo_gen.zig");
+    const demo = @import("card_if_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -546,7 +544,7 @@ test "card-if: show=true renders one label" {
 
 test "card-if: show=false renders zero labels" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/card_if_demo_gen.zig");
+    const demo = @import("card_if_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -562,7 +560,7 @@ const ElseIfCtx = struct {
 
 test "else-if: a=true renders only A (1 label)" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/else_if_demo_gen.zig");
+    const demo = @import("else_if_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -573,7 +571,7 @@ test "else-if: a=true renders only A (1 label)" {
 
 test "else-if: a=false b=true renders B branch (2 labels)" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/else_if_demo_gen.zig");
+    const demo = @import("else_if_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -584,7 +582,7 @@ test "else-if: a=false b=true renders B branch (2 labels)" {
 
 test "else-if: a=false b=false renders else branch (3 labels)" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/else_if_demo_gen.zig");
+    const demo = @import("else_if_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -599,7 +597,7 @@ const FragmentCtx = struct {
 
 test "fragment: verbose=false renders only always label" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/fragment_demo_gen.zig");
+    const demo = @import("fragment_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -610,7 +608,7 @@ test "fragment: verbose=false renders only always label" {
 
 test "fragment: verbose=true renders two+always labels from fragment" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/fragment_demo_gen.zig");
+    const demo = @import("fragment_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -620,7 +618,7 @@ test "fragment: verbose=true renders two+always labels from fragment" {
 }
 
 const ClassOverrideCtx = struct {
-    pub const Button = @import("lib/shadcn.zig").Button;
+    pub const Button = @import("shadcn").Button;
     first_padding: ?@import("adapters/dvui.zig").StubDvui.Rect = null,
     second_padding: ?@import("adapters/dvui.zig").StubDvui.Rect = null,
     count: usize = 0,
@@ -628,7 +626,7 @@ const ClassOverrideCtx = struct {
 
 test "class-override: default Button gets 16x8 padding, p-4 override gets 16x16" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/class_override_demo_gen.zig");
+    const demo = @import("class_override_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -645,12 +643,12 @@ test "class-override: default Button gets 16x8 padding, p-4 override gets 16x16"
 }
 
 const NestedCardCtx = struct {
-    pub const Card = @import("lib/shadcn.zig").Card;
+    pub const Card = @import("shadcn").Card;
 };
 
 test "nested-card: three cards produce distinct render fns and three labels" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/nested_card_demo_gen.zig");
+    const demo = @import("nested_card_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -666,8 +664,8 @@ const DashboardTask = struct {
 };
 
 const DashboardCtx = struct {
-    pub const Badge = @import("lib/shadcn.zig").Badge;
-    pub const Button = @import("lib/shadcn.zig").Button;
+    pub const Badge = @import("shadcn").Badge;
+    pub const Button = @import("shadcn").Button;
 
     user_role: []const u8 = "guest",
     error_message: []const u8 = "",
@@ -684,7 +682,7 @@ const DashboardCtx = struct {
 
 test "dashboard: empty state renders header, no-items, refresh (4 labels, 1 button)" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/dashboard_gen.zig");
+    const demo = @import("dashboard");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -697,7 +695,7 @@ test "dashboard: empty state renders header, no-items, refresh (4 labels, 1 butt
 
 test "dashboard: three items mixed status renders 9 labels (3x label+badge)" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/dashboard_gen.zig");
+    const demo = @import("dashboard");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -716,7 +714,7 @@ test "dashboard: three items mixed status renders 9 labels (3x label+badge)" {
 
 test "dashboard: error + one pending renders 6 labels (with error badge)" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/dashboard_gen.zig");
+    const demo = @import("dashboard");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -734,7 +732,7 @@ test "dashboard: error + one pending renders 6 labels (with error badge)" {
 
 test "dashboard: refresh button increments refresh_count" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/dashboard_gen.zig");
+    const demo = @import("dashboard");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -746,7 +744,7 @@ test "dashboard: refresh button increments refresh_count" {
 
 test "dashboard: refresh_count>0 renders count badge (5 labels)" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/dashboard_gen.zig");
+    const demo = @import("dashboard");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -757,15 +755,15 @@ test "dashboard: refresh_count>0 renders count badge (5 labels)" {
 }
 
 test "extended tokens resolve" {
-    const style_mod = @import("style.zig");
-    const s = comptime style_mod.parseClasses("bg-slate-100 text-slate-900 p-6 rounded-full text-3xl gap-4");
+    const style_mod = @import("shadcn").style;
+    const s = comptime (try style_mod.parseClasses("bg-slate-100 text-slate-900 p-6 rounded-full text-3xl gap-4"));
     try std.testing.expectEqual(@as(u8, 241), s.background.?.r);
     try std.testing.expectEqual(@as(u8, 15), s.foreground.?.r);
     try std.testing.expectEqual(@as(f32, 24), s.padding.?.x);
     try std.testing.expectEqual(@as(f32, 9999), s.radius.?);
     try std.testing.expectEqual(@as(f32, 30), s.font_size.?);
     try std.testing.expectEqual(@as(f32, 16), s.gap.?);
-    const s2 = comptime style_mod.parseClasses("bg-transparent text-xs px-3 py-3 gap-1");
+    const s2 = comptime (try style_mod.parseClasses("bg-transparent text-xs px-3 py-3 gap-1"));
     try std.testing.expectEqual(@as(u8, 0), s2.background.?.a);
     try std.testing.expectEqual(@as(f32, 12), s2.font_size.?);
     try std.testing.expectEqual(@as(f32, 12), s2.padding.?.x);
@@ -774,7 +772,7 @@ test "extended tokens resolve" {
 
 test "extended_styles_demo renders 2 buttons 5 labels" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/extended_styles_demo_gen.zig");
+    const demo = @import("extended_styles_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     const NullCtx = struct {};
@@ -787,14 +785,14 @@ test "extended_styles_demo renders 2 buttons 5 labels" {
 
 test "component_lib_demo renders dvui" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/component_lib_demo_gen.zig");
+    const demo = @import("component_lib_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     const EmptyCtx = struct {
-        pub const Heading = @import("lib/shadcn.zig").Heading;
-        pub const Caption = @import("lib/shadcn.zig").Caption;
-        pub const Link = @import("lib/shadcn.zig").Link;
-        pub const Section = @import("lib/shadcn.zig").Section;
+        pub const Heading = @import("shadcn").Heading;
+        pub const Caption = @import("shadcn").Caption;
+        pub const Link = @import("shadcn").Link;
+        pub const Section = @import("shadcn").Section;
     };
     var ctx: EmptyCtx = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -805,14 +803,14 @@ test "component_lib_demo renders dvui" {
 
 test "component_lib_demo renders nanoui" {
     const nanoui_adapter = @import("adapters/nanoui.zig");
-    const demo = @import("views/component_lib_demo_gen.zig");
+    const demo = @import("component_lib_demo");
     const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
     var c: nanoui_adapter.StubNanoui.Context = .{};
     const EmptyCtx = struct {
-        pub const Heading = @import("lib/shadcn.zig").Heading;
-        pub const Caption = @import("lib/shadcn.zig").Caption;
-        pub const Link = @import("lib/shadcn.zig").Link;
-        pub const Section = @import("lib/shadcn.zig").Section;
+        pub const Heading = @import("shadcn").Heading;
+        pub const Caption = @import("shadcn").Caption;
+        pub const Link = @import("shadcn").Link;
+        pub const Section = @import("shadcn").Section;
     };
     var ctx: EmptyCtx = .{};
     nanoui_adapter.StubNanoui.resetCounters();
@@ -822,9 +820,9 @@ test "component_lib_demo renders nanoui" {
 }
 
 const InputCtx = struct {
-    pub const Heading = @import("lib/shadcn.zig").Heading;
-    pub const Caption = @import("lib/shadcn.zig").Caption;
-    pub const Input = @import("lib/shadcn.zig").Input;
+    pub const Heading = @import("shadcn").Heading;
+    pub const Caption = @import("shadcn").Caption;
+    pub const Input = @import("shadcn").Input;
 
     name: [64]u8 = @splat(0),
     email: [128]u8 = @splat(0),
@@ -832,7 +830,7 @@ const InputCtx = struct {
 
 test "input_demo renders 2 text entries through dvui stub" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/input_demo_gen.zig");
+    const demo = @import("input_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -844,21 +842,13 @@ test "input_demo renders 2 text entries through dvui stub" {
 
 test "input_demo renders 2 text entries through nanoui stub" {
     const nanoui_adapter = @import("adapters/nanoui.zig");
-    const demo = @import("views/input_demo_gen.zig");
+    const demo = @import("input_demo");
     const A = nanoui_adapter.Adapter(nanoui_adapter.StubNanoui);
     var c: nanoui_adapter.StubNanoui.Context = .{};
     nanoui_adapter.StubNanoui.resetCounters();
     var ctx = InputCtx{};
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 2), nanoui_adapter.StubNanoui.textEntriesRendered());
-}
-
-test {
-    _ = @import("codegen.zig");
-}
-
-test {
-    _ = @import("preprocess.zig");
 }
 
 const PathDemoCtx = struct {
@@ -870,7 +860,7 @@ const PathDemoCtx = struct {
 
 test "path_demo: shadcn path tags render buttons and badges" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/path_demo_gen.zig");
+    const demo = @import("path_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -886,7 +876,7 @@ const SwitchDemoCtx = struct {
 
 test "switch_demo: status=ok" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/switch_demo_gen.zig");
+    const demo = @import("switch_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -897,7 +887,7 @@ test "switch_demo: status=ok" {
 
 test "switch_demo: status=warn" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/switch_demo_gen.zig");
+    const demo = @import("switch_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -908,7 +898,7 @@ test "switch_demo: status=warn" {
 
 test "switch_demo: status=other" {
     const dvui_adapter = @import("adapters/dvui.zig");
-    const demo = @import("views/switch_demo_gen.zig");
+    const demo = @import("switch_demo");
     const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
     var c: dvui_adapter.StubDvui.Context = .{};
     dvui_adapter.StubDvui.resetCounters();
@@ -929,7 +919,7 @@ const HtmlDemoCtx = struct {
 
 test "html adapter: demo view renders button and labels" {
     const html = @import("adapters/html.zig");
-    const demo = @import("views/demo_gen.zig");
+    const demo = @import("demo");
     const A = html.Adapter(html.TestWriter);
     var w: html.TestWriter = .{};
     var ctx = HtmlDemoCtx{};

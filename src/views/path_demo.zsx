@@ -1,4 +1,4 @@
-const shadcn = @import("../lib/shadcn.zig");
+const shadcn = @import("shadcn");
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{

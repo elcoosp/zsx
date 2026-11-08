@@ -16,21 +16,20 @@ Three invariants:
 
 ### Parser and AST
 
-- **Comptime** (`src/parser.zig`): recursive-descent parser running at comptime. Handles paired/self-closing tags, boolean/value/string attributes, text and `{expr}` children, fragments, path-qualified tag names.
-- **Runtime** (`src/rt/parser.zig`): same grammar, `std.mem.Allocator`-based, used by the fetchable build helper.
-- `src/ast.zig`: `Element`, `Attribute`, `AttributeValue`, `Child` union.
+- `src/rt/parser.zig`: recursive-descent parser.
+- `Element`, `Attribute`, `AttributeValue`, `Child` live in `src/rt/parser.zig`.
+
 
 ### Emitter
 
-- **Comptime** (`src/codegen.zig`): called from `build.zig`, writes `src/views/*_gen.zig` (gitignored). Strided IDs, escape handling, preamble hoisting, conditional discards.
-- **Runtime** (`src/rt/codegen.zig`): same emit logic, allocator-based, produces `.zig` into `.zig-cache` at build time. Used by `zsx.addViews`.
-- Both emit the same `pub fn view(ui, c, ctx)` shape.
+- `src/rt/codegen.zig`: walks the AST, emits plain Zig.
+- `src/gen.zig` (`zsx-gen`): CLI.
+
 
 ### Preprocessor
 
-- **Comptime** (`src/preprocess.zig`): scans Zig source for `zsx!{ ... }` blocks, hoists preambles, shifts indentation, prepends `const std = @import("std");` when needed.
-- **Runtime** (`src/rt/preprocess.zig`): same logic, allocator-based.
-- Both skip strings, chars, line comments, block comments.
+- `src/rt/preprocess.zig`: scans for `zsx!{ }` blocks.
+
 
 ### Build-time generator
 
@@ -79,9 +78,6 @@ Every parser error cites `.zsx` file, line, column: `src/views/dashboard.zsx:14:
 - **Consumer imports by name** — `@import("home")`, not `@import("views/home_gen.zig")`.
 - **Verified end-to-end** — [`examples/consumer/`](examples/consumer/) runs with zero fork, zero `_gen.zig` in source tree.
 
-### Comptime pipeline preserved
-
-The in-repo pipeline (`build.zig` → `src/codegen.zig` → `src/views/*_gen.zig`) remains. 132 tests pass. It's the default for the repo itself and for anyone who forked before the runtime pipeline existed.
 
 ### Zig 0.17 documentation
 
