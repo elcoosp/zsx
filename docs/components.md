@@ -1,6 +1,6 @@
 # ZSX Components
 
-Fifteen components ship with ZSX. Each is a Zig inline function callable from
+Twenty components ship with ZSX. Each is a Zig inline function callable from
 generated code as `<Component>...</Component>` in `.zsx` markup.
 
 All components are pure compositions of framework primitives — no
@@ -215,6 +215,53 @@ Continuous numeric input. Binds a `*f32` in `[0.0, 1.0]`.
 ```
 
 Calls `ui.slider(c, value, .{})`. The pointed-to `f32` is the current fraction; the backend updates it in place as the user drags.
+
+
+### Label
+
+Form field label. Bold small text, sized for input headings.
+
+```zsx
+<Label>Full name</Label>
+<Input buffer={&ctx.name} />
+```
+
+### Alert
+
+Colored block with title + text. Variants: `info`, `success`, `warning`, `error`. Title color matches the variant; body text is default.
+
+```zsx
+<Alert variant="info" title="Info">Your session has been saved.</Alert>
+<Alert variant="error" title="Error">Something went wrong.</Alert>
+```
+
+### Breadcrumb
+
+Slash-separated path rendered as clickable-looking blue segments with grey `/` separators. Takes a `path` string.
+
+```zsx
+<Breadcrumb path="Home / Users / Alice" />
+```
+
+### Tabs
+
+Tab bar with active tab highlighted in blue. Content rendered below. `labels` is comma-separated. `selected` is a `*usize` — clicking a tab mutates it.
+
+```zsx
+<Tabs labels="Overview,Details,Settings" selected={&ctx.active_tab}>
+  <Caption>Tab content here</Caption>
+</Tabs>
+```
+
+Note: `Tabs` takes runtime `props` (not `comptime props`) because `selected` is a runtime pointer.
+
+### Pagination
+
+Prev/next arrows around numbered pages. `total` is the page count. `selected` is a `*usize` (0-indexed) — clicking a page or arrow mutates it.
+
+```zsx
+<Pagination total={5} selected={&ctx.active_page} />
+```
 
 ## Path-qualified tags
 
