@@ -1,0 +1,12 @@
+const shadcn = @import("shadcn");
+
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8} class="gap-2">
+          <shadcn.Heading size={1}>Home</shadcn.Heading>
+          <shadcn.Heading size={2}>Welcome to the demo</shadcn.Heading>
+          <shadcn.Button variant="primary">Get Started</shadcn.Button>
+          <shadcn.Button variant="secondary">Learn More</shadcn.Button>
+        </column>
+    }
+}
