@@ -3,13 +3,13 @@ const shadcn = @import("shadcn");
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8}>
-          <shadcn.Heading size={1}>About</shadcn.Heading>
-          {if ctx.show_details}
-            <shadcn.Heading size={3}>Details visible</shadcn.Heading>
-          {:else}
-            <shadcn.Heading size={3}>Details hidden</shadcn.Heading>
-          {/if}
-          <shadcn.Button variant="primary">Back</shadcn.Button>
+            <shadcn.Heading size={1}>About</shadcn.Heading>
+            {if ctx.show_details}
+                <shadcn.Heading size={3}>Details visible</shadcn.Heading>
+                {:else}
+                <shadcn.Heading size={3}>Details hidden</shadcn.Heading>
+            {/if}
+            <shadcn.Button variant="primary">Back</shadcn.Button>
         </column>
     }
 }
