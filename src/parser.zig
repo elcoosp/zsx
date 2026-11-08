@@ -169,16 +169,16 @@ fn formatSpan(
     comptime offset: usize,
 ) []const u8 {
     @setEvalBranchQuota(1_000_000);
+    const clamped: usize = if (offset > src.len) src.len else offset;
     var line: usize = 1;
     var last_nl: usize = 0;
     var i: usize = 0;
-    while (i < offset and i < src.len) : (i += 1) {
+    while (i < clamped) : (i += 1) {
         if (src[i] == '\n') {
             line += 1;
             last_nl = i + 1;
         }
     }
-    const clamped: usize = if (offset > src.len) src.len else offset;
     const col = clamped - last_nl + 1;
     var out: []const u8 = "";
     out = out ++ src_name ++ ":" ++ fmtUsize(line) ++ ":" ++ fmtUsize(col) ++ ": ";
