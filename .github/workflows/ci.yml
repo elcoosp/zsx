@@ -30,6 +30,8 @@ jobs:
         run: zig build test
       - name: Consumer example
         run: cd examples/consumer && zig build run
+      - name: Consumer example test
+        run: cd examples/consumer && zig build test
       - name: Run stub examples
         run: |
           zig build example
