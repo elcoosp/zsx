@@ -372,7 +372,9 @@ zig build snapshot                    # generate playground screenshot (macOS)
 >
 > **Production-ready:** the fetchable path (`zsx.addViews` in a consumer's `build.zig`) — see `examples/consumer/`.
 >
-> **Not yet:** real DVUI/Nanoui windows verified against a screenshot in CI; `zig fetch --save` from a published URL; `examples/todo/` (form + validation + persistence on a real window); routing between multiple screens; `zsx fmt`, `zsx init`, tree-sitter grammar.
+> **Tooling:** `scripts/zsx-fmt.py` (reformat `.zsx` markup, idempotent), `scripts/zsx-check.py` (validate structure in <100ms), `scripts/init.sh` (one-command project scaffold). All three run in CI.
+>
+> **Not yet:** `examples/todo/` on a real DVUI window (currently stub-only); tree-sitter grammar for `.zsx` syntax highlighting; routing between screens (deliberately out of scope — use `{switch}` on a `ctx.screen` enum).
 >
 > Known limitations, all listed in [docs/components.md](docs/components.md): class strings must be build-time constants, `m-*` margin classes are rejected, DVUI headings fall back to the theme font weight, and Nanoui ignores `id_extra` on checkboxes.
 
