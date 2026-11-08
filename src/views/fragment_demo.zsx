@@ -1,13 +1,13 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8}>
-          {if ctx.verbose}
-            <>
-              <label>one</label>
-              <label>two</label>
-            </>
-          {/if}
-          <label>always</label>
+            {if ctx.verbose}
+                <>
+                    <label>one</label>
+                    <label>two</label>
+                </>
+            {/if}
+            <label>always</label>
         </column>
     }
 }
