@@ -72,7 +72,7 @@ Closest mainstream analog: **Svelte** or **Vue SFC** (`.svelte` / `.vue` → `.j
 
 ## Features
 
-- **Comptime-only pipeline.** `build.zig` embeds each `.zsx` file with `@embedFile`, parses it at comptime (`src/parser.zig`), and writes ordinary Zig to `src/views/*_gen.zig`. The generated files contain a single `pub fn view(ui, c, ctx)`, so release binaries carry no parser and no overhead beyond the builder calls you would have written by hand.
+- **Comptime-only pipeline.** `build.zig` embeds each `.zsx` file with `@embedFile`, parses it at comptime (`src/parser.zig`), and writes a superset of Zig to `src/views/*_gen.zig`. The generated files contain a single `pub fn view(ui, c, ctx)`, so release binaries carry no parser and no overhead beyond the builder calls you would have written by hand.
 - **One source, two toolkits.** The same view renders through `src/adapters/dvui.zig` (dvui on SDL3) and `src/adapters/nanoui.zig` (nanoui on Metal). Each adapter implements one primitive surface — `column`, `row`, `text`, `button`, `textEntry`, `textArea`, `checkbox`, `progress`, `divider`, `slider` — and the generated code only speaks that surface.
 - **Control flow in markup, native code out.** `{if}`, `{else if}`, `{else}`, and `{for items as item}` lower to literal Zig `if`/`for` statements in the generated file. Widget IDs in loops get stable index arithmetic (`id + idx_0`), so identity survives dynamic item counts.
 - **Styling resolved at comptime.** A Tailwind-named class subset (`bg-blue-500`, `p-4`, `gap-2`, `font-bold`, `rounded-lg`, ...) is mapped by `src/style.zig` to concrete colors, spacing, and font values during compilation. An unrecognized class is a compile error, not a silently unstyled widget.
