@@ -1,17 +1,17 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column class="p-6 gap-4 bg-slate-100">
-          <label class="text-3xl font-bold text-slate-900">Extended Styles</label>
-          <label class="text-xl text-slate-500">Subheading, muted</label>
-          <row class="gap-4">
-            <label class="text-sm">small</label>
-            <label class="text-xs">caption</label>
-            <label class="text-2xl">large</label>
-          </row>
-          <row class="gap-1">
-            <button class="bg-slate-500 text-white px-3 py-3 rounded-md">Action</button>
-            <button class="bg-slate-900 text-white px-6 py-6 rounded-full">Pill</button>
-          </row>
+            <label class="text-3xl font-bold text-slate-900">Extended Styles</label>
+            <label class="text-xl text-slate-500">Subheading, muted</label>
+            <row class="gap-4">
+                <label class="text-sm">small</label>
+                <label class="text-xs">caption</label>
+                <label class="text-2xl">large</label>
+            </row>
+            <row class="gap-1">
+                <button class="bg-slate-500 text-white px-3 py-3 rounded-md">Action</button>
+                <button class="bg-slate-900 text-white px-6 py-6 rounded-full">Pill</button>
+            </row>
         </column>
     }
     _ = ctx;
