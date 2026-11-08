@@ -1,10 +1,10 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8} class="gap-2">
-          <Heading size={2}>Input Demo</Heading>
-          <Caption>Type in the field, value persists across frames.</Caption>
-          <Input buffer={&ctx.name} placeholder="Your name" />
-          <Input buffer={&ctx.email} placeholder="you@example.com" />
+            <Heading size={2}>Input Demo</Heading>
+            <Caption>Type in the field, value persists across frames.</Caption>
+            <Input buffer={&ctx.name} placeholder="Your name" />
+            <Input buffer={&ctx.email} placeholder="you@example.com" />
         </column>
     }
 }
