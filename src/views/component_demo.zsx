@@ -1,11 +1,11 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8}>
-          <Card>
-            <label>Title</label>
-            <label>Subtitle</label>
-          </Card>
-          <Button>Click</Button>
+            <Card>
+                <label>Title</label>
+                <label>Subtitle</label>
+            </Card>
+            <Button>Click</Button>
         </column>
     }
 }
