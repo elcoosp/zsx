@@ -111,6 +111,10 @@ pub fn Adapter(comptime dvui: type) type {
                 // distinct, not just an alpha blob on white.
                 o.color_fill = .{ .color = .{ .r = 200, .g = 205, .b = 212, .a = 255 } };
             }
+            // CRITICAL: box widgets do not paint their color_fill unless
+            // background = true. Without this, min_size_content reserves
+            // layout space (visible gap) but nothing renders.
+            o.background = true;
             var b = dvui.box(@src(), .{ .dir = .horizontal }, o);
             defer b.deinit();
         }
