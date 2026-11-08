@@ -346,3 +346,12 @@ zig build snapshot                    # generate playground screenshot (macOS)
 - [CHANGELOG.md](CHANGELOG.md) — what shipped in each release.
 - [docs/zig-skill.md](docs/zig-skill.md) — Zig 0.17 compiler errors and fixes discovered while building this.
 - [`examples/consumer/`](examples/consumer/) — minimal fetchable project.
+
+## zsx-check
+
+`scripts/zsx-check.py` validates `.zsx` structure (balanced tags, control-flow nesting) in <100ms, without compiling.
+
+```bash
+python3 scripts/zsx-check.py             # validate all .zsx in repo
+python3 scripts/zsx-check.py file.zsx    # validate one file
+```
