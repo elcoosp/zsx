@@ -1,28 +1,28 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8} class="gap-4">
-          <Heading size={1}>Component Library</Heading>
-          <Caption>Heading, Caption, Link, Section</Caption>
-          <row class="gap-2">
-            <Link>documentation</Link>
-            <Caption>·</Caption>
-            <Link>examples</Link>
-            <Caption>·</Caption>
-            <Link>changelog</Link>
-          </row>
-          <Section title="Getting Started">
-            <Caption>Four components, zero adapter changes.</Caption>
+            <Heading size={1}>Component Library</Heading>
+            <Caption>Heading, Caption, Link, Section</Caption>
             <row class="gap-2">
-              <button class="bg-blue-500 text-white px-4 py-2">Install</button>
-              <button class="bg-gray-100 text-black px-4 py-2">Docs</button>
+                <Link>documentation</Link>
+                <Caption>·</Caption>
+                <Link>examples</Link>
+                <Caption>·</Caption>
+                <Link>changelog</Link>
             </row>
-          </Section>
-          <Section title="What is Included">
-            <Link>Heading</Link>
-            <Link>Caption</Link>
-            <Link>Link</Link>
-            <Link>Section</Link>
-          </Section>
+            <Section title="Getting Started">
+                <Caption>Four components, zero adapter changes.</Caption>
+                <row class="gap-2">
+                    <button class="bg-blue-500 text-white px-4 py-2">Install</button>
+                    <button class="bg-gray-100 text-black px-4 py-2">Docs</button>
+                </row>
+            </Section>
+            <Section title="What is Included">
+                <Link>Heading</Link>
+                <Link>Caption</Link>
+                <Link>Link</Link>
+                <Link>Section</Link>
+            </Section>
         </column>
     }
 }
