@@ -3,36 +3,36 @@ const shadcn = @import("shadcn");
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={16} class="gap-4">
-          <shadcn.Heading size={1}>Todo</shadcn.Heading>
-          <shadcn.Caption>Add a task. Empty input is rejected. State persists to todos.json.</shadcn.Caption>
+            <shadcn.Heading size={1}>Todo</shadcn.Heading>
+            <shadcn.Caption>Add a task. Empty input is rejected. State persists to todos.json.</shadcn.Caption>
 
-          <row class="gap-2">
-            <shadcn.Input buffer={&ctx.new_text} placeholder="What needs doing?" />
-            <shadcn.Button variant="primary" on_click={ctx.add()}>Add</shadcn.Button>
-          </row>
+            <row class="gap-2">
+                <shadcn.Input buffer={&ctx.new_text} placeholder="What needs doing?" />
+                <shadcn.Button variant="primary" on_click={ctx.add()}>Add</shadcn.Button>
+            </row>
 
-          {if ctx.last_error_len > 0}
-            <shadcn.Badge color="red">{ctx.errorText()}</shadcn.Badge>
-          {/if}
+            {if ctx.last_error_len > 0}
+                <shadcn.Badge color="red">{ctx.errorText()}</shadcn.Badge>
+            {/if}
 
-          <shadcn.Divider />
+            <shadcn.Divider />
 
-          {if ctx.store.len == 0}
-            <shadcn.Caption>No items yet</shadcn.Caption>
-          {:else}
-            {for ctx.store.items[0..ctx.store.len] as item}
-              <row class="gap-2">
-                <shadcn.Badge color={ctx.itemColor(item)}>{ctx.itemText(item)}</shadcn.Badge>
-              </row>
-            {/for}
-          {/if}
+            {if ctx.store.len == 0}
+                <shadcn.Caption>No items yet</shadcn.Caption>
+                {:else}
+                {for ctx.store.items[0..ctx.store.len] as item}
+                    <row class="gap-2">
+                        <shadcn.Badge color={ctx.itemColor(item)}>{ctx.itemText(item)}</shadcn.Badge>
+                    </row>
+                {/for}
+            {/if}
 
-          <shadcn.Divider />
+            <shadcn.Divider />
 
-          <row class="gap-2">
-            <shadcn.Button variant="secondary" on_click={ctx.clearDone()}>Clear done</shadcn.Button>
-            <shadcn.Button variant="primary" on_click={ctx.save()}>Save</shadcn.Button>
-          </row>
+            <row class="gap-2">
+                <shadcn.Button variant="secondary" on_click={ctx.clearDone()}>Clear done</shadcn.Button>
+                <shadcn.Button variant="primary" on_click={ctx.save()}>Save</shadcn.Button>
+            </row>
         </column>
     }
 }
