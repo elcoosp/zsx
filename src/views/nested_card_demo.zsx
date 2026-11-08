@@ -1,15 +1,15 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8}>
-          <Card>
             <Card>
-              <label>inner</label>
+                <Card>
+                    <label>inner</label>
+                </Card>
+                <label>mid</label>
             </Card>
-            <label>mid</label>
-          </Card>
-          <Card>
-            <label>sibling</label>
-          </Card>
+            <Card>
+                <label>sibling</label>
+            </Card>
         </column>
     }
 }
