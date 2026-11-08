@@ -1,151 +1,236 @@
 # ZSX Roadmap
 
-A phased plan with concrete deliverables and exit criteria. Time estimates assume an AI agent with the `vercel-labs/native` Zig skill installed, plus daily review. Calendar time is roughly 2× active time.
+The architecture is settled. This document describes what shipped, what
+was explicitly rejected, and what remains. Every "shipped" item is in the
+codebase today; every "rejected" item was tried and removed.
 
----
+## Where ZSX is heading
 
-## Phase 0 — Architectural Anchors (1–2 days)
+TSX for Zig: TypeScript's `.tsx` proves that markup can live inside a
+programming language's source file without being a separate file format,
+a runtime parser, or a template language. ZSX targets the same shape for
+Zig.
 
-**Goal:** Lock the decisions that everything else depends on.
+Three invariants:
 
-- **Backend contract:** Define the `comptime` interface every backend implements—`Node` associated type, `Capabilities` struct, `emit(el, ctx)`, `supports(feature)`.
-- **`Feature` enum:** The canonical set of style/layout capabilities (background, hover_background, padding, margin, border, radius, gap, flex_direction, font, shadow, etc.).
-- **`StyleRef`:** The opaque handle attached to AST elements. Carries `raw_class` (for web) and `resolved` pointer (for native).
-- **`StyleResolver` interface:** `resolve(class, ctx) → StyleRef` and `lower(style, BackendType, ctx) → void`. Aeolus plugs in here later; a hand-rolled stub resolver ships first.
-- **Error semantics:** Permissive (`zsx!`) vs strict (`zsx_strict!`) modes, mirroring `gpui-rsx`.
+1. A `.zsx` file is **ordinary Zig** containing one or more
+   `zsx!{ <markup> }` blocks.
+2. The comptime preprocessor expands each block to plain Zig builder
+   calls (`ui.column(c, .{...})`, `ctx.Button(ui, c, .{...})`,
+   `shadcn.Button(ctx, ui, c, .{...})`) at compile time. Release binaries
+   contain no parser.
+3. Components are ordinary Zig functions reachable through normal Zig
+   name resolution \u2014 either a `pub const` on a context struct or a
+   path-qualified tag (`<shadcn.Button>`) that resolves to a `@import`ed
+   module.
 
-**Exit:** A `zsx/contract.zig` file with the types above, reviewed and frozen.
+Everything below is scored against those invariants.
 
----
+## Shipped
 
-## Phase 1 — Parser + Neutral AST (2–3 days)
+### Parser and AST
 
-**Goal:** Validate the core thesis—comptime JSX-like parsing in Zig.
+- `src/parser.zig`: recursive-descent parser. Paired/self-closing tags,
+  boolean/value/string attributes, text and `{expr}` children, fragments,
+  path-qualified tag names (`.` in `isTagChar`). Runs at comptime only;
+  every `test` block wraps its body in `comptime { }` so the AST is
+  consumed at comptime (no runtime materialization of comptime-var
+  pointers).
+- `src/ast.zig`: `Element`, `Attribute`, `AttributeValue`, `Child` union.
 
-- Recursive-descent parser at `comptime` for a subset: paired tags, self-closing tags, boolean attributes, value attributes (`gap={8}`), text children, `{expr}` interpolation.
-- Neutral AST: `Element`, `Attribute`, `Child` union (element/text/expression).
-- Span-aware `@compileError` for malformed markup.
+### Emitter (`src/codegen.zig`)
 
-**Exit:** A test file that parses 5–6 markup strings at comptime and prints the AST via `@compileLog`. No backend yet.
+- Extracted from `build.zig`; 13 unit tests assert generated shape, ID
+  stride math, escaping, and control flow.
+- Packed IDs: `file_index * FILE_STRIDE + sibling` at top level, plus
+  `idx_0 * LOOP_STRIDE_0 + idx_1 * LOOP_STRIDE_1` inside loops. No
+  collisions across siblings, iterations, or views.
+- `escapeString` handles `"`, `\\`, `\n`, `\r`, `\t`, and control bytes as
+  `\xNN`.
+- Emits `preamble` (helper `render_X_N` functions for components with
+  element children) separately from `code` so callers can hoist preambles
+  to module scope.
 
----
+### Preprocessor (`src/preprocess.zig`)
 
-## Phase 2 — DVUI Backend Vertical Slice (2–3 days)
+- Scans Zig source for `zsx!{ ... }` blocks. Skips strings, chars, line
+  comments, block comments \u2014 a `zsx!{` inside `"..."` is not a block.
+- Expands each block via `codegen.emitElement`, hoists the resulting
+  preamble above the file, and shifts the body to match the block's
+  source column.
+- 14 tests: identity, single/multi block, ID distinctness across blocks,
+  marker-not-in-string/comment/char, preamble hoisting, indentation
+  shifting, trailing-semicolon consumption.
 
-**Goal:** Prove end-to-end lowering to a real framework.
+### Adapters
 
-- Emitter: AST → `dvui.Options` field assignments (`color_fill`, `padding`, `margin`, `border`, `corners`, `font`, `style`).
-- Map subset of `Feature` values to DVUI capabilities; emit compile errors for unsupported features in strict mode.
-- Hand-write a minimal resolver mapping ~10 utilities (`bg-blue-500`, `p-4`, `rounded-lg`, `text-white`) to `StyleRef` slots.
-- Example app: a single `<column><button>{"Save"}</button></column>` rendered in DVUI.
+Two ship today, both implementing the same primitive surface
+(`column`, `row`, `text`, `button`, `textEntry`, `textArea`, `checkbox`,
+`progress`, `divider`, `slider`, `toggle`, `skeleton`):
 
-**Exit:** Working DVUI window showing the example. **This is the thesis-validating milestone.**
+- `src/adapters/dvui.zig`: DVUI on SDL3. Uses `@hasDecl` / `@hasField`
+  for API-drift resilience (`TextEntryWidget` vs `textEntry`, `radius`
+  vs `corners`, etc.).
+- `src/adapters/nanoui.zig`: Nanoui on Metal (macOS only). Persists
+  `TextBuffer` cache keyed by `id_extra` so input state survives frames.
 
----
+Each adapter also ships a `StubX` that records primitive calls for fast
+tests (~1s) without a window.
 
-## Phase 3 — Nanoui Backend (2–3 days)
+### Control flow
 
-**Goal:** Prove the generic emitter holds across a second, structurally different backend.
+`{if cond}`, `{else if cond}`, `{else}`, `{endif}`, `{for items as item}`,
+`{endfor}`, and `<>...</>` fragments. Lower to literal Zig `if`/`for`
+statements in the generated file. Loop IDs are strided.
 
-- Emitter: AST → Nanoui builder chains (`.gap()`, `.p()`, `.bg()`, `.hover()`, `.rounded()`, `.row()`).
-- Capability table: Nanoui supports `hover` natively; DVUI does too but via a different field. The emitter must dispatch per backend.
-- Same example app, Nanoui target.
+### Component library (`src/lib/shadcn.zig`)
 
-**Exit:** Same markup, two backends, no changes to the parser or AST. If this works, the architecture is validated.
+15 components, all pure compositions of adapter primitives:
+`Button`, `Badge`, `Card`, `Heading`, `Caption`, `Link`, `Section`,
+`Input`, `Textarea`, `Checkbox`, `Progress`, `Divider`, `Slider`,
+`Switch`, `Skeleton`.
 
----
+Every component takes `self: anytype` as its first parameter so it is
+callable both as `ctx.Button(ui, c, props)` (bare tag) and
+`shadcn.Button(ctx, ui, c, props)` (path tag) without signature changes.
 
-## Phase 4 — Control Flow + Fragments (2–3 days)
+### Path-qualified component tags
 
-**Goal:** The authoring experience becomes usable for real views.
+`<shadcn.Button>` in markup becomes `shadcn.Button(ctx, ui, c, .{...})`
+in generated Zig, where `shadcn` is whatever the `.zsx` file imported at
+module scope. No `pub const Button` boilerplate on the context struct.
 
-- `{if cond}`, `{for (items) |item|}`, `{switch}`, fragments `<>...</>`.
-- Comptime generation of native Zig `if`/`for`/`switch` around backend emissions.
-- Nested components: `<Profile name={user.name} />` resolved at comptime.
+### Styling (`src/style.zig`)
 
-**Exit:** A list-rendering example in both DVUI and Nanoui, driven by runtime data.
+Tailwind-named class subset (`bg-*`, `text-*`, `p-*`, `px-*`, `py-*`,
+`gap-*`, `rounded-*`, `font-*`) resolved at comptime to `Style` struct
+fields. Unknown class → compile error.
 
----
+### Tooling and distribution
 
-## Phase 5 — Style Resolver Integration (2–4 days)
+- `scripts/new-project.sh`: fork workflow (rename package, regenerate
+  fingerprint, init git).
+- `scripts/screenshot-dvui.sh`: window-level screenshot via
+  `CGWindowListCopyWindowInfo` + `screencapture -l`. No AppleScript, no
+  window repositioning.
+- `src/snapshot_test.zig`: nanoui snapshot harness (not in CI yet).
+- `.github/workflows/ci.yml`: `zig build test` on ubuntu + macos, real
+  binaries on macos.
 
-**Goal:** Replace the hand-rolled stub resolver with a pluggable interface; wire Aeolus as the default.
+## Explicitly rejected
 
-- `StyleResolver` interface finalized.
-- `zsx-aeolus` adapter crate: bridges `StyleRef` ↔ Aeolus `StylePlan`.
-- Backend `lower()` functions consume `StylePlan` slots.
-- `class` attributes accept static strings and runtime `[]const u8` expressions.
+### `Backend(comptime X)` trait
 
-**Exit:** Example app using real Tailwind classes via Aeolus, rendering in DVUI and Nanoui.
+An earlier design had a `Backend(comptime X)` type exposing `Context`,
+`Capabilities`, `emit(ast.Element, *Context)`. It never reached
+production. Replaced by the simpler `Adapter(comptime X)` model: one
+struct per backend, primitives callable from generated code, no dispatch
+layer.
 
----
+### `StyleRef` / `Feature` / `Capabilities` / `StyleResolver`
 
-## Phase 6 — Additional Backends (3–5 days each)
+Never shipped. The style pipeline is comptime-only
+(`parseClasses` → `Style` → emitter literals). Adding a pluggable
+resolver would be a new adapter-adjacent concept, not a rewrite of the
+existing path.
 
-Prioritized by lowering fidelity:
+### Package distribution (`zig fetch zsx`)
 
-- **zigui:** Modifier-chain emission (`.padding()`, `.background()`, `.cornerRadius()`). High fidelity.
-- **Capy:** Wrapper widgets (`StyledButton`, `StyledColumn`) because Capy primitives have no style fields. Medium fidelity.
-- **Gooey:** Theme generation from resolved tokens + wrappers for inline overrides. Medium fidelity.
-- **zig-webui / web emitter:** Serialize AST to HTML with `class` strings. Trivial once `raw_class` is preserved.
+Impossible by design. `@embedFile(path)` requires `path` to be a
+comptime-known literal; a package cannot enumerate a consumer's `.zsx`
+files, which live in the consumer's `build.zig`. The template-and-fork
+model preserves comptime at the cost of git-mergeable updates.
+`TEMPLATE.md` documents this.
 
-**Exit:** At least three native backends + one web backend passing the same example suite.
+### Runtime `parse(allocator, src)`
 
----
+Rejected. Slower at build time, larger at runtime, contradicts the
+"no parser in the release binary" pitch.
 
-## Phase 7 — DX Polish (3–5 days)
+### Trait-based backend discovery
 
-**Goal:** Make it feel like a real tool, not a demo.
+Rejected in favor of explicit module imports. A new backend is a new
+`src/adapters/<name>.zig` implementing the primitive surface. No
+registry, no plugin loader.
 
-- Strict-mode diagnostics: unsupported features reported at exact source spans.
-- Capability report: `zsx.describeBackend(DvuiBackend)` prints what a backend supports.
-- `zig build` step: `.zsx` files transpiled to `.zig` for ZLS compatibility (if inline comptime proves too opaque for tooling).
-- Documentation: backend authoring guide, capability matrix, examples per backend.
+## Next
 
-**Exit:** A new backend can be added by following the doc alone.
+Prioritized, not committed to dates.
 
----
+### A \u2014 Pluggable style resolver
 
-## Phase 8 — Ecosystem (ongoing)
+Today `style.zig` is a fixed class-to-`Style` mapping. A resolver
+interface (`resolve(class) → Style`, `lower(style, backend) → ...`) would
+let consumers swap Tailwind for their own design system. This is the
+concept the old `StyleRef` / `StyleResolver` was pointing at, but wired
+through `style.zig` rather than a new backend trait.
 
-- **Zylix web backend:** Serialize resolved style to CSS strings.
-- **raylib-zig / ImGui backends:** Flattened layout → draw calls.
-- **Aeolus Shadcn layer:** Reuse `aeolus-shadcn` class tables for `zsx-shadcn` components.
-- **LSP extension:** Syntax highlighting and completion for ZSX markup inside Zig files.
-- **Community backend template:** Starter repo for third-party backends.
+### B \u2014 Backend expansion
 
----
+Both current backends are Zig-native. Natural next targets, in order of
+expected effort:
 
-## Timeline Summary
+- **raylib-zig**: flattened layout → draw calls. Feasible; ~200 lines of
+  adapter.
+- **ImGui (cimgui-zig)**: immediate-mode, structurally similar to DVUI.
+- **Web emitter**: serialize AST to HTML + class strings. Easy once
+  `Style` is preserved as `raw_class`; needs a separate
+  `Adapter(comptime HTMLWriter)` shape.
+- **Capy / Zigui / Gooey**: uncertain API stability; treat as research.
 
-| Phase | Active days | Cumulative calendar (with review) |
-|---|---|---|
-| 0 — Anchors | 1–2 | ~3–4 days |
-| 1 — Parser + AST | 2–3 | ~1 week |
-| 2 — DVUI slice | 2–3 | ~2 weeks |
-| 3 — Nanoui | 2–3 | ~2.5 weeks |
-| 4 — Control flow | 2–3 | ~3.5 weeks |
-| 5 — Aeolus resolver | 2–4 | ~4.5 weeks |
-| 6 — Extra backends | 9–15 | ~7 weeks |
-| 7 — DX polish | 3–5 | ~9 weeks |
+Adding any one of these does not touch the parser, AST, preprocessor,
+emitter, or component library. That is the point of the adapter model.
 
-**Thesis-validating prototype (through Phase 3): ~2.5 weeks calendar.** **Usable multi-backend tool (through Phase 5): ~4.5 weeks.** **Polished with three-plus backends (through Phase 7): ~9 weeks.**
+### C \u2014 Source-span error reporting
 
----
+`@compileError` in `preprocess.zig` currently cites generated lines in
+`_gen.zig`, not the `.zsx` source line. A span map (byte offset in source
+→ line/col) threaded through `parseElement` would give every error a
+`file:line:col` prefix pointing at the user's `.zsx`. This is the largest
+remaining DX gap.
 
-## Critical Risks
+### D \u2014 ZLS / editor integration
 
-1. **Comptime parser fragility.** Zig's comptime error messages are opaque; the skill mitigates this but does not eliminate it. Mitigation: build the parser incrementally, one grammar feature at a time, with a test file per feature.
-2. **Backend API drift.** DVUI and Nanoui are pre-1.0; their APIs will change. Mitigation: keep each backend in its own module with a thin adapter surface, so breakage is localized.
-3. **Aeolus coupling creep.** Resist pulling Aeolus into Phase 1–3. The stub resolver must prove ZSX works *without* Aeolus. Mitigation: Phase 5 is explicitly gated behind a working two-backend demo.
-4. **Scope creep toward a full framework.** ZSX is a syntax + lowering layer, not a router, state manager, or component lifecycle system. Mitigation: the backend contract has no hooks for those; if someone wants them, they build them on top.
+`_gen.zig` files are gitignored. A fresh clone needs `zig build test`
+before ZLS can resolve them. Options:
 
----
+- Ship a `.zls.json` that runs `zig build test` on startup.
+- Add `addUpdateSourceFiles` to every build step (already done), then
+  document a `zig build zsx` hot-reload loop.
+- Eventually: emit `_gen.zig` into `.zig-cache` and expose via
+  `b.addModule` so consumers `@import("views/demo")` and never see a
+  `_gen.zig` path.
 
-## First Three Actions
+The last option is the cleanest; it is a Zig build-system question, not a
+ZSX question.
 
-1. Write `zsx/contract.zig` by hand (Phase 0). Do not let the agent infer it.
-2. Write one test markup string and a `@compileLog` AST dump (Phase 1 start).
-3. Read `dvui/src/Options.zig` and write the field-mapping table for the DVUI emitter before writing any emitter code (Phase 2 start).
+### E \u2014 `{switch}` and richer control flow
 
-If you want, I can draft `contract.zig` with the `Feature` enum and backend interface as the concrete starting point.
+`{switch expr} ... {endswitch}` maps 1:1 to Zig's `switch`. No new
+concepts, just grammar. Blocked on a real requirement.
+
+### F \u2014 Slot children for components
+
+Today `<Card>...</Card>` compiles to a `render_Card_N` helper passed as
+`content`. A component that wants children placed in multiple named slots
+(`<Card><Header>...</Header><Body>...</Body></Card>`) needs a richer ABI:
+props struct with named content fields. Feasible; skip until a concrete
+component demands it.
+
+## Non-goals
+
+ZSX will never be:
+
+- A router, state manager, or component lifecycle system. That is your
+  application's job.
+- A template language with its own runtime. Output is plain Zig builder
+  calls; a release build contains no interpreter.
+- A React/Solid-style reactive layer. `{for}` and `{if}` are direct Zig
+  control flow; nothing re-renders implicitly.
+- A stylesheet language. Class strings resolve at comptime; no CSS, no
+  cascade, no `.scss`.
+
+## Timeline
+
+None. Every shipped item is in the codebase today. Every "next" item is
+a self-contained PR away and does not block anything else.
