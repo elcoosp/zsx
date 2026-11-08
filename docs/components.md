@@ -310,6 +310,54 @@ No codegen changes needed. The codegen already treats uppercase tags as
 component calls: `<MyComponent prop={x}>text</MyComponent>` becomes
 `ctx.MyComponent(ui, c, .{ .prop = x, .text = "text" })`.
 
+## HTML adapter
+
+`src/adapters/html.zig` implements the same primitive surface as DVUI and Nanoui, but writes semantic HTML with inline styles. Useful for server-rendered views, static site generation, and testing.
+
+**Usage:**
+
+```zig
+const html = @import("adapters/html.zig");
+const A = html.Adapter(MyWriter);
+// MyWriter needs: pub fn writeAll(self: *MyWriter, bytes: []const u8) !void
+demo.view(A, &writer, &ctx);
+// writer now holds HTML output
+```
+
+**Component behavior on HTML:**
+
+| Component | Emits | Notes |
+|---|---|---|
+| `Button` | `<button>` | Always returns `false` (no click handling) |
+| `Badge`, `Heading`, `Caption`, `Link` | `<span>` with inline styles | Text content escaped |
+| `Input`, `Textarea` | `<input type="text">`, `<textarea>` | Value from buffer, escaped |
+| `Checkbox`, `Switch` | `<input type="checkbox">` in `<label>` | Checked state rendered |
+| `Progress` | `<progress>` | Clamped to 0-100 |
+| `Slider` | `<input type="range">` | Step 0.01, range 0-1 |
+| `Divider` | `<hr>` | None |
+| `Skeleton` | `<div class="skeleton">` | Width/height as inline style |
+| `Column`, `Row` | `<div class="flex flex-col/row">` | Classes for CSS frameworks |
+
+**What's not supported:**
+
+- **State.** Inputs render their current buffer value; there's no round-trip back. Server-rendered forms need their own submission handling.
+- **Interactivity.** Buttons always return `false`. Click handlers are not attached.
+- **Hover states.** `hover_background` is dropped.
+
+**CSS.** The adapter emits `class="flex flex-col"` for columns, `class="flex flex-row"` for rows, `class="skeleton"` for skeletons. You provide the CSS. Inline styles fill in colors, padding, font-size.
+
+**Testing.** `html.TestWriter` captures output as `[]const u8`:
+
+```zig
+test "demo view" {
+    const A = html.Adapter(html.TestWriter);
+    var w: html.TestWriter = .{};
+    var ctx = Ctx{};
+    demo.view(A, &w, &ctx);
+    try std.testing.expect(std.mem.indexOf(u8, w.output(), ">Save</button>") != null);
+}
+```
+
 ## Known limitations
 
 - **DVUI font weight**: `Heading` renders at correct size but theme-default
