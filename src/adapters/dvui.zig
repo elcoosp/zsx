@@ -115,6 +115,11 @@ pub fn Adapter(comptime dvui: type) type {
             // background = true. Without this, min_size_content reserves
             // layout space (visible gap) but nothing renders.
             o.background = true;
+            // Box widgets do not participate in parent gap; add vertical
+            // margin so stacked skeletons have visible spacing.
+            if (o.margin == null) {
+                o.margin = .{ .x = 0, .y = 4, .w = 0, .h = 4 };
+            }
             var b = dvui.box(@src(), .{ .dir = .horizontal }, o);
             defer b.deinit();
         }
