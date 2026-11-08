@@ -3,15 +3,15 @@ const shadcn = @import("shadcn");
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8}>
-          <shadcn.Card>
-            <Slot name="header">
-              <label class="text-lg font-bold">Card Title</label>
-            </Slot>
-            <Slot name="body">
-              <label>Body text here</label>
-              <label class="text-gray-500">Second line</label>
-            </Slot>
-          </shadcn.Card>
+            <shadcn.Card>
+                <Slot name="header">
+                    <label class="text-lg font-bold">Card Title</label>
+                </Slot>
+                <Slot name="body">
+                    <label>Body text here</label>
+                    <label class="text-gray-500">Second line</label>
+                </Slot>
+            </shadcn.Card>
         </column>
     }
 }
