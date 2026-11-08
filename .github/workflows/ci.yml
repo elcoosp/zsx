@@ -28,6 +28,8 @@ jobs:
           key: ${{ runner.os }}-zig-${{ hashFiles('build.zig.zon') }}
       - name: Run tests
         run: zig build test
+      - name: Consumer example
+        run: cd examples/consumer && zig build run
       - name: Run stub examples
         run: |
           zig build example
