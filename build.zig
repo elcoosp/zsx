@@ -1,5 +1,10 @@
 const std = @import("std");
 const codegen = @import("src/codegen.zig");
+
+// Re-export the fetchable build helper. Consumers do `@import("zsx").addViews(b, opts)`
+// from their own build.zig when zsx is declared in build.zig.zon.
+pub const addViews = @import("zsx.zig").addViews;
+
 const preprocess = @import("src/preprocess.zig");
 
 
