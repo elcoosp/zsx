@@ -341,7 +341,8 @@ fn emitChildren(
     comptime incoming_loop_depth: usize,
     comptime file_index: usize,
 ) EmitResult {
-    @setEvalBranchQuota(500_000);
+    // zsx-dry-v1
+    @setEvalBranchQuota(1_000_000);
     var code: []const u8 = "";
     var preamble: []const u8 = "";
     var level: usize = start_level;
@@ -349,7 +350,8 @@ fn emitChildren(
     var cur_depth: usize = incoming_loop_depth;
     comptime var stack: [32]u8 = undefined;
     comptime var stack_depth: usize = 0;
-
+    comptime var switch_exprs: [16][]const u8 = undefined;
+    comptime var switch_depth: usize = 0;
     for (children) |child| {
         switch (child) {
             .element => |el| {
@@ -368,9 +370,7 @@ fn emitChildren(
                     if (comptime cond.len == 0) @compileError("zsx: {if } empty");
                     if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
                     code = code ++ makeIndent(level) ++ "if (" ++ cond ++ ") {\n";
-                    stack[stack_depth] = 'i';
-                    stack_depth += 1;
-                    level += 1;
+                    stack[stack_depth] = 'i'; stack_depth += 1; level += 1;
                 } else if (comptime std.mem.startsWith(u8, e, "for ") and std.mem.indexOf(u8, e, " as ") != null) {
                     const body = comptime std.mem.trim(u8, e[4..], " \t\n\r");
                     const as_idx = comptime std.mem.indexOf(u8, body, " as ").?;
@@ -379,42 +379,90 @@ fn emitChildren(
                     if (comptime items.len == 0) @compileError("zsx: {for} empty items");
                     if (comptime binding.len == 0) @compileError("zsx: {for} empty binding");
                     if (cur_depth >= 3) @compileError("zsx: loop depth exceeds 3");
+                    if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
                     const idx = "idx_" ++ fmtInt(@intCast(cur_depth));
                     code = code ++ makeIndent(level) ++ "for (" ++ items ++ ", 0..) |" ++ binding ++ ", " ++ idx ++ "| {\n";
-                    stack[stack_depth] = 'f';
-                    stack_depth += 1;
-                    level += 1;
-                    cur_depth += 1;
-                } else if (comptime std.mem.startsWith(u8, e, "else if ")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {else if} without {if}");
+                    stack[stack_depth] = 'f'; stack_depth += 1; level += 1; cur_depth += 1;
+                } else if (comptime std.mem.startsWith(u8, e, "switch ")) {
+                    const expr = comptime std.mem.trim(u8, e[7..], " \t\n\r");
+                    if (comptime expr.len == 0) @compileError("zsx: {switch } empty");
+                    if (switch_depth >= 16) @compileError("zsx: switch nesting exceeds 16");
+                    if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
+                    switch_exprs[switch_depth] = expr; switch_depth += 1;
+                    stack[stack_depth] = 'S'; stack_depth += 1;
+                } else if (comptime std.mem.startsWith(u8, e, ":case ") or std.mem.startsWith(u8, e, "case ")) {
+                    const pat = comptime blk: {
+                        if (std.mem.startsWith(u8, e, ":case ")) break :blk std.mem.trim(u8, e[6..], " \t\n\r")
+                        else break :blk std.mem.trim(u8, e[5..], " \t\n\r");
+                    };
+                    if (comptime pat.len == 0) @compileError("zsx: {case } empty");
+                    if (comptime stack_depth == 0) @compileError("zsx: {case} without {switch}");
                     const top = comptime stack[stack_depth - 1];
-                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {else if} unmatched");
-                    const ei_cond = comptime std.mem.trim(u8, e[8..], " \t\n\r");
-                    if (comptime ei_cond.len == 0) @compileError("zsx: {else if} empty");
+                    if (comptime top != 'S' and top != 'c') @compileError("zsx: {case} must be inside {switch}");
+                    const expr = comptime switch_exprs[switch_depth - 1];
+                    const is_str = comptime pat[0] == '"';
+                    const predicate: []const u8 = if (is_str)
+                        comptime "std.mem.eql(u8, " ++ expr ++ ", " ++ pat ++ ")"
+                    else
+                        comptime expr ++ " == " ++ pat;
+                    if (comptime top == 'S') {
+                        code = code ++ makeIndent(level) ++ "if (" ++ predicate ++ ") {\n";
+                        level += 1; stack[stack_depth] = 'c'; stack_depth += 1;
+                    } else {
+                        level -= 1;
+                        code = code ++ makeIndent(level) ++ "} else if (" ++ predicate ++ ") {\n";
+                        level += 1;
+                    }
+                } else if (comptime std.mem.startsWith(u8, e, ":else if ") or std.mem.startsWith(u8, e, "else if ")) {
+                    const cond = comptime blk: {
+                        if (std.mem.startsWith(u8, e, ":else if ")) break :blk std.mem.trim(u8, e[9..], " \t\n\r")
+                        else break :blk std.mem.trim(u8, e[8..], " \t\n\r");
+                    };
+                    if (comptime cond.len == 0) @compileError("zsx: {:else if } empty");
+                    if (comptime stack_depth == 0) @compileError("zsx: {:else if} without {if}");
+                    if (comptime stack[stack_depth - 1] != 'i') @compileError("zsx: {:else if} only valid inside {if}");
                     level -= 1;
-                    code = code ++ makeIndent(level) ++ "} else if (" ++ ei_cond ++ ") {\n";
+                    code = code ++ makeIndent(level) ++ "} else if (" ++ cond ++ ") {\n";
                     level += 1;
-                } else if (comptime std.mem.eql(u8, e, "else")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {else} without {if}");
-                    if (comptime stack[stack_depth - 1] != 'i') @compileError("zsx: {else} unmatched");
-                    stack[stack_depth - 1] = 'e';
-                    level -= 1;
-                    code = code ++ makeIndent(level) ++ "} else {\n";
-                    level += 1;
-                } else if (comptime std.mem.eql(u8, e, "endif")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {endif} without {if}");
+                } else if (comptime std.mem.eql(u8, e, ":else") or std.mem.eql(u8, e, "else")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {:else} without {if} or {switch}");
                     const top = comptime stack[stack_depth - 1];
-                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {endif} unmatched");
-                    stack_depth -= 1;
-                    level -= 1;
+                    if (comptime top == 'i') {
+                        stack[stack_depth - 1] = 'e';
+                        level -= 1;
+                        code = code ++ makeIndent(level) ++ "} else {\n";
+                        level += 1;
+                    } else if (comptime top == 'c') {
+                        stack[stack_depth - 1] = 'E';
+                        level -= 1;
+                        code = code ++ makeIndent(level) ++ "} else {\n";
+                        level += 1;
+                    } else {
+                        @compileError("zsx: {:else} unmatched");
+                    }
+                } else if (comptime std.mem.eql(u8, e, "/if") or std.mem.eql(u8, e, "endif")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {/if} without {if}");
+                    const top = comptime stack[stack_depth - 1];
+                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {/if} unmatched");
+                    stack_depth -= 1; level -= 1;
                     code = code ++ makeIndent(level) ++ "}\n";
-                } else if (comptime std.mem.eql(u8, e, "endfor")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {endfor} without {for}");
-                    if (comptime stack[stack_depth - 1] != 'f') @compileError("zsx: {endfor} unmatched");
-                    stack_depth -= 1;
-                    level -= 1;
-                    cur_depth -= 1;
+                } else if (comptime std.mem.eql(u8, e, "/for") or std.mem.eql(u8, e, "endfor")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {/for} without {for}");
+                    if (comptime stack[stack_depth - 1] != 'f') @compileError("zsx: {/for} unmatched");
+                    stack_depth -= 1; level -= 1; cur_depth -= 1;
                     code = code ++ makeIndent(level) ++ "}\n";
+                } else if (comptime std.mem.eql(u8, e, "/switch") or std.mem.eql(u8, e, "endswitch")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {/switch} without {switch}");
+                    const top = comptime stack[stack_depth - 1];
+                    if (comptime top == 'S') @compileError("zsx: {switch} with no {:case}");
+                    if (comptime top != 'c' and top != 'E') @compileError("zsx: {/switch} unmatched");
+                    stack_depth -= 1; level -= 1;
+                    code = code ++ makeIndent(level) ++ "}\n";
+                    if (comptime stack_depth == 0) @compileError("zsx: {/switch} internal");
+                    if (comptime stack[stack_depth - 1] != 'S') @compileError("zsx: {/switch} internal");
+                    stack_depth -= 1; switch_depth -= 1;
+                } else if (comptime std.mem.eql(u8, e, "endcase") or std.mem.eql(u8, e, "/case")) {
+                    // no-op: cases close implicitly at next {:case}/{:else}/{/switch}
                 } else {
                     @compileError("zsx: unsupported {" ++ e ++ "}");
                 }
@@ -431,17 +479,21 @@ fn emitContentChildren(
     comptime start_id: usize,
     comptime file_index: usize,
 ) EmitResult {
-    @setEvalBranchQuota(500_000);
+    // zsx-dry-v1
+    @setEvalBranchQuota(1_000_000);
     var code: []const u8 = "";
     var preamble: []const u8 = "";
     var level: usize = start_level;
     var id: usize = start_id;
+    var cur_depth: usize = 0;
     comptime var stack: [32]u8 = undefined;
     comptime var stack_depth: usize = 0;
+    comptime var switch_exprs: [16][]const u8 = undefined;
+    comptime var switch_depth: usize = 0;
     for (children) |child| {
         switch (child) {
             .element => |el| {
-                const r = comptime emitElement(el, level, id, 0, file_index);
+                const r = comptime emitElement(el, level, id, cur_depth, file_index);
                 code = code ++ r.code;
                 preamble = preamble ++ r.preamble;
                 id = r.next_id;
@@ -456,49 +508,98 @@ fn emitContentChildren(
                     if (comptime cond.len == 0) @compileError("zsx: {if } empty");
                     if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
                     code = code ++ makeIndent(level) ++ "if (" ++ cond ++ ") {\n";
-                    stack[stack_depth] = 'i';
-                    stack_depth += 1;
-                    level += 1;
+                    stack[stack_depth] = 'i'; stack_depth += 1; level += 1;
                 } else if (comptime std.mem.startsWith(u8, e, "for ") and std.mem.indexOf(u8, e, " as ") != null) {
                     const body = comptime std.mem.trim(u8, e[4..], " \t\n\r");
                     const as_idx = comptime std.mem.indexOf(u8, body, " as ").?;
                     const items = comptime std.mem.trim(u8, body[0..as_idx], " \t\n\r");
                     const binding = comptime std.mem.trim(u8, body[as_idx + 4 ..], " \t\n\r");
-                    if (comptime items.len == 0) @compileError("zsx: {for} empty");
+                    if (comptime items.len == 0) @compileError("zsx: {for} empty items");
                     if (comptime binding.len == 0) @compileError("zsx: {for} empty binding");
                     if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
-                    code = code ++ makeIndent(level) ++ "for (" ++ items ++ ", 0..) |" ++ binding ++ ", idx_0| {\n";
-                    stack[stack_depth] = 'f';
-                    stack_depth += 1;
-                    level += 1;
-                } else if (comptime std.mem.startsWith(u8, e, "else if ")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {else if} without {if}");
+                    const idx = "idx_" ++ fmtInt(@intCast(cur_depth));
+                    code = code ++ makeIndent(level) ++ "for (" ++ items ++ ", 0..) |" ++ binding ++ ", " ++ idx ++ "| {\n";
+                    stack[stack_depth] = 'f'; stack_depth += 1; level += 1; cur_depth += 1;
+                } else if (comptime std.mem.startsWith(u8, e, "switch ")) {
+                    const expr = comptime std.mem.trim(u8, e[7..], " \t\n\r");
+                    if (comptime expr.len == 0) @compileError("zsx: {switch } empty");
+                    if (switch_depth >= 16) @compileError("zsx: switch nesting exceeds 16");
+                    if (stack_depth >= 32) @compileError("zsx: nesting exceeds 32");
+                    switch_exprs[switch_depth] = expr; switch_depth += 1;
+                    stack[stack_depth] = 'S'; stack_depth += 1;
+                } else if (comptime std.mem.startsWith(u8, e, ":case ") or std.mem.startsWith(u8, e, "case ")) {
+                    const pat = comptime blk: {
+                        if (std.mem.startsWith(u8, e, ":case ")) break :blk std.mem.trim(u8, e[6..], " \t\n\r")
+                        else break :blk std.mem.trim(u8, e[5..], " \t\n\r");
+                    };
+                    if (comptime pat.len == 0) @compileError("zsx: {case } empty");
+                    if (comptime stack_depth == 0) @compileError("zsx: {case} without {switch}");
                     const top = comptime stack[stack_depth - 1];
-                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {else if} unmatched");
-                    const ei_cond = comptime std.mem.trim(u8, e[8..], " \t\n\r");
+                    if (comptime top != 'S' and top != 'c') @compileError("zsx: {case} must be inside {switch}");
+                    const expr = comptime switch_exprs[switch_depth - 1];
+                    const is_str = comptime pat[0] == '"';
+                    const predicate: []const u8 = if (is_str)
+                        comptime "std.mem.eql(u8, " ++ expr ++ ", " ++ pat ++ ")"
+                    else
+                        comptime expr ++ " == " ++ pat;
+                    if (comptime top == 'S') {
+                        code = code ++ makeIndent(level) ++ "if (" ++ predicate ++ ") {\n";
+                        level += 1; stack[stack_depth] = 'c'; stack_depth += 1;
+                    } else {
+                        level -= 1;
+                        code = code ++ makeIndent(level) ++ "} else if (" ++ predicate ++ ") {\n";
+                        level += 1;
+                    }
+                } else if (comptime std.mem.startsWith(u8, e, ":else if ") or std.mem.startsWith(u8, e, "else if ")) {
+                    const cond = comptime blk: {
+                        if (std.mem.startsWith(u8, e, ":else if ")) break :blk std.mem.trim(u8, e[9..], " \t\n\r")
+                        else break :blk std.mem.trim(u8, e[8..], " \t\n\r");
+                    };
+                    if (comptime cond.len == 0) @compileError("zsx: {:else if } empty");
+                    if (comptime stack_depth == 0) @compileError("zsx: {:else if} without {if}");
+                    if (comptime stack[stack_depth - 1] != 'i') @compileError("zsx: {:else if} only valid inside {if}");
                     level -= 1;
-                    code = code ++ makeIndent(level) ++ "} else if (" ++ ei_cond ++ ") {\n";
+                    code = code ++ makeIndent(level) ++ "} else if (" ++ cond ++ ") {\n";
                     level += 1;
-                } else if (comptime std.mem.eql(u8, e, "else")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {else} without {if}");
-                    if (comptime stack[stack_depth - 1] != 'i') @compileError("zsx: {else} unmatched");
-                    stack[stack_depth - 1] = 'e';
-                    level -= 1;
-                    code = code ++ makeIndent(level) ++ "} else {\n";
-                    level += 1;
-                } else if (comptime std.mem.eql(u8, e, "endif")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {endif} without {if}");
+                } else if (comptime std.mem.eql(u8, e, ":else") or std.mem.eql(u8, e, "else")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {:else} without {if} or {switch}");
                     const top = comptime stack[stack_depth - 1];
-                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {endif} unmatched");
-                    stack_depth -= 1;
-                    level -= 1;
+                    if (comptime top == 'i') {
+                        stack[stack_depth - 1] = 'e';
+                        level -= 1;
+                        code = code ++ makeIndent(level) ++ "} else {\n";
+                        level += 1;
+                    } else if (comptime top == 'c') {
+                        stack[stack_depth - 1] = 'E';
+                        level -= 1;
+                        code = code ++ makeIndent(level) ++ "} else {\n";
+                        level += 1;
+                    } else {
+                        @compileError("zsx: {:else} unmatched");
+                    }
+                } else if (comptime std.mem.eql(u8, e, "/if") or std.mem.eql(u8, e, "endif")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {/if} without {if}");
+                    const top = comptime stack[stack_depth - 1];
+                    if (comptime top != 'i' and top != 'e') @compileError("zsx: {/if} unmatched");
+                    stack_depth -= 1; level -= 1;
                     code = code ++ makeIndent(level) ++ "}\n";
-                } else if (comptime std.mem.eql(u8, e, "endfor")) {
-                    if (comptime stack_depth == 0) @compileError("zsx: {endfor} without {for}");
-                    if (comptime stack[stack_depth - 1] != 'f') @compileError("zsx: {endfor} unmatched");
-                    stack_depth -= 1;
-                    level -= 1;
+                } else if (comptime std.mem.eql(u8, e, "/for") or std.mem.eql(u8, e, "endfor")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {/for} without {for}");
+                    if (comptime stack[stack_depth - 1] != 'f') @compileError("zsx: {/for} unmatched");
+                    stack_depth -= 1; level -= 1; cur_depth -= 1;
                     code = code ++ makeIndent(level) ++ "}\n";
+                } else if (comptime std.mem.eql(u8, e, "/switch") or std.mem.eql(u8, e, "endswitch")) {
+                    if (comptime stack_depth == 0) @compileError("zsx: {/switch} without {switch}");
+                    const top = comptime stack[stack_depth - 1];
+                    if (comptime top == 'S') @compileError("zsx: {switch} with no {:case}");
+                    if (comptime top != 'c' and top != 'E') @compileError("zsx: {/switch} unmatched");
+                    stack_depth -= 1; level -= 1;
+                    code = code ++ makeIndent(level) ++ "}\n";
+                    if (comptime stack_depth == 0) @compileError("zsx: {/switch} internal");
+                    if (comptime stack[stack_depth - 1] != 'S') @compileError("zsx: {/switch} internal");
+                    stack_depth -= 1; switch_depth -= 1;
+                } else if (comptime std.mem.eql(u8, e, "endcase") or std.mem.eql(u8, e, "/case")) {
+                    // no-op
                 } else {
                     code = code ++ makeIndent(level) ++ "ui.text(c, " ++ e ++ ", .{});\n";
                 }
@@ -508,6 +609,7 @@ fn emitContentChildren(
     if (comptime stack_depth != 0) @compileError("zsx: unclosed control-flow");
     return .{ .code = code, .preamble = preamble, .next_id = id };
 }
+
 
 fn componentPropsLiteral(
     comptime el: ast.Element,

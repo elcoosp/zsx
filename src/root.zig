@@ -871,3 +871,40 @@ test "path_demo: shadcn path tags render buttons and badges" {
     try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.buttonsRendered());
     try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
 }
+
+const SwitchDemoCtx = struct {
+    status: []const u8 = "ok",
+};
+
+test "switch_demo: status=ok" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/switch_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = SwitchDemoCtx{ .status = "ok" };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "switch_demo: status=warn" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/switch_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = SwitchDemoCtx{ .status = "warn" };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
+}
+
+test "switch_demo: status=other" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/switch_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = SwitchDemoCtx{ .status = "other" };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
+}

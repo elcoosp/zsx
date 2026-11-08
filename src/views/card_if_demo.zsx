@@ -3,7 +3,7 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
         <Card>
           {if ctx.show}
             <label>visible</label>
-          {endif}
+          {/if}
         </Card>
     }
 }

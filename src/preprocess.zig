@@ -86,7 +86,13 @@ pub fn preprocess(
         while (pos < source.len and !isSpecial(source[pos])) pos += 1;
         out = out ++ source[chunk_start..pos];
     }
-    return preamble_acc ++ out;
+    const body = preamble_acc ++ out;
+    const needs_std = std.mem.indexOf(u8, body, "std.") != null;
+    const has_std = std.mem.indexOf(u8, body, "@import(\"std\")") != null;
+    if (needs_std and !has_std) {
+        return "const std = @import(\"std\");\n\n" ++ body;
+    }
+    return body;
 }
 
 const Block = struct {

@@ -3,14 +3,14 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
         <column padding={8}>
           {if ctx.a}
             <label>A</label>
-          {else if ctx.b}
+          {:else if ctx.b}
             <label>B1</label>
             <label>B2</label>
-          {else}
+          {:else}
             <label>C1</label>
             <label>C2</label>
             <label>C3</label>
-          {endif}
+          {/if}
         </column>
     }
 }

@@ -2,16 +2,13 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8}>
           {switch ctx.status}
-            {case "ok"}
+            {:case "ok"}
               <label>All good</label>
-            {endcase}
-            {case "warn"}
+            {:case "warn"}
               <label>Warning</label>
-            {endcase}
-            {else}
+            {:else}
               <label>Error</label>
-            {endcase}
-          {endswitch}
+          {/switch}
         </column>
     }
 }

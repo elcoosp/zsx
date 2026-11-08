@@ -6,7 +6,7 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
               <label class="text-lg font-bold">{user.name}</label>
               <Badge color={user.role}>{user.role}</Badge>
             </row>
-          {endfor}
+          {/for}
         </column>
     }
 }

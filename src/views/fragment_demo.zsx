@@ -6,7 +6,7 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
               <label>one</label>
               <label>two</label>
             </>
-          {endif}
+          {/if}
           <label>always</label>
         </column>
     }
