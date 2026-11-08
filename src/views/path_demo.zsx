@@ -1,0 +1,12 @@
+const shadcn = @import("../lib/shadcn.zig");
+
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8} class="gap-2">
+          <shadcn.Badge color="green">ok</shadcn.Badge>
+          <shadcn.Badge color="red">error</shadcn.Badge>
+          <shadcn.Button variant="primary">Save</shadcn.Button>
+          <shadcn.Button variant="secondary">Cancel</shadcn.Button>
+        </column>
+    }
+}

@@ -852,3 +852,22 @@ test {
 test {
     _ = @import("preprocess.zig");
 }
+
+const PathDemoCtx = struct {
+    save_called: bool = false,
+    pub fn save(self: *@This()) void {
+        self.save_called = true;
+    }
+};
+
+test "path_demo: shadcn path tags render buttons and badges" {
+    const dvui_adapter = @import("adapters/dvui.zig");
+    const demo = @import("views/path_demo_gen.zig");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = PathDemoCtx{};
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.buttonsRendered());
+    try std.testing.expectEqual(@as(usize, 2), dvui_adapter.StubDvui.labelsRendered());
+}

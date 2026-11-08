@@ -163,6 +163,74 @@ Card variant with a heading title. Uses an inline heading, not the
 </Section>
 ```
 
+## Path-qualified tags
+
+Besides bare `<Button>` / `<Badge>` (which resolve via `ctx.Button` /
+`ctx.Badge`), the emitter also accepts dotted tag names that reference a
+Zig module directly:
+
+```zsx
+const shadcn = @import("../lib/shadcn.zig");
+
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8}>
+          <shadcn.Button variant="primary">Save</shadcn.Button>
+          <shadcn.Badge color="green">ok</shadcn.Badge>
+        </column>
+    }
+}
+```
+
+The emitter lowers `<shadcn.Button ...>` to `shadcn.Button(ctx, ui, c, .{...})`
+— the module's function receives `ctx` as its first argument (`self`),
+matching every shadcn component's signature. The rest follows the bare-tag
+rules: text children become `.text = "..."`, `on_click` becomes
+`@field(@TypeOf(ctx.*), "method")`, and element children cause a
+`render_<sanitized_tag>_<id>` helper to be hoisted above `view`.
+
+Advantages over bare tags:
+
+- **No `Ctx` boilerplate.** You do not need `pub const Button = @import("lib/shadcn.zig").Button;` on every context struct. The import lives at the top of the `.zsx` file.
+- **Real Zig resolution.** `@import("../lib/shadcn.zig")` is the same mechanism any `.zig` file uses. Typos surface as ordinary compile errors.
+- **Mix libraries.** Different `.zsx` files can import different component libraries.
+
+Both forms are supported simultaneously; migration is incremental.
+
+## Path-qualified tags
+
+Besides bare `<Button>` / `<Badge>` (which resolve via `ctx.Button` /
+`ctx.Badge`), the emitter also accepts dotted tag names that reference a
+Zig module directly:
+
+```zsx
+const shadcn = @import("../lib/shadcn.zig");
+
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8}>
+          <shadcn.Button variant="primary">Save</shadcn.Button>
+          <shadcn.Badge color="green">ok</shadcn.Badge>
+        </column>
+    }
+}
+```
+
+The emitter lowers `<shadcn.Button ...>` to `shadcn.Button(ctx, ui, c, .{...})`
+— the module's function receives `ctx` as its first argument (`self`),
+matching every shadcn component's signature. The rest follows the bare-tag
+rules: text children become `.text = "..."`, `on_click` becomes
+`@field(@TypeOf(ctx.*), "method")`, and element children cause a
+`render_<sanitized_tag>_<id>` helper to be hoisted above `view`.
+
+Advantages over bare tags:
+
+- **No `Ctx` boilerplate.** You do not need `pub const Button = @import("lib/shadcn.zig").Button;` on every context struct. The import lives at the top of the `.zsx` file.
+- **Real Zig resolution.** `@import("../lib/shadcn.zig")` is the same mechanism any `.zig` file uses. Typos surface as ordinary compile errors.
+- **Mix libraries.** Different `.zsx` files can import different component libraries.
+
+Both forms are supported simultaneously; migration is incremental.
+
 ## Component authoring
 
 To add a component, define an inline function in `src/lib/shadcn.zig`:

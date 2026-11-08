@@ -24,6 +24,7 @@ pub fn build(b: *std.Build) void {
         "src/views/playground.zsx",
         "src/views/component_lib_demo.zsx",
         "src/views/extended_styles_demo.zsx",
+        "src/views/path_demo.zsx",
     };
 
     const zsx_update = b.addUpdateSourceFiles();

@@ -121,6 +121,7 @@ The grammar is a strict subset of HTML with Zig in braces:
 |---|---|
 | Layout primitives | `<column>`, `<row>`, `<label>`, `<button>` |
 | Self-closing component | `<Input buffer={&ctx.name} placeholder="Your name" />` |
+| Path-qualified component | `<shadcn.Button variant="primary">Save</shadcn.Button>` |
 | Boolean attribute | `<column flex />` |
 | Value attribute | `<column padding={16} />` |
 | String attribute | `<label class="text-lg font-bold">` |
