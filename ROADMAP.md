@@ -20,7 +20,7 @@ Three invariants:
    `shadcn.Button(ctx, ui, c, .{...})`) at compile time. Release binaries
    contain no parser.
 3. Components are ordinary Zig functions reachable through normal Zig
-   name resolution \u2014 either a `pub const` on a context struct or a
+   name resolution — either a `pub const` on a context struct or a
    path-qualified tag (`<shadcn.Button>`) that resolves to a `@import`ed
    module.
 
@@ -54,7 +54,7 @@ Everything below is scored against those invariants.
 ### Preprocessor (`src/preprocess.zig`)
 
 - Scans Zig source for `zsx!{ ... }` blocks. Skips strings, chars, line
-  comments, block comments \u2014 a `zsx!{` inside `"..."` is not a block.
+  comments, block comments — a `zsx!{` inside `"..."` is not a block.
 - Expands each block via `codegen.emitElement`, hoists the resulting
   preamble above the file, and shifts the body to match the block's
   source column.
@@ -157,7 +157,7 @@ registry, no plugin loader.
 
 Prioritized, not committed to dates.
 
-### A \u2014 Pluggable style resolver
+### A — Pluggable style resolver
 
 Today `style.zig` is a fixed class-to-`Style` mapping. A resolver
 interface (`resolve(class) → Style`, `lower(style, backend) → ...`) would
@@ -165,7 +165,7 @@ let consumers swap Tailwind for their own design system. This is the
 concept the old `StyleRef` / `StyleResolver` was pointing at, but wired
 through `style.zig` rather than a new backend trait.
 
-### B \u2014 Backend expansion
+### B — Backend expansion
 
 Both current backends are Zig-native. Natural next targets, in order of
 expected effort:
@@ -181,7 +181,7 @@ expected effort:
 Adding any one of these does not touch the parser, AST, preprocessor,
 emitter, or component library. That is the point of the adapter model.
 
-### C \u2014 Source-span error reporting
+### C — Source-span error reporting
 
 `@compileError` in `preprocess.zig` currently cites generated lines in
 `_gen.zig`, not the `.zsx` source line. A span map (byte offset in source
@@ -189,7 +189,7 @@ emitter, or component library. That is the point of the adapter model.
 `file:line:col` prefix pointing at the user's `.zsx`. This is the largest
 remaining DX gap.
 
-### D \u2014 ZLS / editor integration
+### D — ZLS / editor integration
 
 `_gen.zig` files are gitignored. A fresh clone needs `zig build test`
 before ZLS can resolve them. Options:
@@ -204,12 +204,12 @@ before ZLS can resolve them. Options:
 The last option is the cleanest; it is a Zig build-system question, not a
 ZSX question.
 
-### E \u2014 `{switch}` and richer control flow
+### E — `{switch}` and richer control flow
 
 `{switch expr} ... {endswitch}` maps 1:1 to Zig's `switch`. No new
 concepts, just grammar. Blocked on a real requirement.
 
-### F \u2014 Slot children for components
+### F — Slot children for components
 
 Today `<Card>...</Card>` compiles to a `render_Card_N` helper passed as
 `content`. A component that wants children placed in multiple named slots
