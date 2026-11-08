@@ -64,3 +64,41 @@ test "snapshot: nanoui playground" {
     std.debug.print("wrote {s}\n", .{full});
 
 }
+
+const components_demo = @import("components_demo");
+
+const ComponentsCtx = struct {
+    pub const Label = shadcn.Label;
+    pub const Alert = shadcn.Alert;
+    pub const Breadcrumb = shadcn.Breadcrumb;
+    pub const Tabs = shadcn.Tabs;
+    pub const Pagination = shadcn.Pagination;
+    pub const Heading = shadcn.Heading;
+    pub const Caption = shadcn.Caption;
+    pub const Input = shadcn.Input;
+
+    name: [64]u8 = @splat(0),
+    active_tab: usize = 0,
+    active_page: usize = 0,
+};
+
+fn componentsView(ctx: *ComponentsCtx, c: *nanoui.ui.Context) void {
+    const A = nanoui_adapter.Adapter(nanoui.ui);
+    components_demo.view(A, c, ctx);
+}
+
+test "snapshot: nanoui components_demo" {
+    var ctx: ComponentsCtx = .{};
+    var t: nanoui.ui.Tester = undefined;
+    try t.init(
+        std.heap.page_allocator,
+        nanoui.ui.View.init(&ctx, componentsView),
+        .{ .width = 700, .height = 700, .scale = 2 },
+    );
+    defer t.deinit();
+    t.settle(2);
+
+    const path = "docs/screenshots/components-nanoui.png";
+    try t.screenshot(path);
+    std.debug.print("wrote {s}\n", .{path});
+}
