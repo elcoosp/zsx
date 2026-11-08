@@ -100,7 +100,7 @@ pub inline fn Badge(self: anytype, ui: anytype, c: anytype, props: anytype) void
     ui.text(c, props.text, opts);
 }
 
-pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
+pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anytype) void {
     const card_id: ?usize = if (@hasField(@TypeOf(props), "id_extra")) @as(?usize, props.id_extra) else null;
     var b = ui.column(c, .{
         .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
@@ -108,12 +108,7 @@ pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anyty
         .id_extra = card_id,
     });
     defer b.end();
-    const SelfT = @TypeOf(self);
-    if (@typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer) {
-        content(ui, c, self.*);
-    } else {
-        content(ui, c, self);
-    }
+    callComponentFns(self, ui, c, props);
 }
 
 pub inline fn Heading(self: anytype, ui: anytype, c: anytype, props: anytype) void {
@@ -163,7 +158,7 @@ pub inline fn Link(self: anytype, ui: anytype, c: anytype, props: anytype) void 
     ui.text(c, props.text, opts);
 }
 
-pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
+pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: anytype) void {
     const section_id: ?usize = if (@hasField(@TypeOf(props), "id_extra")) @as(?usize, props.id_extra) else null;
     var box = ui.column(c, .{
         .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
@@ -184,12 +179,7 @@ pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: an
         if (@hasField(@TypeOf(props), "id_extra")) h_opts.id_extra = props.id_extra;
         ui.text(c, title, h_opts);
     }
-    const SelfT = @TypeOf(self);
-    if (@typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer) {
-        content(ui, c, self.*);
-    } else {
-        content(ui, c, self);
-    }
+    callComponentFns(self, ui, c, props);
 }
 
 pub inline fn Input(self: anytype, ui: anytype, c: anytype, props: anytype) void {
@@ -265,4 +255,19 @@ pub inline fn Skeleton(self: anytype, ui: anytype, c: anytype, props: anytype) v
     if (@hasField(@TypeOf(props), "radius")) opts.radius = props.radius;
     if (@hasField(@TypeOf(props), "id_extra")) opts.id_extra = props.id_extra;
     ui.skeleton(c, opts);
+}
+
+inline fn callComponentFns(self: anytype, ui: anytype, c: anytype, comptime props: anytype) void {
+    const SelfT = @TypeOf(self);
+    const is_double_ptr = @typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer;
+    inline for ([_][]const u8{ "content", "header", "body", "footer" }) |slot_name| {
+        if (comptime @hasField(@TypeOf(props), slot_name)) {
+            const f = @field(props, slot_name);
+            if (comptime is_double_ptr) {
+                f(ui, c, self.*);
+            } else {
+                f(ui, c, self);
+            }
+        }
+    }
 }

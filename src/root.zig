@@ -90,13 +90,17 @@ const CtxWithComponents = struct {
     button_count: usize = 0,
     content_invocations: usize = 0,
 
-    pub inline fn Card(self: *@This(), ui: anytype, c: anytype, comptime props: anytype, comptime content: anytype) void {
-        _ = props;
+    pub inline fn Card(self: *@This(), ui: anytype, c: anytype, comptime props: anytype) void {
         self.card_count += 1;
         var b = ui.column(c, .{ .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 } });
         defer b.end();
         self.content_invocations += 1;
-        content(ui, c, self);
+        inline for ([_][]const u8{ "content", "header", "body", "footer" }) |slot_name| {
+            if (comptime @hasField(@TypeOf(props), slot_name)) {
+                const f = @field(props, slot_name);
+                f(ui, c, self);
+            }
+        }
     }
 
     pub inline fn Button(self: *@This(), ui: anytype, c: anytype, comptime props: anytype) void {
@@ -209,11 +213,15 @@ test "component: content fn receives ctx pointer, can read its fields" {
     var c: dvui_adapter.StubDvui.Context = .{};
 
     const CtxCapture = struct {
-        pub inline fn Card(self: *@This(), ui: anytype, c_: anytype, comptime props: anytype, comptime content: anytype) void {
-            _ = props;
+        pub inline fn Card(self: *@This(), ui: anytype, c_: anytype, comptime props: anytype) void {
             var b = ui.column(c_, .{});
             defer b.end();
-            content(ui, c_, self);
+            inline for ([_][]const u8{ "content", "header", "body", "footer" }) |slot_name| {
+                if (comptime @hasField(@TypeOf(props), slot_name)) {
+                    const f = @field(props, slot_name);
+                    f(ui, c_, self);
+                }
+            }
         }
         pub inline fn Button(self: *@This(), ui: anytype, c_: anytype, comptime props: anytype) void {
             _ = self;
