@@ -1,55 +1,55 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={16} class="gap-2">
-          <Heading size={1}>ZSX Playground</Heading>
-          <Caption>Fifteen components, one source, two frameworks.</Caption>
+            <Heading size={1}>ZSX Playground</Heading>
+            <Caption>Fifteen components, one source, two frameworks.</Caption>
 
-          <row class="gap-2">
-            <Badge color="blue">new</Badge>
-            <Badge color="green">stable</Badge>
-            <Badge color="red">deprecated</Badge>
-          </row>
-
-          <Section title="Forms">
-            <Input buffer={&ctx.name} placeholder="Your name" />
-            <Input buffer={&ctx.email} placeholder="you@example.com" />
-            <Textarea buffer={&ctx.notes} placeholder="Notes..." />
-            <Checkbox checked={&ctx.remember} text="Remember me" />
-            <Switch checked={&ctx.notifications} text="Notifications" />
-          </Section>
-
-          <Section title="Progress">
-            <Progress value={ctx.completion} />
-            <Caption>Completion progress</Caption>
-          </Section>
-
-          <Divider />
-
-          <Section title="Settings">
             <row class="gap-2">
-              <Caption>Volume:</Caption>
-              <Slider value={&ctx.volume} />
+                <Badge color="blue">new</Badge>
+                <Badge color="green">stable</Badge>
+                <Badge color="red">deprecated</Badge>
             </row>
-          </Section>
 
-          <Section title="Loading">
-            <Skeleton width={320} height={24} />
-            <Skeleton width={220} height={16} />
-            <Skeleton width={280} height={16} />
-          </Section>
+            <Section title="Forms">
+                <Input buffer={&ctx.name} placeholder="Your name" />
+                <Input buffer={&ctx.email} placeholder="you@example.com" />
+                <Textarea buffer={&ctx.notes} placeholder="Notes..." />
+                <Checkbox checked={&ctx.remember} text="Remember me" />
+                <Switch checked={&ctx.notifications} text="Notifications" />
+            </Section>
 
-          <Section title="Actions">
-            <row class="gap-2">
-              <Button variant="primary">Install</Button>
-              <Button variant="secondary">Docs</Button>
-              <Button variant="danger">Remove</Button>
-            </row>
-          </Section>
+            <Section title="Progress">
+                <Progress value={ctx.completion} />
+                <Caption>Completion progress</Caption>
+            </Section>
 
-          <Card>
-            <Caption>Card content goes here.</Caption>
-            <Link>Learn more</Link>
-          </Card>
+            <Divider />
+
+            <Section title="Settings">
+                <row class="gap-2">
+                    <Caption>Volume:</Caption>
+                    <Slider value={&ctx.volume} />
+                </row>
+            </Section>
+
+            <Section title="Loading">
+                <Skeleton width={320} height={24} />
+                <Skeleton width={220} height={16} />
+                <Skeleton width={280} height={16} />
+            </Section>
+
+            <Section title="Actions">
+                <row class="gap-2">
+                    <Button variant="primary">Install</Button>
+                    <Button variant="secondary">Docs</Button>
+                    <Button variant="danger">Remove</Button>
+                </row>
+            </Section>
+
+            <Card>
+                <Caption>Card content goes here.</Caption>
+                <Link>Learn more</Link>
+            </Card>
         </column>
     }
 }
