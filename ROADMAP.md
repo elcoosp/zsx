@@ -13,8 +13,12 @@ Zig.
 
 Three invariants:
 
-1. A `.zsx` file is **ordinary Zig** containing one or more
-   `zsx!{ <markup> }` blocks.
+1. A `.zsx` file is a **superset of Zig**. It looks like a Zig file and
+   compiles down to one, but `zsx!{ <markup> }` is not Zig syntax — the
+   preprocessor expands each block into plain Zig before the compiler sees
+   the file. Same mechanism as Svelte (`.svelte` → `.js`) or SCSS
+   (`.scss` → `.css`), not TSX (`.tsx` → `.js` where the compiler
+   natively understands JSX).
 2. The comptime preprocessor expands each block to plain Zig builder
    calls (`ui.column(c, .{...})`, `ctx.Button(ui, c, .{...})`,
    `shadcn.Button(ctx, ui, c, .{...})`) at compile time. Release binaries
