@@ -18,9 +18,10 @@
 //!   - Parameters must be named `ui`, `c`, `ctx` (any types).
 //!   - `ctx` must expose the methods/fields the markup references.
 //!   - Do not `_ = ui;` / `_ = c;` / `_ = ctx;` if the block uses them.
-//!     Only discard `ctx` in a wrapper whose block never references it.
 //!
-//! Optional trailing `;` after the block close is consumed.
+//! `src_name` is used only for error messages: parser failures produce
+//! `<src_name>:<line>:<col>: <msg>` so users can jump directly to the bad
+//! markup in their `.zsx` file.
 
 const std = @import("std");
 const ast = @import("ast.zig");
@@ -29,7 +30,11 @@ const codegen = @import("codegen.zig");
 
 pub const BLOCK_STRIDE: usize = 10_000;
 
-pub fn preprocess(comptime source: []const u8, comptime file_index: usize) []const u8 {
+pub fn preprocess(
+    comptime source: []const u8,
+    comptime src_name: []const u8,
+    comptime file_index: usize,
+) []const u8 {
     @setEvalBranchQuota(2_000_000);
     var out: []const u8 = "";
     var preamble_acc: []const u8 = "";
@@ -63,7 +68,7 @@ pub fn preprocess(comptime source: []const u8, comptime file_index: usize) []con
             continue;
         }
         if (c == 'z' and startsWith(source, pos, "zsx!{")) {
-            const blk = parseBlock(source, pos);
+            const blk = parseBlock(source, src_name, pos);
             const block_file_index = file_index * BLOCK_STRIDE + block_idx;
             const result = codegen.emitElement(blk.el, 1, 0, 0, block_file_index);
             preamble_acc = preamble_acc ++ result.preamble;
@@ -89,13 +94,13 @@ const Block = struct {
     end: usize,
 };
 
-fn parseBlock(comptime source: []const u8, comptime start: usize) Block {
+fn parseBlock(comptime source: []const u8, comptime src_name: []const u8, comptime start: usize) Block {
     var pos = start + 5;
     while (pos < source.len and isWs(source[pos])) pos += 1;
-    const el = zsx_parser.parseElement(source, &pos);
+    const el = zsx_parser.parseElement(source, src_name, &pos);
     while (pos < source.len and isWs(source[pos])) pos += 1;
     if (pos >= source.len or source[pos] != '}') {
-        @compileError("zsx: expected '}' to close zsx!{ block");
+        @compileError(src_name ++ ": zsx: expected '}' to close zsx!{ block");
     }
     pos += 1;
     if (pos < source.len and source[pos] == ';') pos += 1;
@@ -187,24 +192,24 @@ fn isWs(c: u8) bool {
 }
 
 test "preprocess empty source" {
-    try std.testing.expectEqualStrings("", comptime preprocess("", 0));
+    try std.testing.expectEqualStrings("", comptime preprocess("", "test.zsx", 0));
 }
 
 test "preprocess no-block source is identity" {
     const s = "const x = 1;\n";
-    try std.testing.expectEqualStrings(s, comptime preprocess(s, 0));
+    try std.testing.expectEqualStrings(s, comptime preprocess(s, "test.zsx", 0));
 }
 
 test "preprocess single block emits column code" {
     const src = "zsx!{<column/>}";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expect(std.mem.indexOf(u8, out, "ui.column(c, ") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "zsx!{") == null);
 }
 
 test "preprocess preserves surrounding zig verbatim" {
     const src = "const pre = 1;\nzsx!{<label>Hi</label>}\nconst post = 2;\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expect(std.mem.startsWith(u8, out, "const pre = 1;\n"));
     try std.testing.expect(std.mem.endsWith(u8, out, "\nconst post = 2;\n"));
     try std.testing.expect(std.mem.indexOf(u8, out, "ui.text(c, \"Hi\"") != null);
@@ -212,50 +217,50 @@ test "preprocess preserves surrounding zig verbatim" {
 
 test "preprocess consumes trailing semicolon" {
     const src = "zsx!{<column/>};";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expect(std.mem.indexOf(u8, out, "};") == null);
 }
 
 test "preprocess two blocks use distinct ids" {
     const src = "zsx!{<label>a</label>}\nzsx!{<label>b</label>}\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expect(std.mem.indexOf(u8, out, ".id_extra = 0") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, ".id_extra = 10000000000000") != null);
 }
 
 test "preprocess block at nonzero file index uses that base" {
     const src = "zsx!{<label>x</label>}";
-    const out = comptime preprocess(src, 3);
+    const out = comptime preprocess(src, "test.zsx", 3);
     try std.testing.expect(std.mem.indexOf(u8, out, ".id_extra = 300000000000000000") != null);
 }
 
 test "preprocess ignores marker in string literal" {
     const src = "const s = \"zsx!{\";\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expectEqualStrings(src, out);
 }
 
 test "preprocess ignores marker in line comment" {
     const src = "// zsx!{ not a block\nconst x = 1;\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expectEqualStrings(src, out);
 }
 
 test "preprocess ignores marker in block comment" {
     const src = "/* zsx!{ not a block */\nconst x = 1;\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expectEqualStrings(src, out);
 }
 
 test "preprocess handles escaped quote in string literal" {
     const src = "const s = \"a\\\"zsx!{\";\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expectEqualStrings(src, out);
 }
 
 test "preprocess hoists component preamble to top" {
     const src = "pub fn view(ui: anytype, c: anytype, ctx: anytype) void {\n    zsx!{<Card><label>Title</label><label>Sub</label></Card>}\n}\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     const view_idx = std.mem.indexOf(u8, out, "pub fn view") orelse unreachable;
     const render_idx = std.mem.indexOf(u8, out, "inline fn render_Card_") orelse unreachable;
     try std.testing.expect(render_idx < view_idx);
@@ -263,12 +268,12 @@ test "preprocess hoists component preamble to top" {
 
 test "preprocess shifts block to match source column" {
     const src = "    zsx!{<label>x</label>}\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expect(std.mem.startsWith(u8, out, "    ui.text(c, "));
 }
 
 test "preprocess block at col 0 starts at col 0" {
     const src = "zsx!{<column><label>x</label></column>}\n";
-    const out = comptime preprocess(src, 0);
+    const out = comptime preprocess(src, "test.zsx", 0);
     try std.testing.expect(std.mem.startsWith(u8, out, "{\n"));
 }
