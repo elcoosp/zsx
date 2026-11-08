@@ -4,9 +4,9 @@
     <strong>A JSX-like view syntax that compiles to native Zig GUI code at comptime</strong><br/>
     Zsx embeds your <code>.zsx</code> markup at build time, parses it with a comptime parser, and emits
     plain Zig builder calls into generated source files — no runtime parser, no dynamic dispatch.
-    It is for Zig developers building native apps with dvui or nanoui who want declarative views
-    without giving up their toolkit. The 13-component playground in <code>src/views/playground.zsx</code>
-    renders from one source through both adapters, and CI builds each real binary on every push.
+    It is for Zig developers building apps with dvui, nanoui, or HTML who want declarative views
+    without giving up their toolkit. The 15-component playground in <code>src/views/playground.zsx</code>
+    renders from one source through all three adapters, and CI builds each real binary on every push.
   </p>
   <p>
     <a href="https://github.com/elcoosp/zsx/blob/main/.github/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/elcoosp/zsx/ci.yml?branch=main&style=flat-square" alt="CI status"/></a>
@@ -72,11 +72,11 @@ Closest mainstream analog: **Svelte** or **Vue SFC** (`.svelte` / `.vue` → `.j
 
 ## Features
 
-- **Comptime-only pipeline.** `build.zig` embeds each `.zsx` file with `@embedFile`, parses it at comptime (`src/parser.zig`), and writes a superset of Zig to `src/views/*_gen.zig`. The generated files contain a single `pub fn view(ui, c, ctx)`, so release binaries carry no parser and no overhead beyond the builder calls you would have written by hand.
-- **One source, two toolkits.** The same view renders through `src/adapters/dvui.zig` (dvui on SDL3) and `src/adapters/nanoui.zig` (nanoui on Metal). Each adapter implements one primitive surface — `column`, `row`, `text`, `button`, `textEntry`, `textArea`, `checkbox`, `progress`, `divider`, `slider` — and the generated code only speaks that surface.
+- **Two pipelines, one contract.** `build.zig` embeds each `.zsx` file with `@embedFile`, parses it at comptime (`src/parser.zig`), and writes a superset of Zig to `src/views/*_gen.zig`. The generated files contain a single `pub fn view(ui, c, ctx)`, so release binaries carry no parser and no overhead beyond the builder calls you would have written by hand.
+- **One source, three toolkits.** The same view renders through `src/adapters/dvui.zig` (dvui on SDL3), `src/adapters/nanoui.zig` (nanoui on Metal), and `src/adapters/html.zig` (plain HTML for the web). Each adapter implements one primitive surface — `column`, `row`, `text`, `button`, `textEntry`, `textArea`, `checkbox`, `progress`, `divider`, `slider` — and the generated code only speaks that surface.
 - **Control flow in markup, native code out.** `{if}`, `{else if}`, `{else}`, and `{for items as item}` lower to literal Zig `if`/`for` statements in the generated file. Widget IDs in loops get stable index arithmetic (`id + idx_0`), so identity survives dynamic item counts.
 - **Styling resolved at comptime.** A Tailwind-named class subset (`bg-blue-500`, `p-4`, `gap-2`, `font-bold`, `rounded-lg`, ...) is mapped by `src/style.zig` to concrete colors, spacing, and font values during compilation. An unrecognized class is a compile error, not a silently unstyled widget.
-- **13 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, and `Slider` as pure compositions of adapter primitives. A view exposes them by declaring them on its context struct — no codegen changes needed.
+- **15 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives. A view exposes them by declaring them on its context struct — no codegen changes needed.
 - **Errors surface in your markup, not at runtime.** Unknown tags, bare text children, unclosed control flow, and non-comptime classes all fail compilation with targeted messages such as `zsx: bare text child; wrap in <label>`.
 
 ## Developer workflow
@@ -137,7 +137,10 @@ See [`examples/consumer/`](examples/consumer/) for a working end-to-end example 
 
 ## How it works
 
-Each `.zsx` file listed in `build.zig` is embedded and parsed at comptime into a neutral element tree (`src/ast.zig`). The emitter in `build.zig` walks that tree and appends a generated `view(ui, c, ctx)` function to `src/views/<name>_gen.zig`. At runtime, your app calls that function once per frame with an adapter and your context struct; the adapter translates the primitive calls into dvui or nanoui widget code. Component tags (`<Button ...>`) compile to calls back into your context, so components are resolved by Zig's own comptime dispatch.
+Each `.zsx` file listed in `build.zig` is embedded and parsed at comptime into a neutral element tree (`src/ast.zig`). Two emitters walk that tree and produce a `view(ui, c, ctx)` function:
+
+- **Comptime** (`src/codegen.zig`): called from `build.zig`, writes `src/views/<name>_gen.zig`.
+- **Runtime** (`src/rt/codegen.zig` via `src/gen.zig` and `zsx.zig`): invoked by `zsx.addViews` from a consumer's `build.zig`, writes `.zig-cache/<hash>/<name>.zig`. At runtime, your app calls that function once per frame with an adapter and your context struct; the adapter translates the primitive calls into dvui or nanoui widget code. Component tags (`<Button ...>`) compile to calls back into your context, so components are resolved by Zig's own comptime dispatch.
 
 ```mermaid
 flowchart LR
@@ -235,7 +238,7 @@ To add a view, create `src/views/your_view.zsx`, add its path to `zsx_files` in 
 ## Status
 
 > [!NOTE]
-> This is a young project (version 0.0.1); expect breaking changes to the `.zsx` grammar and the adapter surface. It targets Zig 0.17.0 or later and is tested in CI on 0.17.1 across ubuntu-latest and macos-latest. Both real binaries are built on macOS every push; the nanoui backend is macOS-only (Metal), and the dvui backend needs SDL3 and freetype installed. Known limitations, all listed in [docs/components.md](docs/components.md): class strings must be compile-time constants, `m-*` margin classes are rejected, dvui headings fall back to the theme font weight, and nanoui ignores `id_extra` on checkboxes.
+> This is a young project (version 0.0.1); expect breaking changes to the `.zsx` grammar and the adapter surface. It targets Zig 0.17.0 or later and is tested in CI on 0.17.1 across ubuntu-latest and macos-latest. Both real binaries are built on macOS every push; the nanoui backend is macOS-only (Metal), and the dvui backend needs SDL3 and freetype installed. The fetchable path (`zsx.addViews` in a consumer's `build.zig`) is production-ready; see [`examples/consumer/`](examples/consumer/) for a working end-to-end demo. Known limitations, all listed in [docs/components.md](docs/components.md): class strings must be compile-time constants, `m-*` margin classes are rejected, dvui headings fall back to the theme font weight, and nanoui ignores `id_extra` on checkboxes.
 
 ## Learn more
 
