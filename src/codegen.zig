@@ -248,6 +248,10 @@ pub fn emitElement(
 ) EmitResult {
     @setEvalBranchQuota(500_000);
 
+    if (comptime std.mem.eql(u8, el.tag, "Slot")) {
+        @compileError("zsx: <Slot> must be a direct child of a component (e.g. <Card><Slot name=\"header\">...</Slot></Card>)");
+    }
+
     if (comptime el.tag.len == 0) {
         return comptime emitChildren(el.children, level, start_id, loop_depth, file_index);
     }
@@ -299,6 +303,9 @@ pub fn emitElement(
     } else if (comptime std.mem.indexOf(u8, el.tag, ".") != null) {
         return comptime emitPathComponent(el, level, start_id, loop_depth, file_index);
     } else if (comptime isUpper(el.tag[0])) {
+        if (comptime hasSlotChildren(el)) {
+            return comptime emitSlotComponent(el, level, start_id, loop_depth, file_index);
+        }
         if (comptime hasElementChildren(el)) {
             const inner = comptime emitContentChildren(el.children, 1, start_id + 1, file_index);
             const my_id = inner.next_id;
@@ -318,7 +325,7 @@ pub fn emitElement(
             decl = decl ++ inner.code;
             decl = decl ++ "}\n\n";
             return .{
-                .code = indent ++ "ctx." ++ el.tag ++ "(ui, c, " ++ componentPropsLiteral(el, false, start_id, loop_depth, file_index) ++ ", " ++ render_name ++ ");\n",
+                .code = indent ++ "ctx." ++ el.tag ++ "(ui, c, " ++ insertContentField(componentPropsLiteral(el, false, start_id, loop_depth, file_index), render_name) ++ ");\n",
                 .preamble = inner.preamble ++ decl,
                 .next_id = my_id + 1,
             };
@@ -854,7 +861,7 @@ fn emitPathComponent(
         decl = decl ++ inner.code;
         decl = decl ++ "}\n\n";
         return .{
-            .code = indent ++ el.tag ++ "(ctx, ui, c, " ++ componentPropsLiteral(el, false, start_id, loop_depth, file_index) ++ ", " ++ render_name ++ ");\n",
+            .code = indent ++ el.tag ++ "(ctx, ui, c, " ++ insertContentField(componentPropsLiteral(el, false, start_id, loop_depth, file_index), render_name) ++ ");\n",
             .preamble = inner.preamble ++ decl,
             .next_id = my_id + 1,
         };
@@ -899,4 +906,119 @@ test "sanitizeTag replaces dots with underscores" {
     try std.testing.expectEqualStrings("shadcn_Button", comptime sanitizeTag("shadcn.Button"));
     try std.testing.expectEqualStrings("a_b_c", comptime sanitizeTag("a.b.c"));
     try std.testing.expectEqualStrings("Button", comptime sanitizeTag("Button"));
+}
+
+fn hasSlotChildren(comptime el: ast.Element) bool {
+    inline for (el.children) |c| {
+        switch (c) {
+            .element => |child| {
+                if (comptime std.mem.eql(u8, child.tag, "Slot")) return true;
+            },
+            else => continue,
+        }
+    }
+    return false;
+}
+
+fn getSlotName(comptime el: ast.Element) []const u8 {
+    inline for (el.attributes) |attr| {
+        if (comptime std.mem.eql(u8, attr.name, "name")) {
+            switch (attr.value) {
+                .string => |s| return s,
+                .expression => |e| @compileError("zsx: <Slot name=...> must be a string literal, got {" ++ e ++ "}"),
+                .boolean => @compileError("zsx: <Slot> requires name attribute"),
+            }
+        }
+    }
+    @compileError("zsx: <Slot> requires name attribute");
+}
+
+fn insertContentField(comptime props: []const u8, comptime content_name: []const u8) []const u8 {
+    @setEvalBranchQuota(100_000);
+    if (props.len < 2 or props[props.len - 1] != '}') @compileError("zsx: internal: bad props literal");
+    var trimmed = props[0 .. props.len - 1];
+    while (trimmed.len > 0 and trimmed[trimmed.len - 1] == ' ') trimmed = trimmed[0 .. trimmed.len - 1];
+    if (std.mem.eql(u8, trimmed, ".{")) {
+        return ".{ .content = " ++ content_name ++ " }";
+    }
+    return trimmed ++ ", .content = " ++ content_name ++ " }";
+}
+
+fn emitSlotComponent(
+    comptime el: ast.Element,
+    comptime level: usize,
+    comptime start_id: usize,
+    comptime loop_depth: usize,
+    comptime file_index: usize,
+) EmitResult {
+    @setEvalBranchQuota(500_000);
+    const indent = makeIndent(level);
+    var preamble: []const u8 = "";
+    var id: usize = start_id + 1;
+    var slot_props: []const u8 = ".{";
+    var sep: []const u8 = "";
+
+    inline for (el.children) |c| {
+        switch (c) {
+            .element => |slot| {
+                if (comptime !std.mem.eql(u8, slot.tag, "Slot")) {
+                    @compileError("zsx: <" ++ el.tag ++ "> with <Slot> children cannot also contain <" ++ slot.tag ++ ">; move non-slot content into a slot");
+                }
+                const name = comptime getSlotName(slot);
+                const inner = comptime emitContentChildren(slot.children, 1, id, file_index);
+                const my_id = inner.next_id;
+                const fn_name = "render_" ++ sanitizeTag(el.tag) ++ "_" ++ name ++ "_" ++ fmtInt(@intCast(my_id));
+                var decl: []const u8 = "";
+                decl = decl ++ "inline fn " ++ fn_name ++ "(ui: anytype, c: anytype, ctx: anytype) void {\n";
+                const ui_used = comptime std.mem.indexOf(u8, inner.code, "ui.") != null or
+                    std.mem.indexOf(u8, inner.code, "ui,") != null or
+                    std.mem.indexOf(u8, inner.code, "ui)") != null;
+                const c_used = comptime std.mem.indexOf(u8, inner.code, "(c,") != null or
+                    std.mem.indexOf(u8, inner.code, ", c,") != null or
+                    std.mem.indexOf(u8, inner.code, "(c)") != null;
+                const ctx_used = comptime std.mem.indexOf(u8, inner.code, "ctx.") != null;
+                if (!ui_used) decl = decl ++ "    _ = ui;\n";
+                if (!c_used) decl = decl ++ "    _ = c;\n";
+                if (!ctx_used) decl = decl ++ "    _ = ctx;\n";
+                decl = decl ++ inner.code;
+                decl = decl ++ "}\n\n";
+                preamble = preamble ++ inner.preamble ++ decl;
+                slot_props = slot_props ++ sep ++ "." ++ name ++ " = " ++ fn_name;
+                sep = ", ";
+                id = my_id + 1;
+            },
+            .text => |t| {
+                if (comptime isWhitespaceOnly(t)) continue;
+                @compileError("zsx: <" ++ el.tag ++ "> with <Slot> children cannot contain bare text");
+            },
+            .expression => |e| {
+                @compileError("zsx: <" ++ el.tag ++ "> with <Slot> children cannot contain {" ++ e ++ "}");
+            },
+        }
+    }
+
+    // Append id_extra + own attributes
+    slot_props = slot_props ++ sep ++ ".id_extra = " ++ idExpr(file_index * FILE_STRIDE + start_id, loop_depth);
+    inline for (el.attributes) |attr| {
+        slot_props = slot_props ++ ", ." ++ attr.name ++ " = ";
+        if (comptime std.mem.eql(u8, attr.name, "on_click")) {
+            switch (attr.value) {
+                .expression => |e| slot_props = slot_props ++ normalizeClickHandler(e),
+                else => slot_props = slot_props ++ "undefined",
+            }
+        } else {
+            switch (attr.value) {
+                .boolean => slot_props = slot_props ++ "true",
+                .string => |s| slot_props = slot_props ++ "\"" ++ escapeString(s) ++ "\"",
+                .expression => |e| slot_props = slot_props ++ e,
+            }
+        }
+    }
+    slot_props = slot_props ++ "}";
+
+    return .{
+        .code = indent ++ "ctx." ++ el.tag ++ "(ui, c, " ++ slot_props ++ ");\n",
+        .preamble = preamble,
+        .next_id = id,
+    };
 }
