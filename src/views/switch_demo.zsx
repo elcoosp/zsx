@@ -1,14 +1,14 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8}>
-          {switch ctx.status}
-            {:case "ok"}
-              <label>All good</label>
-            {:case "warn"}
-              <label>Warning</label>
-            {:else}
-              <label>Error</label>
-          {/switch}
+            {switch ctx.status}
+                {:case "ok"}
+                <label>All good</label>
+                {:case "warn"}
+                <label>Warning</label>
+                {:else}
+                <label>Error</label>
+            {/switch}
         </column>
     }
 }
