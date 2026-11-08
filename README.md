@@ -87,6 +87,54 @@ Closest mainstream analog: **Svelte** or **Vue SFC** (`.svelte` / `.vue` → `.j
 - How to commit generated files if your team prefers that
 - How to see generated files in the editor anyway
 
+## For external consumers
+
+zsx is fetchable. A consumer project adds it as a dependency, calls `zsx.addViews` from `build.zig`, and imports the generated views by name. **No fork, no `_gen.zig` in source tree, generated files land in `.zig-cache`.**
+
+```zig
+// build.zig.zon
+.dependencies = .{
+    .zsx = .{
+        .url = "git+https://github.com/elcoosp/zsx#v0.1.0",
+        .hash = "zsx-0.1.0-AAAA...",
+    },
+},
+```
+
+```zig
+// build.zig
+const zsx = @import("zsx");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const views = zsx.addViews(b, .{
+        .paths = &.{ "src/views/home.zsx", "src/views/about.zsx" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const app = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target, .optimize = optimize,
+    });
+    for (views) |v| app.addImport(v.name, v.module);
+
+    b.installArtifact(b.addExecutable(.{ .name = "app", .root_module = app }));
+}
+```
+
+```zig
+// src/main.zig
+const home = @import("home");
+const about = @import("about");
+```
+
+**One rule that changes from in-repo usage:** `.zsx` files must use **named imports** (`@import("shadcn")`), not relative paths (`@import("../lib/shadcn.zig")`). Relative paths can't resolve from `.zig-cache`. Wire named imports via `zsx.addViews(b, .{ .imports = &.{ .{ .name = "shadcn", .module = shadcn_mod } } })`.
+
+See [`examples/consumer/`](examples/consumer/) for a working end-to-end example (`cd examples/consumer && zig build run`).
+
 ## How it works
 
 Each `.zsx` file listed in `build.zig` is embedded and parsed at comptime into a neutral element tree (`src/ast.zig`). The emitter in `build.zig` walks that tree and appends a generated `view(ui, c, ctx)` function to `src/views/<name>_gen.zig`. At runtime, your app calls that function once per frame with an adapter and your context struct; the adapter translates the primitive calls into dvui or nanoui widget code. Component tags (`<Button ...>`) compile to calls back into your context, so components are resolved by Zig's own comptime dispatch.
