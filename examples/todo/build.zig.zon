@@ -1,0 +1,10 @@
+.{
+    .name = .zsx_todo,
+    .version = "0.0.0",
+    .fingerprint = 0xa34a268d8adb0059,
+    .minimum_zig_version = "0.17.0",
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
+    .dependencies = .{
+        .zsx = .{ .path = "../.." },
+    },
+}
