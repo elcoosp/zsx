@@ -1,9 +1,9 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <Card>
-          {if ctx.show}
-            <label>visible</label>
-          {/if}
+            {if ctx.show}
+                <label>visible</label>
+            {/if}
         </Card>
     }
 }
