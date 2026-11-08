@@ -28,3 +28,33 @@ pub fn main() !void {
     about.view(A, &c, &ctx);
     std.debug.print("about: {d} labels, {d} buttons\n", .{ stub.labelsRendered(), stub.buttonsRendered() });
 }
+
+test "home renders 2 labels + 2 buttons" {
+    const A = stub.Adapter;
+    var c: stub.Context = .{};
+    var ctx = Ctx{};
+    stub.resetCounters();
+    home.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), stub.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 2), stub.buttonsRendered());
+}
+
+test "about show_details=true renders 2 labels + 1 button" {
+    const A = stub.Adapter;
+    var c: stub.Context = .{};
+    var ctx = Ctx{ .show_details = true };
+    stub.resetCounters();
+    about.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), stub.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 1), stub.buttonsRendered());
+}
+
+test "about show_details=false renders 2 labels + 1 button" {
+    const A = stub.Adapter;
+    var c: stub.Context = .{};
+    var ctx = Ctx{ .show_details = false };
+    stub.resetCounters();
+    about.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 2), stub.labelsRendered());
+    try std.testing.expectEqual(@as(usize, 1), stub.buttonsRendered());
+}
