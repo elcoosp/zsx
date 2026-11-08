@@ -1,12 +1,12 @@
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
         <column padding={8} class="gap-2">
-          {for ctx.users as user}
-            <row class="gap-2">
-              <label class="text-lg font-bold">{user.name}</label>
-              <Badge color={user.role}>{user.role}</Badge>
-            </row>
-          {/for}
+            {for ctx.users as user}
+                <row class="gap-2">
+                    <label class="text-lg font-bold">{user.name}</label>
+                    <Badge color={user.role}>{user.role}</Badge>
+                </row>
+            {/for}
         </column>
     }
 }
