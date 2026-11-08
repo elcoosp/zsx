@@ -60,6 +60,10 @@ fn frame() !dvui.App.Result {
     var bg = dvui.box(@src(), .{}, .{ .expand = .both, .background = true, .style = .window });
     defer bg.deinit();
 
+    // Scroll container so content taller than the window remains reachable.
+    var scroll = dvui.scrollArea(@src(), .{}, .{ .expand = .both, .background = true });
+    defer scroll.deinit();
+
     playground.view(A, win, &g_ctx);
     return .ok;
 }
