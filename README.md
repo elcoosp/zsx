@@ -1,98 +1,87 @@
 <div align="center">
   <img src="https://cdn.jsdelivr.net/gh/elcoosp/zsx@main/docs/logo.png" alt="Zsx Logo" width="300"/>
   <p>
-    <strong>A JSX-like view syntax that compiles to native Zig GUI code at comptime</strong><br/>
-    Zsx embeds your <code>.zsx</code> markup at build time, parses it with a comptime parser, and emits
-    plain Zig builder calls into generated source files — no runtime parser, no dynamic dispatch.
-    It is for Zig developers building apps with dvui, nanoui, or HTML who want declarative views
-    without giving up their toolkit. The 15-component playground in <code>src/views/playground.zsx</code>
-    renders from one source through all three adapters, and CI builds each real binary on every push.
+    <strong>A JSX-like view syntax for Zig that compiles to native GUI code at build time</strong><br/>
+    Zsx turns <code>.zsx</code> files into plain Zig at build time — no runtime parser, no dynamic dispatch,
+    no interpreter in your release binary. It is for Zig developers building apps with dvui, nanoui,
+    or HTML who want declarative views without giving up their toolkit. The 15-component playground in
+    <code>src/views/playground.zsx</code> renders from one source through all three adapters.
   </p>
   <p>
     <a href="https://github.com/elcoosp/zsx/blob/main/.github/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/elcoosp/zsx/ci.yml?branch=main&style=flat-square" alt="CI status"/></a>
     <a href="https://github.com/elcoosp/zsx/blob/main/build.zig.zon"><img src="https://img.shields.io/badge/zig-0.17.0%2B-F7A41D?style=flat-square&logo=zig&logoColor=white" alt="Zig version"/></a>
-    <a href="https://github.com/elcoosp/zsx/tree/main/src/adapters"><img src="https://img.shields.io/badge/backends-dvui%20%7C%20nanoui-lightgrey?style=flat-square" alt="Supported backends"/></a>
+    <a href="https://github.com/elcoosp/zsx/tree/main/src/adapters"><img src="https://img.shields.io/badge/backends-dvui%20%7C%20nanoui%20%7C%20html-lightgrey?style=flat-square" alt="Supported backends"/></a>
     <a href="https://github.com/elcoosp/zsx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/></a>
-    <a href="https://github.com/elcoosp/zsx/blob/main/TEMPLATE.md"><img src="https://img.shields.io/badge/distribution-template-orange?style=flat-square" alt="Distributed as a template"/></a>
+    <a href="https://github.com/elcoosp/zsx/releases/tag/v0.1.0"><img src="https://img.shields.io/badge/distribution-fetchable-orange?style=flat-square" alt="Fetchable"/></a>
   </p>
 </div>
 
 <p align="center">
-  <a href="#quickstart">Quickstart</a> • <a href="#features">Features</a> • <a href="#how-it-works">How it works</a> • <a href="#usage">Usage</a> • <a href="#status">Status</a> • <a href="#learn-more">Learn more</a>
+  <a href="#quickstart">Quickstart</a> • <a href="#not-quite-tsx">Not quite TSX</a> • <a href="#use-as-a-dependency">Use as a dependency</a> • <a href="#features">Features</a> • <a href="#how-it-works">How it works</a> • <a href="#usage">Usage</a> • <a href="#contributing">Contributing</a> • <a href="#status">Status</a>
 </p>
 
 ## Quickstart
 
-Prerequisites: Zig 0.17.0 or later (CI runs 0.17.1); SDL3 and freetype only for the dvui binary.
+Prerequisites: Zig 0.17.0 or later (CI runs 0.17.1). SDL3 + freetype only if you want to run the DVUI binary.
+
+**Try the demo (no fork required):**
 
 ```bash
 git clone https://github.com/elcoosp/zsx
 cd zsx
-zig build test      # regenerates _gen.zig files, then runs unit and stub tests
-zig build example   # headless demo: renders src/views/demo.zsx through a stub toolkit
+zig build test       # 130+ tests through the whole pipeline
+zig build example    # headless stub demo — prints widget counts
 ```
 
-`zig build test` regenerates every `src/views/*_gen.zig` from its `.zsx` source as a build step, so markup changes are picked up without a separate command. `zig build example` runs `src/hello.zig`, which drives the same generated view against an in-memory stub and prints how many widgets rendered and whether the `on_click` handler fired.
-
-To open real windows:
+**Open a real window:**
 
 ```bash
-zig build build-app-dvui      # needs SDL3 + freetype (e.g. brew install sdl3 freetype)
+zig build build-app-dvui      # needs SDL3 + freetype (brew install sdl3 freetype)
 ./zig-out/bin/zsx-hello-dvui
 
-zig build build-app-nanoui    # macOS only; nanoui renders through Metal
+zig build build-app-nanoui    # macOS only; renders through Metal
 ./zig-out/bin/zsx-hello-nanoui
 ```
 
-Both binaries display the same 13-component playground defined once in `src/views/playground.zsx`.
+Both binaries render the same 15-component playground defined once in `src/views/playground.zsx`.
 
-To start your own project from this tree:
+**See the fetchable path end-to-end:**
 
 ```bash
-./scripts/new-project.sh ~/code/my-app my-app
+cd examples/consumer
+zig build run
 ```
 
-That copies the repo, renames the package, generates a fresh fingerprint, and initializes a git repo you own. See [TEMPLATE.md](TEMPLATE.md) for why zsx is a template rather than a `zig fetch` package.
+That project declares `zsx` as a `.path` dependency in its `build.zig.zon`, calls `zsx.addViews(b, opts)` in its `build.zig`, imports generated views via `@import("home")` and `@import("about")`, and runs. Its `src/` contains only `.zsx` files — no generated `.zig` on disk.
 
 ## Not quite TSX
 
-`zsx!{ <markup> }` is **not** Zig syntax. The Zig compiler has never heard of `zsx!{` — a `.zsx` file cannot be handed to `zig build-exe` directly.
+`zsx!{ <markup> }` is **not** Zig syntax. A `.zsx` file cannot be handed to `zig build-exe` directly. The pipeline is:
 
 ```
-src/views/demo.zsx      input to the preprocessor
-        v
-src/views/demo_gen.zig  expanded to plain Zig at build time
-        v               (this is the only file Zig compiles)
-   test / binary
+src/views/home.zsx        ← Zig outer, zsx!{ markup } blocks inside
+        │
+        │ zsx-gen (build-time host binary)
+        │ reads via std.Io.Dir, preprocesses, emits
+        ▼
+.zig-cache/<hash>/home.zig  ← plain Zig, the only file Zig compiles
+        │
+        │ b.createModule({ .root_source_file = out_path })
+        ▼
+  @import("home") in your app
 ```
 
-`src/preprocess.zig` scans for `zsx!{ ... }` blocks, parses the markup at comptime, and emits plain `ui.column(c, .{...})` / `ctx.Button(ui, c, .{...})` calls. Zig never sees markup.
+`zsx!{ }` blocks are scanned by the preprocessor, parsed as a markup AST, and rewritten into `ui.column(c, .{...})`, `ctx.Button(ui, c, .{...})`, or `shadcn.Button(ctx, ui, c, .{...})` calls. Zig never sees markup.
 
-Closest mainstream analog: **Svelte** or **Vue SFC** (`.svelte` / `.vue` → `.js`), or **SCSS** (`.scss` → `.css`), not TSX. TSX works because TypeScript's own parser understands JSX. True TSX parity would need a Zig compiler change, out of scope.
+Closest mainstream analog: **Svelte** or **Vue SFC** (`.svelte` / `.vue` → `.js`), or **SCSS** (`.scss` → `.css`), not TSX. TSX works because TypeScript's own parser understands JSX. True TSX parity would require a Zig compiler change, out of scope for ZSX.
 
-## Features
+What this buys: release binaries contain zero parser, zero interpreter, zero markup — only the builder calls a hand-written view would produce.
 
-- **One pipeline.** `build.zig` calls `zsx.addViews(b, opts)` (external) or `zsx.addViewsLocal(b, opts)` (in-repo). That builds `zsx-gen` from `src/gen.zig` and runs it once per `.zsx`. `zsx-gen` reads the source via `std.Io.Dir`, preprocesses `zsx!{ }` blocks into plain Zig, and writes `.zig` into `.zig-cache`. Consumers `@import("home")` by module name; the compiler never sees markup. Release binaries carry no parser.
-- **One source, three toolkits.** The same view renders through `src/adapters/dvui.zig` (dvui on SDL3), `src/adapters/nanoui.zig` (nanoui on Metal), and `src/adapters/html.zig` (plain HTML for the web). Each adapter implements one primitive surface — `column`, `row`, `text`, `button`, `textEntry`, `textArea`, `checkbox`, `progress`, `divider`, `slider`, `toggle`, `skeleton` — and the generated code only speaks that surface.
-- **Control flow in markup, native code out.** `{if}`, `{else if}`, `{else}`, and `{for items as item}` lower to literal Zig `if`/`for` statements in the generated file. Widget IDs in loops get stable index arithmetic (`id + idx_0`), so identity survives dynamic item counts.
-- **Styling resolved at comptime.** A Tailwind-named class subset (`bg-blue-500`, `p-4`, `gap-2`, `font-bold`, `rounded-lg`, ...) is mapped by `src/style.zig` to concrete colors, spacing, and font values during compilation. An unrecognized class is a compile error, not a silently unstyled widget.
-- **15 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives. A view exposes them by declaring them on its context struct — no codegen changes needed.
-- **Errors surface in your markup, not at runtime.** Unknown tags, bare text children, unclosed control flow, and non-comptime classes all fail compilation with targeted messages such as `zsx: bare text child; wrap in <label>`.
+## Use as a dependency
 
-## Developer workflow
-
-`_gen.zig` files are generated, gitignored, and hidden from the editor by the configs shipped in this repo (`.vscode/`, `.zed/`, `.idea/`). See [docs/DX.md](docs/DX.md) for:
-- What's on disk vs. what you see in the editor
-- Fresh-clone behavior (ZLS regenerates automatically on first save)
-- How to commit generated files if your team prefers that
-- How to see generated files in the editor anyway
-
-## For external consumers
-
-zsx is fetchable. A consumer project adds it as a dependency, calls `zsx.addViews` from `build.zig`, and imports the generated views by name. **No fork, no `_gen.zig` in source tree, generated files land in `.zig-cache`.**
+Add `zsx` to `build.zig.zon`:
 
 ```zig
-// build.zig.zon
 .dependencies = .{
     .zsx = .{
         .url = "git+https://github.com/elcoosp/zsx#v0.1.0",
@@ -101,77 +90,137 @@ zsx is fetchable. A consumer project adds it as a dependency, calls `zsx.addView
 },
 ```
 
+Call `zsx.addViews` from `build.zig`:
+
 ```zig
-// build.zig
 const zsx = @import("zsx");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const shadcn_mod = b.createModule(.{
+        .root_source_file = b.path("src/lib/shadcn.zig"),
+        .target = target, .optimize = optimize,
+    });
+
     const views = zsx.addViews(b, .{
         .paths = &.{ "src/views/home.zsx", "src/views/about.zsx" },
         .target = target,
         .optimize = optimize,
+        .imports = &.{.{ .name = "shadcn", .module = shadcn_mod }},
     });
 
     const app = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target, .optimize = optimize,
     });
+    app.addImport("shadcn", shadcn_mod);
     for (views) |v| app.addImport(v.name, v.module);
 
     b.installArtifact(b.addExecutable(.{ .name = "app", .root_module = app }));
 }
 ```
 
+Import the generated views by name in `main.zig`:
+
 ```zig
-// src/main.zig
 const home = @import("home");
 const about = @import("about");
 ```
 
-**One rule that changes from in-repo usage:** `.zsx` files must use **named imports** (`@import("shadcn")`), not relative paths (`@import("../lib/shadcn.zig")`). Relative paths can't resolve from `.zig-cache`. Wire named imports via `zsx.addViews(b, .{ .imports = &.{ .{ .name = "shadcn", .module = shadcn_mod } } })`.
+Write `.zsx` files with **named imports only**:
 
-See [`examples/consumer/`](examples/consumer/) for a working end-to-end example (`cd examples/consumer && zig build run`).
+```zsx
+// src/views/home.zsx
+const shadcn = @import("shadcn");
+
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8}>
+          <shadcn.Button variant="primary">Get Started</shadcn.Button>
+        </column>
+    }
+}
+```
+
+**One rule that changes from in-repo usage:** relative imports (`@import("../lib/shadcn.zig")`) do not work in external `.zsx` files. Generated `.zig` lives in `.zig-cache`, and `../` from there doesn't reach your source tree. Use named imports (`@import("shadcn")`), wired via `zsx.addViews(b, .{ .imports = ... })`.
+
+See [`examples/consumer/`](examples/consumer/) for a working end-to-end project.
+
+## Features
+
+- **One pipeline.** `zsx.addViews` (external) or `zsx.addViewsLocal` (in-repo) builds `zsx-gen` — a small host executable from `src/gen.zig` — and runs it once per `.zsx`. `zsx-gen` reads the source, preprocesses `zsx!{ }` blocks into plain Zig, and writes `.zig` into `.zig-cache`. The compiler never sees markup. Release binaries carry no parser.
+
+- **One source, three toolkits.** The same view renders through `src/adapters/dvui.zig` (dvui on SDL3), `src/adapters/nanoui.zig` (nanoui on Metal), and `src/adapters/html.zig` (plain HTML for the web). Each adapter implements the same primitive surface — `column`, `row`, `text`, `button`, `textEntry`, `textArea`, `checkbox`, `progress`, `divider`, `slider`, `toggle`, `skeleton` — and generated code only speaks that surface.
+
+- **Control flow in markup, native code out.** `{if}`, `{:else if}`, `{:else}`, `{/if}`, `{for items as item}`, `{/for}`, `{switch expr}`, `{:case "val"}`, `{/switch}`, and `<>...</>` fragments lower to literal Zig `if`/`for`/if-else-if chains. Widget IDs in loops get stable strided arithmetic, so identity survives dynamic item counts. Old `{endif}`/`{endfor}`/`{endswitch}` forms still work as aliases.
+
+- **Styling resolved at build time.** A Tailwind-named class subset (`bg-blue-500`, `p-4`, `gap-2`, `font-bold`, `rounded-lg`, ...) maps to concrete colors, spacing, and font values during code generation. An unrecognized class is a build error (`error.ZsxUnknownClass`), not a silently unstyled widget.
+
+- **15 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives.
+
+- **Named slots.** `<Card><Slot name="header">...</Slot><Slot name="body">...</Slot></Card>` compiles to an `.header` / `.body` fn field in the props struct. `Card` and `Section` iterate slots and call whichever are present.
+
+- **Path-qualified tags.** `<shadcn.Button>` compiles to `shadcn.Button(ctx, ui, c, .{...})`. No `pub const Button` boilerplate on the context struct — the import at the top of the `.zsx` file is enough.
+
+- **Pluggable style resolver.** `styleFromWith(el, resolver)` accepts any comptime resolver struct with `parseClasses` and `parseNumeric`. `DefaultResolver()` wraps the built-in class map; swap for your design system.
+
+- **Source-span errors.** Parser errors cite `.zsx` file, line, column. Example: `src/views/dashboard.zsx:14:8: zsx: mismatched closing tag`.
 
 ## How it works
 
-Each `.zsx` file listed in `build.zig` is embedded and parsed at comptime into a neutral element tree (`src/ast.zig`). Two emitters walk that tree and produce a `view(ui, c, ctx)` function:
-
-- **Comptime** (`src/codegen.zig`): called from `build.zig`, writes `src/views/<name>_gen.zig`.
-- **Runtime** (`src/rt/codegen.zig` via `src/gen.zig` and `zsx.zig`): invoked by `zsx.addViews` from a consumer's `build.zig`, writes `.zig-cache/<hash>/<name>.zig`. At runtime, your app calls that function once per frame with an adapter and your context struct; the adapter translates the primitive calls into dvui or nanoui widget code. Component tags (`<Button ...>`) compile to calls back into your context, so components are resolved by Zig's own comptime dispatch.
-
-```mermaid
-flowchart LR
-    A["src/views/*.zsx"] --> B["comptime parser<br/>src/parser.zig"]
-    B --> C["neutral AST<br/>src/ast.zig"]
-    C --> D["emitter in build.zig<br/>runs at comptime"]
-    D --> E["src/views/*_gen.zig<br/>pub fn view ui, c, ctx"]
-    E --> F["src/adapters/dvui.zig"]
-    E --> G["src/adapters/nanoui.zig"]
-    F --> H["dvui on SDL3"]
-    G --> I["nanoui on Metal, macOS"]
 ```
+src/views/home.zsx
+    │
+    ├─ build.zig calls zsx.addViews / addViewsLocal
+    │       │
+    │       ├─ builds zsx-gen (host binary, from src/gen.zig)
+    │       ├─ runs zsx-gen once per .zsx
+    │       │       │
+    │       │       ├─ src/rt/preprocess.zig — scan for zsx!{ } blocks
+    │       │       ├─ src/rt/parser.zig    — parse markup into AST
+    │       │       ├─ src/rt/codegen.zig   — walk AST, emit plain Zig
+    │       │       └─ writes .zig-cache/<hash>/home.zig
+    │       │
+    │       └─ b.createModule({ .root_source_file = out_path })
+    │
+    ▼
+@import("home") in your app
+    │
+    ▼
+ui.column(c, .{...}) / ctx.Button(ui, c, .{...}) at runtime
+    │
+    ▼
+adapter (dvui / nanoui / html) → widget calls
+```
+
+The runtime pipeline in `src/rt/` is the only pipeline. It runs at build time, not at runtime — the release binary contains only the builder calls a hand-written view would produce.
 
 ## Usage
 
-A view is a single root element with Zig expressions in `{}`. This is `src/views/demo.zsx` in full:
+A `.zsx` file is a Zig file with `zsx!{ <markup> }` blocks:
 
 ```zsx
-<column padding={16} class="gap-2">
-  {if ctx.show_save}
-    <button class="bg-blue-500 text-white px-4 py-2" on_click={ctx.save()}>Save</button>
-  {else}
-    <label class="text-gray-500">No actions</label>
-  {endif}
-  {for ctx.items as item}
-    <label class="text-lg font-bold">{item}</label>
-  {endfor}
-</column>
+const shadcn = @import("shadcn");
+
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={16} class="gap-2">
+          {if ctx.show_save}
+            <button class="bg-blue-500 text-white px-4 py-2" on_click={ctx.save()}>Save</button>
+          {:else}
+            <label class="text-gray-500">No actions</label>
+          {/if}
+          {for ctx.items as item}
+            <shadcn.Badge color="green">{item}</shadcn.Badge>
+          {/for}
+        </column>
+    }
+}
 ```
 
-`zig build test` generates `src/views/demo_gen.zig` from it:
+The generator produces plain Zig (in `.zig-cache`, not source tree):
 
 ```zig
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
@@ -184,7 +233,7 @@ pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
             ui.text(c, "No actions", .{.id_extra = 2, .color_text = .{ .r = 107, .g = 114, .b = 128, .a = 255 }});
         }
         for (ctx.items, 0..) |item, idx_0| {
-            ui.text(c, item, .{.id_extra = 3 + idx_0, .font_size = 18, .font_weight = 700});
+            ctx.Badge(ui, c, .{.id_extra = 3 + idx_0 * 1000000, .color = "green", .text = item});
         }
     }
 }
@@ -194,30 +243,36 @@ The grammar is a strict subset of HTML with Zig in braces:
 
 | Construct | Example |
 |---|---|
-| Layout primitives | `<column>`, `<row>`, `<label>`, `<button>` |
+| Layout primitive | `<column>`, `<row>`, `<label>`, `<button>` |
 | Self-closing component | `<Input buffer={&ctx.name} placeholder="Your name" />` |
 | Path-qualified component | `<shadcn.Button variant="primary">Save</shadcn.Button>` |
+| Bare component (via Ctx) | `<Button variant="primary">Save</Button>` |
+| Named slot | `<Card><Slot name="header"><Heading>Title</Heading></Slot></Card>` |
 | Boolean attribute | `<column flex />` |
 | Value attribute | `<column padding={16} />` |
 | String attribute | `<label class="text-lg font-bold">` |
 | Text expression | `<label>{item}</label>` |
-| Conditional | `{if ctx.flag} ... {else if other} ... {else} ... {endif}` |
-| Loop | `{for ctx.items as item} ... {endfor}` |
+| Conditional | `{if ctx.flag}...{:else if other}...{:else}...{/if}` |
+| Loop | `{for ctx.items as item}...{/for}` |
+| Switch | `{switch ctx.status}{:case "ok"}...{:else}...{/switch}` |
 | Fragment | `<>...</>` |
 
-Click handlers must be written as `on_click={ctx.method()}`; the emitter rewrites them to a call through the context pointer. Bare text inside layout elements such as `<column>` or `<row>` is rejected at compile time — wrap it in `<label>` instead. Components accept text children, which the emitter lowers to `text` calls.
+Click handlers must be `on_click={ctx.method()}`; the emitter rewrites them to `@field(@TypeOf(ctx.*), "method")` for dispatch through the context pointer. Bare text inside `<column>` or `<row>` is rejected — wrap in `<label>`. Components accept text children, lowered to `text` calls.
 
-Your app wires a context struct, an adapter, and the generated view. Excerpt from `src/hello_dvui.zig`:
+**Bare tags** (`<Button>`) resolve through the context struct: `ctx.Button(ui, c, .{...})`. For these, declare `pub const Button = @import("shadcn").Button;` on your `Ctx` struct. **Path tags** (`<shadcn.Button>`) resolve through a file-level import: `shadcn.Button(ctx, ui, c, .{...})`. No `Ctx` boilerplate needed.
+
+Wire your app with a context struct, an adapter, and the generated view. Excerpt from `src/hello_dvui.zig`:
 
 ```zig
 const dvui = @import("dvui");
-const playground = @import("views/playground_gen.zig");
+const playground = @import("playground");
 const adapter = @import("adapters/dvui.zig");
 
 const Ctx = struct {
-    pub const Button = @import("lib/shadcn.zig").Button;
-    pub const Input = @import("lib/shadcn.zig").Input;
-    // one decl per component the view uses
+    pub const Button = @import("shadcn").Button;
+    pub const Input = @import("shadcn").Input;
+    // one decl per bare component the view uses
+
     name: [64]u8 = @splat(0),
     remember: bool = false,
     completion: f32 = 0.42,
@@ -233,33 +288,61 @@ fn frame() !dvui.App.Result {
 }
 ```
 
-To add a view, create `src/views/your_view.zsx`, add its path to `zsx_files` in `build.zig`, and run `zig build test` — the `_gen.zig` file appears next to it. Components, their attributes, and per-backend limitations are documented in [docs/components.md](docs/components.md).
+To add a view: create `src/views/your_view.zsx`, add its path to `zsx_files` in `build.zig`, run `zig build test`. `_gen.zig` never appears in source tree — the module is available as `@import("your_view")`. See [docs/components.md](docs/components.md) for component details and per-backend limitations.
+
+## Contributing
+
+Working on ZSX itself — the emitter, adapters, or components — follows the same flow as any Zig project:
+
+```bash
+zig build test                        # run full test suite
+zig build example                     # headless stub demo, prints widget counts
+zig build example-nanoui              # nanoui stub demo, prints widget counts
+zig build build-app-dvui              # build real DVUI binary
+zig build build-app-nanoui            # build real Nanoui binary
+zig build snapshot                    # generate playground screenshot (macOS)
+```
+
+**Structure:**
+
+| Path | Purpose |
+|---|---|
+| `src/rt/parser.zig` | recursive-descent parser for `.zsx` markup |
+| `src/rt/preprocess.zig` | scan Zig source for `zsx!{ }` blocks |
+| `src/rt/codegen.zig` | walk AST, emit plain Zig |
+| `src/rt/style.zig` | class name → Style struct |
+| `src/gen.zig` | `zsx-gen` CLI entry point |
+| `zsx.zig` | `addViews` / `addViewsLocal` build helpers |
+| `src/lib/shadcn.zig` | 15 components |
+| `src/lib/style.zig` | strict class parser (`!Style`) |
+| `src/adapters/dvui.zig` | DVUI on SDL3 |
+| `src/adapters/nanoui.zig` | Nanoui on Metal |
+| `src/adapters/html.zig` | plain HTML + inline styles |
+| `src/views/*.zsx` | demo views |
+| `examples/consumer/` | fetchable-path example |
+
+**Adding a component** goes in `src/lib/shadcn.zig` as an `inline fn`. Public functions with a `self: anytype` first parameter work as both bare tags (`<Button>` via `ctx.Button`) and path tags (`<shadcn.Button>` via `shadcn.Button`).
+
+**Adding an adapter** goes in `src/adapters/<name>.zig`, implementing the same primitive surface as the existing three. No registry, no plugin loader — import at the callsite.
 
 ## Status
 
 > [!NOTE]
-> This is a young project (version 0.0.1); expect breaking changes to the `.zsx` grammar and the adapter surface. It targets Zig 0.17.0 or later and is tested in CI on 0.17.1 across ubuntu-latest and macos-latest. Both real binaries are built on macOS every push; the nanoui backend is macOS-only (Metal), and the dvui backend needs SDL3 and freetype installed. The fetchable path (`zsx.addViews` in a consumer's `build.zig`) is production-ready; see [`examples/consumer/`](examples/consumer/) for a working end-to-end demo. Known limitations, all listed in [docs/components.md](docs/components.md): class strings must be compile-time constants, `m-*` margin classes are rejected, dvui headings fall back to the theme font weight, and nanoui ignores `id_extra` on checkboxes.
+> Version **0.1.0**, tagged and released. The single runtime pipeline is the only pipeline; the earlier comptime pipeline was removed in `v0.1.0`. The `.zsx` grammar and the adapter primitive surface may still change between 0.x releases.
+>
+> Targets Zig **0.17.0+**, tested on 0.17.1 across ubuntu-latest and macos-latest. Both real binaries build on macOS every push; Nanoui is macOS-only (Metal), DVUI needs SDL3 and freetype.
+>
+> **Production-ready:** the fetchable path (`zsx.addViews` in a consumer's `build.zig`) — see `examples/consumer/`.
+>
+> **Not yet:** real DVUI/Nanoui windows verified against a screenshot in CI; `zig fetch --save` from a published URL; `examples/todo/` (form + validation + persistence on a real window); routing between multiple screens; `zsx fmt`, `zsx init`, tree-sitter grammar.
+>
+> Known limitations, all listed in [docs/components.md](docs/components.md): class strings must be build-time constants, `m-*` margin classes are rejected, DVUI headings fall back to the theme font weight, and Nanoui ignores `id_extra` on checkboxes.
 
 ## Learn more
 
-- [docs/components.md](docs/components.md) — API reference for all 13 components, with examples and per-backend notes.
-- [TEMPLATE.md](TEMPLATE.md) — why zsx ships as a template instead of a package, and the fork workflow.
-- [ROADMAP.md](ROADMAP.md) — the phased plan, including future backends such as zigui, Capy, and a web emitter.
-- [docs/zig-skill.md](docs/zig-skill.md) — a Zig 0.17 reference of compiler errors and fixes, used while building this repo.
-
-## Fresh-clone regeneration
-
-`src/views/*_gen.zig` files are generated by the build system and are
-listed in `.gitignore` — same convention as `tsc` and the `.js` it
-produces from `.tsx`.
-
-After `git clone` (or `new-project.sh`), run `zig build test` once
-before opening the project in your editor. That regenerates every
-`_gen.zig` file so ZLS can resolve `@import("views/demo_gen.zig")`.
-Every subsequent `zig build <target>` will also regenerate any missing
-`_gen.zig` because `zsx_update` is a dependency of every build step
-that uses a view.
-
-If you prefer to commit `_gen.zig` (some teams do, for reviewability),
-delete the `src/views/*_gen.zig` line from `.gitignore`.
-
+- [docs/components.md](docs/components.md) — API reference for all 15 components, with examples and per-backend notes.
+- [TEMPLATE.md](TEMPLATE.md) — fetchable-vs-fork decision tree.
+- [ROADMAP.md](ROADMAP.md) — shipped items, rejected designs, remaining work.
+- [CHANGELOG.md](CHANGELOG.md) — what shipped in each release.
+- [docs/zig-skill.md](docs/zig-skill.md) — Zig 0.17 compiler errors and fixes discovered while building this.
+- [`examples/consumer/`](examples/consumer/) — minimal fetchable project.
