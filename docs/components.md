@@ -223,7 +223,7 @@ Besides bare `<Button>` / `<Badge>` (which resolve via `ctx.Button` /
 Zig module directly:
 
 ```zsx
-const shadcn = @import("../lib/shadcn.zig");
+const shadcn = @import("shadcn");
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
@@ -244,8 +244,8 @@ rules: text children become `.text = "..."`, `on_click` becomes
 
 Advantages over bare tags:
 
-- **No `Ctx` boilerplate.** You do not need `pub const Button = @import("lib/shadcn.zig").Button;` on every context struct. The import lives at the top of the `.zsx` file.
-- **Real Zig resolution.** `@import("../lib/shadcn.zig")` is the same mechanism any `.zig` file uses. Typos surface as ordinary compile errors.
+- **No `Ctx` boilerplate.** You do not need `pub const Button = @import("shadcn").Button;` on every context struct. The import lives at the top of the `.zsx` file.
+- **Real Zig resolution.** `@import("shadcn")` is the same mechanism any `.zig` file uses. Typos surface as ordinary compile errors.
 - **Mix libraries.** Different `.zsx` files can import different component libraries.
 
 Both forms are supported simultaneously; migration is incremental.
@@ -257,7 +257,7 @@ Besides bare `<Button>` / `<Badge>` (which resolve via `ctx.Button` /
 Zig module directly:
 
 ```zsx
-const shadcn = @import("../lib/shadcn.zig");
+const shadcn = @import("shadcn");
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     zsx!{
@@ -278,8 +278,8 @@ rules: text children become `.text = "..."`, `on_click` becomes
 
 Advantages over bare tags:
 
-- **No `Ctx` boilerplate.** You do not need `pub const Button = @import("lib/shadcn.zig").Button;` on every context struct. The import lives at the top of the `.zsx` file.
-- **Real Zig resolution.** `@import("../lib/shadcn.zig")` is the same mechanism any `.zig` file uses. Typos surface as ordinary compile errors.
+- **No `Ctx` boilerplate.** You do not need `pub const Button = @import("shadcn").Button;` on every context struct. The import lives at the top of the `.zsx` file.
+- **Real Zig resolution.** `@import("shadcn")` is the same mechanism any `.zig` file uses. Typos surface as ordinary compile errors.
 - **Mix libraries.** Different `.zsx` files can import different component libraries.
 
 Both forms are supported simultaneously; migration is incremental.
@@ -302,7 +302,7 @@ Then add re-export to every consumer `Ctx`:
 ```zig
 const Ctx = struct {
     // ...
-    pub const MyComponent = @import("lib/shadcn.zig").MyComponent;
+    pub const MyComponent = @import("shadcn").MyComponent;
 };
 ```
 
