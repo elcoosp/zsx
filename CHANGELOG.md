@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.3.0] — 2026-11-09
+
+### Added
+- **M0 ground-truth tooling.** `AGENTS.md`, `docs/STATE.md`, ADR/RFC templates,
+  `zig build check-meta`, `zig build check-docs`, `zig build golden`,
+  `zig build bench` / `bench-smoke`, and a `zsx` CLI stub.
+- `spec/golden/*.zig` — committed golden output for all 20 views.
+- `bench/baseline.json` — committed generator-throughput baseline.
+- `src/tests/` — per-feature test suites; `src/root.zig` is now a thin
+  aggregator.
+- `src/tests/reproducers.zig` — pinned reproducers for F1, F2, F3, F5.
+- `src/compat.zig` and ADR 0002 — Zig `current` / `current-1` support policy.
+- `VERSION` — single source of truth for release metadata.
+
+### Changed
+- `dvui` and `nanoui` are lazy dependencies; `zig build test` and the consumer
+  example no longer fetch either toolkit.
+- `build.zig.zon` version aligned with the README and CHANGELOG (was `0.0.1`).
+- CI now runs Ubuntu, macOS, and Windows stub jobs plus Linux real-DVUI build.
+
+### Deprecated
+- `scripts/zsx-fmt.py` and `scripts/zsx-check.py` now sit behind `zsx fmt` /
+  `zsx check`; the native implementations replace them in M1.
+
 ## [0.2.0] — 2026-11-09
 
 ### Added

@@ -1,14 +1,16 @@
 .{
     .name = .zsx,
-    .version = "0.0.1",
+    .version = "0.3.0",
     .dependencies = .{
         .dvui = .{
             .url = "git+https://github.com/david-vanderson/dvui#d33935989e166d8340c9dd2888ad8aff0265c4ba",
             .hash = "dvui-0.6.0-dev-AQFJmROtBAGQY_PnyAZrF1ccsgzQaWPNp0LWI55FM5Nk",
+            .lazy = true,
         },
         .nanoui = .{
             .url = "git+https://github.com/justrach/nanoui?ref=main#e26765e8422f0a719e3bb90d9d97067d92d495b7",
             .hash = "nanoui-0.12.0-we0KMbp2JQDpk0V0TsRtnyfRjh3MzkJUpBCekoD2YdOc",
+            .lazy = true,
         },
     },
     .fingerprint = 0xfcebe7afe7650afb,
@@ -17,6 +19,7 @@
         "build.zig",
         "build.zig.zon",
         "zsx.zig",
+        "VERSION",
         "src",
     },
 }

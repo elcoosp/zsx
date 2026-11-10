@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""zsx-check — validate .zsx files without compilation.
+"""zsx-check — DEPRECATED: use `zsx check` (M1 replaces this Python tool).
+
+zsx-check — validate .zsx files without compilation.
 
 Usage:
     scripts/zsx-check.py [files...]

@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -24,24 +24,61 @@ jobs:
           path: |
             .zig-cache
             ~/.cache/zig
+            ~/AppData/Local/zig
             zig-pkg
           key: ${{ runner.os }}-zig-${{ hashFiles('build.zig.zon') }}
-      - name: Run tests
+      - name: Unit and view tests (stub backends)
         run: zig build test
-      - name: Validate .zsx structure
-        run: python3 scripts/zsx-check.py
-      - name: Check .zsx formatting
-        run: python3 scripts/zsx-fmt.py --check
-      - name: Consumer example
-        run: cd examples/consumer && zig build run
-      - name: Consumer example test
-        run: cd examples/consumer && zig build test
+      - name: Metadata consistency
+        run: zig build check-meta
+      - name: Docs and relative links
+        run: zig build check-docs
+      - name: Golden output
+        run: zig build golden
+      - name: Benchmark smoke
+        run: zig build bench-smoke
+      - name: Full benchmark
+        if: runner.os == 'Linux'
+        run: zig build bench
+      - name: Upload benchmark baseline
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-baseline
+          path: bench/baseline.json
+      - name: CLI check
+        if: runner.os != 'Windows'
+        run: zig build zsx -Dcmd=check
+      - name: CLI format check
+        if: runner.os != 'Windows'
+        run: zig build zsx -Dcmd=fmt -Dcmd-args=--check
       - name: Run stub examples
         run: |
           zig build example
           zig build example-nanoui
 
-  # Real-backend builds only run on macOS (Nanoui is macOS-only, DVUI needs SDL3)
+  consumer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - name: "Consumer example (lazy deps: must not fetch dvui/nanoui)"
+        run: cd examples/consumer && zig build test
+      - name: Consumer example run
+        run: cd examples/consumer && zig build run
+      - name: Assert toolkits were not fetched
+        shell: bash
+        run: |
+          if [ -d examples/consumer/zig-pkg ]; then
+            if find examples/consumer/zig-pkg -maxdepth 1 -iname '*dvui*' -o -iname '*nanoui*' | grep -q .; then
+              echo "::error::consumer fetched dvui/nanoui despite lazy dependencies"
+              exit 1
+            fi
+          fi
+
+  # Real backends. Nanoui is macOS-only (Metal); DVUI needs SDL3 + freetype.
   build-macos:
     runs-on: macos-latest
     steps:
@@ -51,19 +88,27 @@ jobs:
           version: 0.17.1
       - name: Install SDL3 + freetype
         run: brew install sdl3 freetype
-      - name: Cache zig-pkg
-        uses: actions/cache@v4
-        with:
-          path: |
-            .zig-cache
-            ~/.cache/zig
-            zig-pkg
-          key: ${{ runner.os }}-zig-dvui-${{ hashFiles('build.zig.zon') }}
       - name: Build DVUI binary
-        run: zig build build-app-dvui
+        run: zig build build-app-dvui -Dreal=true
       - name: Build Nanoui binary
-        run: zig build build-app-nanoui
+        run: zig build build-app-nanoui -Dreal=true
       - name: Verify binaries exist
         run: |
           test -f zig-out/bin/zsx-hello-dvui
           test -f zig-out/bin/zsx-hello-nanoui
+
+  build-linux-dvui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - name: Install SDL3 + freetype
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl3-dev libfreetype-dev
+      - name: Build DVUI binary
+        run: zig build build-app-dvui -Dreal=true
+      - name: Verify binary exists
+        run: test -f zig-out/bin/zsx-hello-dvui

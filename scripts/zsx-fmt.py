@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""zsx-fmt — reformat the markup inside `zsx!{ ... }` blocks.
+"""zsx-fmt — DEPRECATED: use `zsx fmt` (M1 replaces this Python tool).
+
+zsx-fmt — reformat the markup inside `zsx!{ ... }` blocks.
 
 Usage:
     scripts/zsx-fmt.py [--check] [--write] [files...]

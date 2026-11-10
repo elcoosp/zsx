@@ -12,7 +12,7 @@
     <a href="https://github.com/elcoosp/zsx/blob/main/build.zig.zon"><img src="https://img.shields.io/badge/zig-0.17.0%2B-F7A41D?style=flat-square&logo=zig&logoColor=white" alt="Zig version"/></a>
     <a href="https://github.com/elcoosp/zsx/tree/main/src/adapters"><img src="https://img.shields.io/badge/backends-dvui%20%7C%20nanoui%20%7C%20html-lightgrey?style=flat-square" alt="Supported backends"/></a>
     <a href="https://github.com/elcoosp/zsx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/></a>
-    <a href="https://github.com/elcoosp/zsx/releases/tag/v0.2.0"><img src="https://img.shields.io/badge/distribution-fetchable-orange?style=flat-square" alt="Fetchable"/></a>
+    <a href="https://github.com/elcoosp/zsx/releases/tag/v0.3.0"><img src="https://img.shields.io/badge/distribution-fetchable-orange?style=flat-square" alt="Fetchable"/></a>
   </p>
 </div>
 
@@ -36,10 +36,10 @@ zig build example    # headless stub demo — prints widget counts
 **Open a real window:**
 
 ```bash
-zig build build-app-dvui      # needs SDL3 + freetype (brew install sdl3 freetype)
+zig build build-app-dvui -Dreal=true      # needs SDL3 + freetype (brew install sdl3 freetype)
 ./zig-out/bin/zsx-hello-dvui
 
-zig build build-app-nanoui    # macOS only; renders through Metal
+zig build build-app-nanoui -Dreal=true    # macOS only; renders through Metal
 ./zig-out/bin/zsx-hello-nanoui
 ```
 
@@ -84,8 +84,8 @@ Add `zsx` to `build.zig.zon`:
 ```zig
 .dependencies = .{
     .zsx = .{
-        .url = "git+https://github.com/elcoosp/zsx#v0.2.0",
-        .hash = "zsx-0.1.0-AAAA...",
+        .url = "git+https://github.com/elcoosp/zsx#v0.3.0",
+        .hash = "zsx-0.3.0-AAAA...",
     },
 },
 ```
@@ -292,13 +292,17 @@ To add a view: create `src/views/your_view.zsx`, add its path to `zsx_files` in 
 
 ## Formatting
 
-`scripts/zsx-fmt.py` reformats the markup inside `zsx!{ }` blocks. Zig code outside blocks is preserved byte-for-byte. Idempotent.
+`zsx fmt` reformats the markup inside `zsx!{ }` blocks. Zig code outside blocks is preserved byte-for-byte. Idempotent.
 
 ```bash
-python3 scripts/zsx-fmt.py            # dry-run: list files that need formatting
-python3 scripts/zsx-fmt.py --write    # apply
-python3 scripts/zsx-fmt.py --check    # exit 1 if anything needs formatting (CI-friendly)
+zig build cli                         # installs zig-out/bin/zsx
+zsx fmt                               # dry-run: list files that need formatting
+zsx fmt --write                       # apply
+zsx fmt --check                       # exit 1 if anything needs formatting (CI-friendly)
 ```
+
+From this repo without installing: `zig build zsx -Dcmd=fmt -Dcmd-args=--check`.
+M0 wraps `scripts/zsx-fmt.py`; the native implementation lands in M1.
 
 What it normalizes:
 - 4-space indentation per nesting level inside `zsx!{ }` blocks
@@ -309,12 +313,14 @@ What it normalizes:
 
 ## Validation
 
-`scripts/zsx-check.py` validates `.zsx` structure (balanced tags, control-flow nesting) in **<100ms**, without compiling. Catches errors `zig build test` takes ~30s to surface.
+`zsx check` validates `.zsx` structure (balanced tags, control-flow nesting) in **<100ms**, without compiling. Catches errors `zig build test` takes ~30s to surface.
 
 ```bash
-python3 scripts/zsx-check.py             # validate all .zsx in repo
-python3 scripts/zsx-check.py file.zsx    # validate one file
+zsx check                # validate all .zsx in repo
+zsx check file.zsx       # validate one file
 ```
+
+From this repo: `zig build zsx -Dcmd=check`. M0 wraps `scripts/zsx-check.py`.
 
 Detects:
 - `<column>...</row>` — mismatched close
@@ -336,8 +342,8 @@ Working on ZSX itself — the emitter, adapters, or components — follows the s
 zig build test                        # run full test suite
 zig build example                     # headless stub demo, prints widget counts
 zig build example-nanoui              # nanoui stub demo, prints widget counts
-zig build build-app-dvui              # build real DVUI binary
-zig build build-app-nanoui            # build real Nanoui binary
+zig build build-app-dvui -Dreal=true              # build real DVUI binary
+zig build build-app-nanoui -Dreal=true            # build real Nanoui binary
 zig build snapshot                    # generate playground screenshot (macOS)
 ```
 
@@ -351,7 +357,7 @@ zig build snapshot                    # generate playground screenshot (macOS)
 | `src/rt/style.zig` | class name → Style struct |
 | `src/gen.zig` | `zsx-gen` CLI entry point |
 | `zsx.zig` | `addViews` / `addViewsLocal` build helpers |
-| `src/lib/shadcn.zig` | 15 components |
+| `src/lib/shadcn.zig` | 20 components |
 | `src/lib/style.zig` | strict class parser (`!Style`) |
 | `src/adapters/dvui.zig` | DVUI on SDL3 |
 | `src/adapters/nanoui.zig` | Nanoui on Metal |
@@ -366,13 +372,15 @@ zig build snapshot                    # generate playground screenshot (macOS)
 ## Status
 
 > [!NOTE]
-> Version **0.2.0**, tagged and released. The single runtime pipeline is the only pipeline; the earlier comptime pipeline was removed in `v0.2.0`. The `.zsx` grammar and the adapter primitive surface may still change between 0.x releases.
+> Version **0.3.0**, tagged and released. The single runtime pipeline is the only pipeline; the earlier comptime pipeline was removed in `v0.2.0`; M0 ground-truth tooling landed in `v0.3.0`. The `.zsx` grammar and the adapter primitive surface may still change between 0.x releases.
 >
 > Targets Zig **0.17.0+**, tested on 0.17.1 across ubuntu-latest and macos-latest. Both real binaries build on macOS every push; Nanoui is macOS-only (Metal), DVUI needs SDL3 and freetype.
 >
 > **Production-ready:** the fetchable path (`zsx.addViews` in a consumer's `build.zig`) — see `examples/consumer/`.
 >
-> **Tooling:** `scripts/zsx-fmt.py` (reformat `.zsx` markup, idempotent), `scripts/zsx-check.py` (validate structure in <100ms), `scripts/init.sh` (one-command project scaffold). All three run in CI.
+> **Tooling:** `zsx fmt` (reformat `.zsx` markup, idempotent) and `zsx check` (validate structure in <100ms) via `zig build zsx -Dcmd=fmt` / `zig build zsx -Dcmd=check`; the underlying Python scripts are deprecated and will be replaced in M1. `scripts/init.sh` is the one-command project scaffold.
+>
+> **M0 gates:** `zig build check-meta`, `zig build check-docs`, `zig build golden`, and `zig build bench-smoke` run in CI. Memory files live in [AGENTS.md](AGENTS.md) and [docs/STATE.md](docs/STATE.md).
 >
 > **Not yet:** `examples/todo/` on a real DVUI window (currently stub-only); tree-sitter grammar for `.zsx` syntax highlighting; routing between screens (deliberately out of scope — use `{switch}` on a `ctx.screen` enum).
 >
