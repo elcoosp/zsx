@@ -1,13 +1,20 @@
 //! `zig build bench` — deterministic-ish benchmark skeleton.
 //!
 //! M0 measures wall-clock generator throughput on synthetic views and writes a
-//! baseline JSON. Instruction counts and per-backend frame costs land in M10.
+//! baseline JSON. M1 adds `check_1k`: checker throughput over the same
+//! synthetic file, against the master-plan WP 1.7 acceptance target (< 20 ms
+//! per 1k lines). Instruction counts and per-backend frame costs land in M10.
 
 const std = @import("std");
-const preprocess = @import("zsx_preprocess");
+const checker = @import("zsx_checker");
+const diag = checker.diag;
+const preprocess = checker.preprocess;
+
+const Kind = enum { gen, check, fmt };
 
 const Case = struct {
     name: []const u8,
+    kind: Kind,
     lines: usize,
     iterations: usize,
     result: ?Metrics = null,
@@ -15,7 +22,8 @@ const Case = struct {
 
 const Metrics = struct {
     input_bytes: usize,
-    output_bytes: usize,
+    output_bytes: usize = 0,
+    diagnostics: usize = 0,
     ns: u64,
     mb_per_s: f64,
 };
@@ -40,10 +48,14 @@ pub fn main(init: std.process.Init) !void {
 
     var cases = std.array_list.Managed(Case).init(a);
     if (smoke) {
-        try cases.append(.{ .name = "gen_1k", .lines = 1000, .iterations = 3 });
+        try cases.append(.{ .name = "gen_1k", .kind = .gen, .lines = 1000, .iterations = 3 });
+        try cases.append(.{ .name = "check_1k", .kind = .check, .lines = 1000, .iterations = 3 });
+        try cases.append(.{ .name = "fmt_1k", .kind = .fmt, .lines = 1000, .iterations = 3 });
     } else {
-        try cases.append(.{ .name = "gen_1k", .lines = 1000, .iterations = 10 });
-        try cases.append(.{ .name = "gen_10k", .lines = 10_000, .iterations = 5 });
+        try cases.append(.{ .name = "gen_1k", .kind = .gen, .lines = 1000, .iterations = 10 });
+        try cases.append(.{ .name = "gen_10k", .kind = .gen, .lines = 10_000, .iterations = 5 });
+        try cases.append(.{ .name = "check_1k", .kind = .check, .lines = 1000, .iterations = 10 });
+        try cases.append(.{ .name = "fmt_1k", .kind = .fmt, .lines = 1000, .iterations = 10 });
     }
     const case_slice = cases.items;
 
@@ -51,32 +63,66 @@ pub fn main(init: std.process.Init) !void {
     try json.appendSlice("{\n  \"schema\": 1,\n  \"metric\": \"wall_ns\",\n  \"cases\": {\n");
     for (case_slice, 0..) |*c, idx| {
         const src = try synthetic(a, c.lines);
-        _ = preprocess.preprocess(a, src, "synthetic.zsx", 0) catch |e| {
-            std.debug.print("bench: preprocess failed: {s}\n", .{@errorName(e)});
-            return error.BenchFailed;
-        };
         var best: u64 = std.math.maxInt(u64);
         var out_len: usize = 0;
+        var diag_count: usize = 0;
         var iter: usize = 0;
         while (iter < c.iterations) : (iter += 1) {
+            var work: usize = 0;
             const t0 = std.Io.Clock.Timestamp.now(io, .awake);
-            const body = try preprocess.preprocess(a, src, "synthetic.zsx", 0);
+            switch (c.kind) {
+                .gen => {
+                    const body = try preprocess.preprocess(a, src, "synthetic.zsx", 0);
+                    work = body.len;
+                },
+                .check => {
+                    var list = diag.List.init(a);
+                    try checker.checkSource(a, src, "synthetic.zsx", .{}, &list);
+                    work = list.count();
+                },
+                .fmt => {
+                    const body = try checker.fmt.formatSource(a, src, .{});
+                    work = body.len;
+                },
+            }
             const t1 = std.Io.Clock.Timestamp.now(io, .awake);
             const ns: u64 = @intCast(@max(0, t0.durationTo(t1).raw.nanoseconds));
             if (ns < best) best = ns;
-            out_len = body.len;
+            switch (c.kind) {
+                .gen => out_len = work,
+                .check => diag_count = work,
+                .fmt => out_len = work,
+            }
+        }
+        if (c.kind == .gen) {
+            _ = preprocess.preprocess(a, src, "synthetic.zsx", 0) catch |e| {
+                std.debug.print("bench: preprocess failed: {s}\n", .{@errorName(e)});
+                return error.BenchFailed;
+            };
         }
         const mb_per_s = if (best == 0) 0.0 else (@as(f64, @floatFromInt(src.len)) / (1024.0 * 1024.0)) / (@as(f64, @floatFromInt(best)) / 1e9);
-        c.result = .{ .input_bytes = src.len, .output_bytes = out_len, .ns = best, .mb_per_s = mb_per_s };
+        c.result = .{ .input_bytes = src.len, .output_bytes = out_len, .diagnostics = diag_count, .ns = best, .mb_per_s = mb_per_s };
 
         try json.appendSlice(if (idx == 0) "" else ",\n");
-        const line = try std.fmt.allocPrint(
-            a,
-            "    \"{s}\": {{ \"input_lines\": {d}, \"input_bytes\": {d}, \"output_bytes\": {d}, \"ns\": {d}, \"mb_per_s\": {d:.2} }}",
-            .{ c.name, c.lines, src.len, out_len, best, mb_per_s },
-        );
+        const line = switch (c.kind) {
+            .gen, .fmt => try std.fmt.allocPrint(
+                a,
+                "    \"{s}\": {{ \"input_lines\": {d}, \"input_bytes\": {d}, \"output_bytes\": {d}, \"ns\": {d}, \"mb_per_s\": {d:.2} }}",
+                .{ c.name, c.lines, src.len, out_len, best, mb_per_s },
+            ),
+            .check => try std.fmt.allocPrint(
+                a,
+                "    \"{s}\": {{ \"input_lines\": {d}, \"input_bytes\": {d}, \"diagnostics\": {d}, \"ns\": {d}, \"mb_per_s\": {d:.2} }}",
+                .{ c.name, c.lines, src.len, diag_count, best, mb_per_s },
+            ),
+        };
         try json.appendSlice(line);
-        std.debug.print("bench: {s}  {d} lines  {d} ns  {d:.2} MB/s\n", .{ c.name, c.lines, best, mb_per_s });
+        const label = switch (c.kind) {
+            .gen => "gen",
+            .check => "check",
+            .fmt => "fmt",
+        };
+        std.debug.print("bench: {s}  {s}  {d} lines  {d} ns  {d:.2} MB/s\n", .{ c.name, label, c.lines, best, mb_per_s });
     }
     try json.appendSlice("\n  }\n}\n");
 
