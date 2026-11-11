@@ -200,13 +200,6 @@ pub fn Adapter(comptime ui: type) type {
             }
         }
 
-
-
-
-
-
-
-
         pub const Box = struct {
             inner: ui.Div,
 
@@ -393,52 +386,62 @@ pub const StubNanoui = struct {
     }
 
     pub fn textEntry(c: *Context, buffer: []u8, opts: anytype) void {
-        _ = c; _ = buffer; _ = opts;
+        _ = c;
+        _ = buffer;
+        _ = opts;
         _text_entries_rendered += 1;
     }
 
     pub fn textArea(c: *Context, buffer: []u8, opts: anytype) void {
-        _ = c; _ = buffer; _ = opts;
+        _ = c;
+        _ = buffer;
+        _ = opts;
         _text_areas_rendered += 1;
     }
 
     pub fn checkbox(c: *Context, title: []const u8, value: *bool, opts: anytype) bool {
-        _ = c; _ = title; _ = value; _ = opts;
+        _ = c;
+        _ = title;
+        _ = value;
+        _ = opts;
         _checkboxes_rendered += 1;
         return false;
     }
 
     pub fn progress(c: *Context, value: f32, opts: anytype) void {
-        _ = c; _ = value; _ = opts;
+        _ = c;
+        _ = value;
+        _ = opts;
         _progresses_rendered += 1;
     }
 
     pub fn divider(c: *Context, opts: anytype) void {
-        _ = c; _ = opts;
+        _ = c;
+        _ = opts;
         _dividers_rendered += 1;
     }
 
     pub fn slider(c: *Context, value: *f32, opts: anytype) bool {
-        _ = c; _ = value; _ = opts;
+        _ = c;
+        _ = value;
+        _ = opts;
         _sliders_rendered += 1;
         return false;
     }
     pub fn toggle(c: *Context, label: []const u8, value: *bool, opts: anytype) bool {
-        _ = c; _ = label; _ = value; _ = opts;
+        _ = c;
+        _ = label;
+        _ = value;
+        _ = opts;
         _toggles_rendered += 1;
         return false;
     }
 
     pub fn skeleton(c: *Context, opts: anytype) void {
-        _ = c; _ = opts;
+        _ = c;
+        _ = opts;
         _skeletons_rendered += 1;
     }
-
-
-
-
-
-
 };
 
 test "nanoui adapter column opens and ends" {
