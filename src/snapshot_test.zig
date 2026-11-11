@@ -62,7 +62,6 @@ test "snapshot: nanoui playground" {
     const full = "docs/screenshots/playground-nanoui.png";
     try t.screenshot(full);
     std.debug.print("wrote {s}\n", .{full});
-
 }
 
 const components_demo = @import("components_demo");
