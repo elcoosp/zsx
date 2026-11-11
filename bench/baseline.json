@@ -2,9 +2,10 @@
   "schema": 1,
   "metric": "wall_ns",
   "cases": {
-    "gen_1k": { "input_lines": 1000, "input_bytes": 62158, "output_bytes": 120136, "ns": 737145, "mb_per_s": 80.42 },
-    "gen_10k": { "input_lines": 10000, "input_bytes": 620158, "output_bytes": 1209137, "ns": 8129354, "mb_per_s": 72.75 },
-    "check_1k": { "input_lines": 1000, "input_bytes": 62158, "diagnostics": 0, "ns": 280395, "mb_per_s": 211.41 },
-    "fmt_1k": { "input_lines": 1000, "input_bytes": 62158, "output_bytes": 62158, "ns": 1018264, "mb_per_s": 58.22 }
+    "gen_1k": { "input_lines": 1000, "input_bytes": 62158, "output_bytes": 120136, "ns": 652483, "mb_per_s": 90.85 },
+    "gen_10k": { "input_lines": 10000, "input_bytes": 620158, "output_bytes": 1209137, "ns": 11742924, "mb_per_s": 50.36 },
+    "check_1k": { "input_lines": 1000, "input_bytes": 62158, "diagnostics": 0, "ns": 293640, "mb_per_s": 201.87 },
+    "fmt_1k": { "input_lines": 1000, "input_bytes": 62158, "output_bytes": 62158, "ns": 1044599, "mb_per_s": 56.75 },
+    "render_1k": { "input_lines": 1000, "input_bytes": 60558, "output_bytes": 57202, "ns": 402256, "mb_per_s": 143.57 }
   }
 }
