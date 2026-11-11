@@ -4,7 +4,14 @@ const Color = struct { r: u8 = 0, g: u8 = 0, b: u8 = 0, a: u8 = 255 };
 pub inline fn Heading(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     _ = self;
     const size: u32 = if (@hasField(@TypeOf(props), "size")) props.size else 2;
-    const fs: f32 = switch (size) { 1 => 24, 2 => 20, 3 => 18, 4 => 16, 5 => 14, else => 12 };
+    const fs: f32 = switch (size) {
+        1 => 24,
+        2 => 20,
+        3 => 18,
+        4 => 16,
+        5 => 14,
+        else => 12,
+    };
     ui.text(c, props.text, .{
         .color_text = .{ .r = 0, .g = 0, .b = 0, .a = 255 },
         .font_size = fs,
