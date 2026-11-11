@@ -37,6 +37,12 @@ pub const preprocess = @import("preprocess.zig");
 /// Native formatter (WP 1.6 slice). Lives on the same barrel for the same
 /// one-file-one-module reason; see `fmt.zig`.
 pub const fmt = @import("fmt.zig");
+/// Lossless front-end (M1 slice): one string-, char- and comment-aware pass
+/// partitions a `.zsx` file into typed byte-exact segments, and
+/// `lossless.Document.render` re-emits the source byte-for-byte (spikes S1 +
+/// S2). The block scanner `preprocess.findBlocks` delegates to. Same barrel,
+/// same one-file-one-module reason; see `lossless.zig`.
+pub const lossless = @import("lossless.zig");
 /// Code-frame renderer (M1 slice): turns a `diag.Diagnostic` plus the checked
 /// source into the annotated snippet a developer reads. Same barrel, same
 /// one-file-one-module reason; see `render.zig`.
