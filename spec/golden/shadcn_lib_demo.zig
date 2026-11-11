@@ -3,14 +3,13 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{.id_extra = 300000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8});
+        var b_0 = ui.column(c, .{ .id_extra = 300000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
         defer b_0.end();
-            ctx.Button(ui, c, .{.id_extra = 300000000000000001, .variant = "primary", .text = "Save"});
-        ctx.Button(ui, c, .{.id_extra = 300000000000000002, .variant = "secondary", .text = "Cancel"});
-        ctx.Button(ui, c, .{.id_extra = 300000000000000003, .variant = "ghost", .text = "Skip"});
-        ctx.Button(ui, c, .{.id_extra = 300000000000000004, .variant = "danger", .text = "Delete"});
-        ctx.Badge(ui, c, .{.id_extra = 300000000000000005, .color = "red", .text = "error"});
-        ctx.Badge(ui, c, .{.id_extra = 300000000000000006, .color = "green", .text = "ok"});
+        ctx.Button(ui, c, .{ .id_extra = 300000000000000001, .variant = "primary", .text = "Save" });
+        ctx.Button(ui, c, .{ .id_extra = 300000000000000002, .variant = "secondary", .text = "Cancel" });
+        ctx.Button(ui, c, .{ .id_extra = 300000000000000003, .variant = "ghost", .text = "Skip" });
+        ctx.Button(ui, c, .{ .id_extra = 300000000000000004, .variant = "danger", .text = "Delete" });
+        ctx.Badge(ui, c, .{ .id_extra = 300000000000000005, .color = "red", .text = "error" });
+        ctx.Badge(ui, c, .{ .id_extra = 300000000000000006, .color = "green", .text = "ok" });
     }
-
 }
