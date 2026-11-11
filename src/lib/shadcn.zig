@@ -116,7 +116,12 @@ pub inline fn Heading(self: anytype, ui: anytype, c: anytype, props: anytype) vo
     _ = self;
     const size_u32: u32 = if (@hasField(@TypeOf(props), "size")) props.size else 2;
     const font_size: f32 = switch (size_u32) {
-        1 => 24, 2 => 20, 3 => 18, 4 => 16, 5 => 14, else => 12,
+        1 => 24,
+        2 => 20,
+        3 => 18,
+        4 => 16,
+        5 => 14,
+        else => 12,
     };
     var opts = TextOptions{
         .color_text = Color.black,
@@ -131,7 +136,9 @@ pub inline fn Heading(self: anytype, ui: anytype, c: anytype, props: anytype) vo
         if (overrides.foreground) |fg| opts.color_text = fg;
         if (overrides.font_size) |fs| opts.font_size = fs;
         if (overrides.font_weight) |fw| opts.font_weight = switch (fw) {
-            .regular => 400, .semibold => 600, .bold => 700,
+            .regular => 400,
+            .semibold => 600,
+            .bold => 700,
         };
     }
     ui.text(c, props.text, opts);
@@ -209,7 +216,6 @@ pub inline fn Checkbox(self: anytype, ui: anytype, c: anytype, props: anytype) v
     const val: *bool = props.checked;
     _ = ui.checkbox(c, props.text, val, opts);
 }
-
 
 pub inline fn Progress(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     _ = self;
@@ -405,7 +411,7 @@ pub inline fn Tabs(self: anytype, ui: anytype, c: anytype, props: anytype) void 
     // Render content if the generator passed a .content fn field.
     const SelfT = @TypeOf(self);
     const is_double_ptr = @typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer;
-    inline for ([_][]const u8{ "content" }) |slot_name| {
+    inline for ([_][]const u8{"content"}) |slot_name| {
         if (comptime @hasField(@TypeOf(props), slot_name)) {
             const f = @field(props, slot_name);
             if (comptime is_double_ptr) {
@@ -444,7 +450,7 @@ pub inline fn Pagination(self: anytype, ui: anytype, c: anytype, props: anytype)
     // holds the label pointer for rendering after the fn returns — the
     // stack slot gets overwritten and renders as "?" (invalid UTF-8).
     const page_labels = [_][]const u8{
-        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+        "1",  "2",  "3",  "4",  "5",  "6",  "7",  "8",  "9",  "10",
         "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
     };
     var i: usize = 0;
