@@ -68,6 +68,11 @@ jobs:
         run: cd examples/consumer && zig build test
       - name: Consumer example run
         run: cd examples/consumer && zig build run
+      - name: "Lossless example (round-trip + outline, lazy deps: must not fetch dvui/nanoui)"
+        run: |
+          cd examples/lossless
+          zig build test
+          zig build run
       - name: Assert toolkits were not fetched
         shell: bash
         run: |
