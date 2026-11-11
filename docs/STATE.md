@@ -7,7 +7,7 @@ agents: assume your context does not include the previous session.
 
 | Field | Value |
 |---|---|
-| Current milestone | **M1/M2 tooling front-end — implemented** (native `zsx check` + `zsx fmt`; awaiting gate confirmation on CI) |
+| Current milestone | **M1/M2 tooling front-end — implemented + M1 code-frame rendering + F5 fix** (native `zsx check` with frames) |
 | Last known green commit | see `git log -1`; local gate is the source of truth |
 | Release train | 0.3.0 shipped at the M0 gate; next tag at M1 |
 | Zig versions | 0.17.1 (`current`); policy in `docs/adr/0002-zig-version-policy.md` |
@@ -34,8 +34,9 @@ agents: assume your context does not include the previous session.
 |---|---|---|
 | 1.7 Checker in Zig (slice) | done | `src/rt/checker.zig`: tolerant scanner (`scan.zig`), rule set with `ZSX0xxx` codes, `diag.zig` diagnostic type (spans, severities, help); unknown classes read `style.isKnownClass` — no duplicated table. `zsx check` CLI native; exit codes 0/1/2 parity. Bench `check_1k` ≈ 0.3 ms/1k lines (target < 20 ms) |
 | 1.6 Formatter in Zig (slice) | done | `src/rt/fmt.zig`: token-driven reprinter, idempotent, committed corpus byte-for-byte (`src/tests/fmt.zig`); `zsx fmt` CLI native (`--check`/`--write`) |
-| Public API | done | `zsx.zig` exports `diag` / `scan` / `checker` / `fmt` + `checkSource`; `examples/checker/` consumes it as a library (run + tests) |
-| F5 (brace/string) | partial | scanner brace matching is string-aware; the fail-fast parser still has the quirk (reproducers pin it) |
+| Code-frame rendering (M1 slice) | done | `src/rt/render.zig`: `render.Renderer` turns a diagnostic + source into the annotated snippet (header, help line, gutter, caret span). Exported as `zsx.render`; `zsx check` prints frames; demo in `examples/render/`; bench case `render_1k` (≈ 0.5 ms/1k lines incl. the check) |
+| Public API | done | `zsx.zig` exports `diag` / `scan` / `checker` / `fmt` / `render` + `checkSource`; `examples/checker/` and `examples/render/` consume it as a library (run + tests) |
+| F5 (brace/string) | fixed | Both quirks closed in the fail-fast parser: string-aware expression matching and whitespace-tolerant attribute separators, sharing `scan.matchBrace` (one matcher, no drift). Reproducer tests flipped to the fixed behaviour; goldens byte-identical |
 | Python removal | partial | CLI no longer spawns python3; scripts kept on disk for reference, deletion is a maintainer call |
 
 ## Known flakiness / quarantine
@@ -45,8 +46,8 @@ None. Real-backend jobs fail only on compile/link errors, not pixel timings
 
 ## Next milestone
 
-M1 full scope — Lossless front-end. Remaining after the M1/M2 tooling slice:
-spikes S1 (Zig-side parsing via `std.zig.Ast` placeholders) and S2
-(line-preserving emission), then RFC-0001 (grammar v1), CST parser with error
-recovery, `ZSX0xxx` rendering with code frames, and closing the pinned
-reproducers F1/F2/F3.
+M1 full scope — Lossless front-end. Remaining after the tooling slice and the
+code-frame renderer: spikes S1 (Zig-side parsing via `std.zig.Ast`
+placeholders) and S2 (line-preserving emission), then RFC-0001 (grammar v1),
+CST parser with error recovery, and closing the pinned reproducers F1/F2/F3
+(F5 is already closed).
