@@ -124,7 +124,6 @@ pub fn Adapter(comptime dvui: type) type {
             defer b.deinit();
         }
 
-
         pub const Box = struct {
             inner: *dvui.BoxWidget,
             pub fn end(self: Box) void {
@@ -163,14 +162,17 @@ pub fn Adapter(comptime dvui: type) type {
             if (@hasField(@TypeOf(opts), "expand")) {
                 if (@hasField(dvui_mod.Options, "expand")) {
                     o.expand = switch (opts.expand) {
-                        .none => .none, .horizontal => .horizontal, .vertical => .vertical, .both => .both,
+                        .none => .none,
+                        .horizontal => .horizontal,
+                        .vertical => .vertical,
+                        .both => .both,
                     };
                 }
             }
             if (@hasField(@TypeOf(opts), "id_extra")) {
                 if (@hasField(dvui_mod.Options, "id_extra")) o.id_extra = opts.id_extra;
             }
-                        if (@hasField(dvui_mod.Options, "font")) {
+            if (@hasField(dvui_mod.Options, "font")) {
                 var needs_font = false;
                 var font = dvui_mod.Font.theme(.body);
                 if (@hasField(@TypeOf(opts), "font_size")) {
@@ -197,7 +199,9 @@ pub const StubDvui = struct {
     pub const Rect = struct { x: f32 = 0, y: f32 = 0, w: f32 = 0, h: f32 = 0 };
     pub const Expand = enum { none, horizontal, vertical, both };
     pub const Direction = enum { vertical, horizontal };
-    pub const enums = struct { pub const Direction = StubDvui.Direction; };
+    pub const enums = struct {
+        pub const Direction = StubDvui.Direction;
+    };
     pub const Options = struct {
         color_fill: ?ColorOrGradient = null,
         color_text: ?ColorOrGradient = null,
@@ -209,7 +213,9 @@ pub const StubDvui = struct {
     };
     pub const BoxWidget = struct {
         ended: bool = false,
-        pub fn deinit(self: *BoxWidget) void { self.ended = true; }
+        pub fn deinit(self: *BoxWidget) void {
+            self.ended = true;
+        }
     };
     pub const Context = struct {};
 
@@ -228,15 +234,33 @@ pub const StubDvui = struct {
     var _last_button_radius: ?f32 = null;
     var _queued_clicks: usize = 0;
 
-    pub fn buttonsRendered() usize { return _buttons_rendered; }
-    pub fn textEntriesRendered() usize { return _text_entries_rendered; }
-    pub fn progressesRendered() usize { return _progresses_rendered; }
-    pub fn dividersRendered() usize { return _dividers_rendered; }
-    pub fn slidersRendered() usize { return _sliders_rendered; }
-    pub fn labelsRendered() usize { return _labels_rendered; }
-    pub fn lastButtonPadding() ?Rect { return _last_button_padding; }
-    pub fn lastButtonRadius() ?f32 { return _last_button_radius; }
-    pub fn queue_click() void { _queued_clicks += 1; }
+    pub fn buttonsRendered() usize {
+        return _buttons_rendered;
+    }
+    pub fn textEntriesRendered() usize {
+        return _text_entries_rendered;
+    }
+    pub fn progressesRendered() usize {
+        return _progresses_rendered;
+    }
+    pub fn dividersRendered() usize {
+        return _dividers_rendered;
+    }
+    pub fn slidersRendered() usize {
+        return _sliders_rendered;
+    }
+    pub fn labelsRendered() usize {
+        return _labels_rendered;
+    }
+    pub fn lastButtonPadding() ?Rect {
+        return _last_button_padding;
+    }
+    pub fn lastButtonRadius() ?f32 {
+        return _last_button_radius;
+    }
+    pub fn queue_click() void {
+        _queued_clicks += 1;
+    }
     pub fn resetCounters() void {
         _buttons_rendered = 0;
         _labels_rendered = 0;
@@ -246,62 +270,88 @@ pub const StubDvui = struct {
         _text_entries_rendered = 0;
     }
     pub fn box(src: anytype, init: anytype, opts: Options) *BoxWidget {
-        _ = src; _ = init; _ = opts;
+        _ = src;
+        _ = init;
+        _ = opts;
         _box.ended = false;
         return &_box;
     }
     pub fn button(src: anytype, label: []const u8, init: anytype, opts: Options) bool {
-        _ = src; _ = label; _ = init;
+        _ = src;
+        _ = label;
+        _ = init;
         _buttons_rendered += 1;
         _last_button_padding = opts.padding;
         _last_button_radius = opts.radius;
-        if (_queued_clicks > 0) { _queued_clicks -= 1; return true; }
+        if (_queued_clicks > 0) {
+            _queued_clicks -= 1;
+            return true;
+        }
         return false;
     }
 
     pub fn textEntry(src: anytype, buffer: []u8, opts: anytype) void {
-        _ = src; _ = buffer; _ = opts;
+        _ = src;
+        _ = buffer;
+        _ = opts;
         _text_entries_rendered += 1;
     }
 
     pub fn textArea(src: anytype, buffer: []u8, opts: anytype) void {
-        _ = src; _ = buffer; _ = opts;
+        _ = src;
+        _ = buffer;
+        _ = opts;
         _text_areas_rendered += 1;
     }
 
     pub fn checkbox(src: anytype, title: []const u8, value: *bool, opts: anytype) bool {
-        _ = src; _ = title; _ = value; _ = opts;
+        _ = src;
+        _ = title;
+        _ = value;
+        _ = opts;
         _checkboxes_rendered += 1;
         return false;
     }
 
     pub fn progress(src: anytype, value: f32, opts: anytype) void {
-        _ = src; _ = value; _ = opts;
+        _ = src;
+        _ = value;
+        _ = opts;
         _progresses_rendered += 1;
     }
 
     pub fn divider(src: anytype, opts: anytype) void {
-        _ = src; _ = opts;
+        _ = src;
+        _ = opts;
         _dividers_rendered += 1;
     }
 
     pub fn slider(src: anytype, value: *f32, opts: anytype) bool {
-        _ = src; _ = value; _ = opts;
+        _ = src;
+        _ = value;
+        _ = opts;
         _sliders_rendered += 1;
         return false;
     }
     pub fn toggle(src: anytype, label: []const u8, value: *bool, opts: anytype) bool {
-        _ = src; _ = label; _ = value; _ = opts;
+        _ = src;
+        _ = label;
+        _ = value;
+        _ = opts;
         _toggles_rendered += 1;
         return false;
     }
 
     pub fn skeleton(src: anytype, opts: anytype) void {
-        _ = src; _ = opts;
+        _ = src;
+        _ = opts;
         _skeletons_rendered += 1;
     }
     pub fn labelNoFmt(src: anytype, text: []const u8, init: anytype, opts: Options) void {
-        _ = src; _ = text; _ = init; _ = opts;
+        _ = src;
+        _ = text;
+        _ = init;
+        _ = opts;
         _labels_rendered += 1;
     }
 };
