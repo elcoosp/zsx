@@ -1,4 +1,10 @@
 const std = @import("std");
+/// The tolerant scanner shares its string-aware brace matcher (`matchBrace`)
+/// with this fail-fast parser: one implementation, not two drifting copies.
+/// This is the F5 fix — the parser used to end expressions at the first
+/// `'}'` even inside string literals, and to reject whitespace other than
+/// `' '` between attributes.
+const scan = @import("scan.zig");
 
 pub const AttributeValue = union(enum) {
     boolean,
@@ -47,7 +53,7 @@ const Parser = struct {
         var attrs = std.array_list.Managed(Attribute).init(self.arena);
         var self_closing = false;
         while (true) {
-            while (self.pos < self.src.len and self.src[self.pos] == ' ') : (self.pos += 1) {}
+            while (self.pos < self.src.len and isSpace(self.src[self.pos])) : (self.pos += 1) {}
             if (self.pos >= self.src.len) return self.fail("unexpected EOF in opening tag");
             const c = self.src[self.pos];
             if (c == '>') {
@@ -104,15 +110,10 @@ const Parser = struct {
         if (c == '{') {
             self.pos += 1;
             const val_start = self.pos;
-            var depth: usize = 1;
-            while (self.pos < self.src.len and depth > 0) {
-                if (self.src[self.pos] == '{') depth += 1;
-                if (self.src[self.pos] == '}') depth -= 1;
-                if (depth > 0) self.pos += 1;
-            }
-            if (self.pos >= self.src.len) return self.fail("unterminated expression attribute");
-            const val = self.src[val_start..self.pos];
-            self.pos += 1;
+            const close = scan.matchBrace(self.src, self.pos - 1) orelse
+                return self.fail("unterminated expression attribute");
+            const val = self.src[val_start..close];
+            self.pos = close + 1;
             return .{ .name = name, .value = .{ .expression = val } };
         }
         return self.fail("expected quoted string or {expression}");
@@ -123,15 +124,10 @@ const Parser = struct {
         if (self.src[self.pos] == '{') {
             self.pos += 1;
             const val_start = self.pos;
-            var depth: usize = 1;
-            while (self.pos < self.src.len and depth > 0) {
-                if (self.src[self.pos] == '{') depth += 1;
-                if (self.src[self.pos] == '}') depth -= 1;
-                if (depth > 0) self.pos += 1;
-            }
-            if (self.pos >= self.src.len) return self.fail("unterminated expression child");
-            const val = self.src[val_start..self.pos];
-            self.pos += 1;
+            const close = scan.matchBrace(self.src, self.pos - 1) orelse
+                return self.fail("unterminated expression child");
+            const val = self.src[val_start..close];
+            self.pos = close + 1;
             return .{ .expression = val };
         }
         const start = self.pos;
@@ -160,6 +156,11 @@ fn isTagChar(c: u8) bool {
 }
 fn isAttrNameChar(c: u8) bool {
     return isTagChar(c) or c == ':' or c == '.';
+}
+
+/// Any whitespace separates attributes (F5: tabs/newlines used to fail).
+fn isSpace(c: u8) bool {
+    return c == ' ' or c == '\t' or c == '\n' or c == '\r';
 }
 
 test "rt parser: simple element" {
