@@ -35,3 +35,6 @@ test {
 test {
     _ = @import("tests/compat.zig");
 }
+test {
+    _ = @import("tests/lossless.zig");
+}
