@@ -328,7 +328,10 @@ From this repo: `zig build zsx -Dcmd=check`. The checker is native Zig
 (`src/rt/checker.zig`) — no Python, no compile step. It is also a library:
 `zsx.checker.checkSource(...)` from the package root returns structured
 `ZSX0xxx` diagnostics (code, severity, line/col, span) that an editor plugin
-can consume; see [`examples/checker/`](examples/checker/).
+can consume; see [`examples/checker/`](examples/checker/). Diagnostics render
+as annotated code frames — header, source lines, caret span — via
+`zsx.render.Renderer` (`src/rt/render.zig`); that is what `zsx check` prints.
+See [`examples/render/`](examples/render/).
 
 Detects:
 - `<column>...</row>` — mismatched close (`ZSX0002`)
@@ -396,7 +399,7 @@ zig build snapshot                    # generate playground screenshot (macOS)
 >
 > **Production-ready:** the fetchable path (`zsx.addViews` in a consumer's `build.zig`) — see `examples/consumer/`.
 >
-> **Tooling:** `zsx fmt` (reformat `.zsx` markup, idempotent, native) and `zsx check` (validate structure in <1ms, native, structured `ZSX0xxx` diagnostics) via `zig build zsx -Dcmd=fmt` / `zig build zsx -Dcmd=check`; the Python scripts under `scripts/` are deprecated and no longer called. `scripts/init.sh` is the one-command project scaffold.
+> **Tooling:** `zsx fmt` (reformat `.zsx` markup, idempotent, native) and `zsx check` (validate structure in <1ms, native, structured `ZSX0xxx` diagnostics rendered as code frames) via `zig build zsx -Dcmd=fmt` / `zig build zsx -Dcmd=check`; the Python scripts under `scripts/` are deprecated and no longer called. `scripts/init.sh` is the one-command project scaffold.
 >
 > **M0 gates:** `zig build check-meta`, `zig build check-docs`, `zig build golden`, and `zig build bench-smoke` run in CI. Memory files live in [AGENTS.md](AGENTS.md) and [docs/STATE.md](docs/STATE.md).
 >
