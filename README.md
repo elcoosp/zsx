@@ -29,7 +29,7 @@ Prerequisites: Zig 0.17.0 or later (CI runs 0.17.1). SDL3 + freetype only if you
 ```bash
 git clone https://github.com/elcoosp/zsx
 cd zsx
-zig build test       # 130+ tests through the whole pipeline
+zig build test       # 169 tests through the whole pipeline
 zig build example    # headless stub demo — prints widget counts
 ```
 
@@ -158,7 +158,7 @@ See [`examples/consumer/`](examples/consumer/) for a working end-to-end project.
 
 - **Styling resolved at build time.** A Tailwind-named class subset (`bg-blue-500`, `p-4`, `gap-2`, `font-bold`, `rounded-lg`, ...) maps to concrete colors, spacing, and font values during code generation. An unrecognized class is a build error (`error.ZsxUnknownClass`), not a silently unstyled widget.
 
-- **20 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives.
+- **20 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Label`, `Alert`, `Breadcrumb`, `Tabs`, `Pagination`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives.
 
 - **Named slots.** `<Card><Slot name="header">...</Slot><Slot name="body">...</Slot></Card>` compiles to an `.header` / `.body` fn field in the props struct. `Card` and `Section` iterate slots and call whichever are present.
 
@@ -302,7 +302,10 @@ zsx fmt --check                       # exit 1 if anything needs formatting (CI-
 ```
 
 From this repo without installing: `zig build zsx -Dcmd=fmt -Dcmd-args=--check`.
-M0 wraps `scripts/zsx-fmt.py`; the native implementation lands in M1.
+The formatter is native Zig (`src/rt/fmt.zig`): depth is derived from the token
+stream (`src/rt/scan.zig`), so it is idempotent and the committed views are
+byte-for-byte canonical (`fmt(x) == x` — pinned by `src/tests/fmt.zig`). The
+Python script under `scripts/` is deprecated and no longer invoked.
 
 What it normalizes:
 - 4-space indentation per nesting level inside `zsx!{ }` blocks
@@ -318,21 +321,31 @@ What it normalizes:
 ```bash
 zsx check                # validate all .zsx in repo
 zsx check file.zsx       # validate one file
+zsx check --no-class-check   # skip unknown-class warnings
 ```
 
-From this repo: `zig build zsx -Dcmd=check`. M0 wraps `scripts/zsx-check.py`.
+From this repo: `zig build zsx -Dcmd=check`. The checker is native Zig
+(`src/rt/checker.zig`) — no Python, no compile step. It is also a library:
+`zsx.checker.checkSource(...)` from the package root returns structured
+`ZSX0xxx` diagnostics (code, severity, line/col, span) that an editor plugin
+can consume; see [`examples/checker/`](examples/checker/).
 
 Detects:
-- `<column>...</row>` — mismatched close
-- `<column>` never closed
-- `{if}` without `{/if}`
-- `{:case}` outside `{switch}`
-- `{:else}` outside `{if}` / `{switch}`
-- Unknown CSS classes (warning)
+- `<column>...</row>` — mismatched close (`ZSX0002`)
+- `<column>` never closed (`ZSX0003`)
+- `{if}` without `{/if}` (`ZSX0006`)
+- `{:case}` outside `{switch}` (`ZSX0008`)
+- `{:else}` outside `{if}` / `{switch}` (`ZSX0007`)
+- unparseable markup, e.g. a stray `<` (`ZSX0012`)
+- Unknown CSS classes (warning `ZSX0009`; the class table is read from
+  `src/rt/style.zig`, the same resolver codegen uses)
+- Legacy `{endif}`/`{endfor}`/`{endswitch}` aliases (warning `ZSX0010`)
 
-Exit codes: 0 clean, 1 structural errors found.
+Exit codes: 0 clean (warnings allowed), 1 structural errors found, 2 a file
+could not be read. Unlike the compiler's fail-fast parser, `zsx check`
+recovers from the first problem and keeps reporting.
 
-Both scripts run on every push via CI.
+Both commands are native and run on every push via CI.
 
 ## Contributing
 
@@ -355,8 +368,12 @@ zig build snapshot                    # generate playground screenshot (macOS)
 | `src/rt/preprocess.zig` | scan Zig source for `zsx!{ }` blocks |
 | `src/rt/codegen.zig` | walk AST, emit plain Zig |
 | `src/rt/style.zig` | class name → Style struct |
+| `src/rt/diag.zig` | structured diagnostics (`ZSX0xxx` codes, spans) |
+| `src/rt/scan.zig` | tolerant markup tokenizer (tooling front-end) |
+| `src/rt/checker.zig` | structural checker behind `zsx check` |
+| `src/rt/fmt.zig` | native formatter behind `zsx fmt` |
 | `src/gen.zig` | `zsx-gen` CLI entry point |
-| `zsx.zig` | `addViews` / `addViewsLocal` build helpers |
+| `zsx.zig` | `addViews` / `addViewsLocal` + tooling API (`checker`, `fmt`) |
 | `src/lib/shadcn.zig` | 20 components |
 | `src/lib/style.zig` | strict class parser (`!Style`) |
 | `src/adapters/dvui.zig` | DVUI on SDL3 |
@@ -364,6 +381,7 @@ zig build snapshot                    # generate playground screenshot (macOS)
 | `src/adapters/html.zig` | plain HTML + inline styles |
 | `src/views/*.zsx` | demo views |
 | `examples/consumer/` | fetchable-path example |
+| `examples/checker/` | checker-as-library example |
 
 **Adding a component** goes in `src/lib/shadcn.zig` as an `inline fn`. Public functions with a `self: anytype` first parameter work as both bare tags (`<Button>` via `ctx.Button`) and path tags (`<shadcn.Button>` via `shadcn.Button`).
 
@@ -378,7 +396,7 @@ zig build snapshot                    # generate playground screenshot (macOS)
 >
 > **Production-ready:** the fetchable path (`zsx.addViews` in a consumer's `build.zig`) — see `examples/consumer/`.
 >
-> **Tooling:** `zsx fmt` (reformat `.zsx` markup, idempotent) and `zsx check` (validate structure in <100ms) via `zig build zsx -Dcmd=fmt` / `zig build zsx -Dcmd=check`; the underlying Python scripts are deprecated and will be replaced in M1. `scripts/init.sh` is the one-command project scaffold.
+> **Tooling:** `zsx fmt` (reformat `.zsx` markup, idempotent, native) and `zsx check` (validate structure in <1ms, native, structured `ZSX0xxx` diagnostics) via `zig build zsx -Dcmd=fmt` / `zig build zsx -Dcmd=check`; the Python scripts under `scripts/` are deprecated and no longer called. `scripts/init.sh` is the one-command project scaffold.
 >
 > **M0 gates:** `zig build check-meta`, `zig build check-docs`, `zig build golden`, and `zig build bench-smoke` run in CI. Memory files live in [AGENTS.md](AGENTS.md) and [docs/STATE.md](docs/STATE.md).
 >
