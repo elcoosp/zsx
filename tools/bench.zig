@@ -5,15 +5,18 @@
 //! synthetic file, against the master-plan WP 1.7 acceptance target (< 20 ms
 //! per 1k lines). `render_1k` covers the code-frame renderer (M1): check plus
 //! render of every diagnostic against a synthetic broken view, the full
-//! pipeline `zsx check` runs on a failing file. Instruction counts and
-//! per-backend frame costs land in M10.
+//! pipeline `zsx check` runs on a failing file. `lossless_1k` covers the
+//! lossless front-end (M1): segment the synthetic file and re-emit it
+//! byte-for-byte (S1 + S2), the round-trip every lossless consumer relies on.
+//! Instruction counts and per-backend frame costs land in M10.
 
 const std = @import("std");
 const checker = @import("zsx_checker");
 const diag = checker.diag;
 const preprocess = checker.preprocess;
+const lossless = checker.lossless;
 
-const Kind = enum { gen, check, fmt, render };
+const Kind = enum { gen, check, fmt, render, lossless };
 
 const Case = struct {
     name: []const u8,
@@ -55,12 +58,14 @@ pub fn main(init: std.process.Init) !void {
         try cases.append(.{ .name = "check_1k", .kind = .check, .lines = 1000, .iterations = 3 });
         try cases.append(.{ .name = "fmt_1k", .kind = .fmt, .lines = 1000, .iterations = 3 });
         try cases.append(.{ .name = "render_1k", .kind = .render, .lines = 1000, .iterations = 3 });
+        try cases.append(.{ .name = "lossless_1k", .kind = .lossless, .lines = 1000, .iterations = 3 });
     } else {
         try cases.append(.{ .name = "gen_1k", .kind = .gen, .lines = 1000, .iterations = 10 });
         try cases.append(.{ .name = "gen_10k", .kind = .gen, .lines = 10_000, .iterations = 5 });
         try cases.append(.{ .name = "check_1k", .kind = .check, .lines = 1000, .iterations = 10 });
         try cases.append(.{ .name = "fmt_1k", .kind = .fmt, .lines = 1000, .iterations = 10 });
         try cases.append(.{ .name = "render_1k", .kind = .render, .lines = 1000, .iterations = 10 });
+        try cases.append(.{ .name = "lossless_1k", .kind = .lossless, .lines = 1000, .iterations = 10 });
     }
     const case_slice = cases.items;
 
@@ -99,6 +104,12 @@ pub fn main(init: std.process.Init) !void {
                     }
                     work = bytes;
                 },
+                .lossless => {
+                    const doc = try lossless.Document.init(a, src);
+                    const rendered = try doc.render(a);
+                    if (!std.mem.eql(u8, rendered, src)) return error.BenchFailed;
+                    work = doc.blocks.len;
+                },
             }
             const t1 = std.Io.Clock.Timestamp.now(io, .awake);
             const ns: u64 = @intCast(@max(0, t0.durationTo(t1).raw.nanoseconds));
@@ -106,21 +117,19 @@ pub fn main(init: std.process.Init) !void {
             switch (c.kind) {
                 .gen => out_len = work,
                 .check => diag_count = work,
+                .lossless => out_len = src.len,
                 .fmt, .render => out_len = work,
             }
         }
-        if (c.kind == .gen) {
-            _ = preprocess.preprocess(a, src, "synthetic.zsx", 0) catch |e| {
-                std.debug.print("bench: preprocess failed: {s}\n", .{@errorName(e)});
-                return error.BenchFailed;
-            };
-        }
+        // `gen` is validated inside the timing loop above (`try preprocess`),
+        // so a generator failure already aborts the bench run with the real
+        // error; no redundant re-run needed here.
         const mb_per_s = if (best == 0) 0.0 else (@as(f64, @floatFromInt(src.len)) / (1024.0 * 1024.0)) / (@as(f64, @floatFromInt(best)) / 1e9);
         c.result = .{ .input_bytes = src.len, .output_bytes = out_len, .diagnostics = diag_count, .ns = best, .mb_per_s = mb_per_s };
 
         try json.appendSlice(if (idx == 0) "" else ",\n");
         const line = switch (c.kind) {
-            .gen, .fmt, .render => try std.fmt.allocPrint(
+            .gen, .fmt, .render, .lossless => try std.fmt.allocPrint(
                 a,
                 "    \"{s}\": {{ \"input_lines\": {d}, \"input_bytes\": {d}, \"output_bytes\": {d}, \"ns\": {d}, \"mb_per_s\": {d:.2} }}",
                 .{ c.name, c.lines, src.len, out_len, best, mb_per_s },
@@ -137,6 +146,7 @@ pub fn main(init: std.process.Init) !void {
             .check => "check",
             .fmt => "fmt",
             .render => "render",
+            .lossless => "lossless",
         };
         std.debug.print("bench: {s}  {s}  {d} lines  {d} ns  {d:.2} MB/s\n", .{ c.name, label, c.lines, best, mb_per_s });
     }
