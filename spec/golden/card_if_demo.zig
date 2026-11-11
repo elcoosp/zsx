@@ -2,12 +2,11 @@
 // do not edit by hand
 
 inline fn render_Card_2(ui: anytype, c: anytype, ctx: anytype) void {
-if (ctx.show) {
-        ui.text(c, "visible", .{.id_extra = 600000000000000001});
+    if (ctx.show) {
+        ui.text(c, "visible", .{ .id_extra = 600000000000000001 });
     }
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Card(ui, c, .{.id_extra = 600000000000000000, .content = render_Card_2 });
-
+    ctx.Card(ui, c, .{ .id_extra = 600000000000000000, .content = render_Card_2 });
 }
