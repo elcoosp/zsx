@@ -7,7 +7,7 @@ agents: assume your context does not include the previous session.
 
 | Field | Value |
 |---|---|
-| Current milestone | **M1/M2 tooling front-end — implemented + M1 code-frame rendering + F5 fix** (native `zsx check` with frames) |
+| Current milestone | **M1 lossless front-end (S1+S2) + machine-readable JSON diagnostics — implemented** |
 | Last known green commit | see `git log -1`; local gate is the source of truth |
 | Release train | 0.3.0 shipped at the M0 gate; next tag at M1 |
 | Zig versions | 0.17.1 (`current`); policy in `docs/adr/0002-zig-version-policy.md` |
@@ -38,6 +38,9 @@ agents: assume your context does not include the previous session.
 | Public API | done | `zsx.zig` exports `diag` / `scan` / `checker` / `fmt` / `render` + `checkSource`; `examples/checker/` and `examples/render/` consume it as a library (run + tests) |
 | F5 (brace/string) | fixed | Both quirks closed in the fail-fast parser: string-aware expression matching and whitespace-tolerant attribute separators, sharing `scan.matchBrace` (one matcher, no drift). Reproducer tests flipped to the fixed behaviour; goldens byte-identical |
 | Python removal | partial | CLI no longer spawns python3; scripts kept on disk for reference, deletion is a maintainer call |
+| Lossless front-end (S1 + S2) | done | `src/rt/lossless.zig`: one string/char/comment-aware pass partitions a `.zsx` file into typed byte-exact segments; `Document.render` re-emits byte-for-byte (property-tested over all 20 committed views). `preprocess` and `findBlocks` consume it — one Zig-side scanner instead of two drifting copies (F11 shrinks by one). Public as `zsx.lossless` + `checker.lossless`; `examples/lossless/`; bench `lossless_1k` ≈ 35 µs/1k lines |
+| JSON diagnostics | done | `diag.List.toJson` + `zsx check --format json`: compact single-line JSON on stdout with stable `ZSX0xxx` codes/names/severities/spans; exit codes presentation-independent; demoed in `examples/checker/`; unit tests pin the exact document shape |
+| Docs drift | fixed | AGENTS repo map now lists `examples/render/` (shipped earlier but never recorded) plus the new lossless row and example |
 
 ## Known flakiness / quarantine
 
@@ -46,8 +49,10 @@ None. Real-backend jobs fail only on compile/link errors, not pixel timings
 
 ## Next milestone
 
-M1 full scope — Lossless front-end. Remaining after the tooling slice and the
-code-frame renderer: spikes S1 (Zig-side parsing via `std.zig.Ast`
-placeholders) and S2 (line-preserving emission), then RFC-0001 (grammar v1),
-CST parser with error recovery, and closing the pinned reproducers F1/F2/F3
-(F5 is already closed).
+M1 full scope — Lossless front-end. S1 and S2 are now closed
+(`src/rt/lossless.zig`, see the table above). Remaining: RFC-0001 (grammar
+v1), the CST parser with error recovery on top of the lossless seam, and
+closing the pinned reproducers F1/F2/F3 (F5 is already closed). F2/F3 need
+one design decision first: hoisted slot-content helpers must receive the
+surrounding loop locals as parameters (today they are `fn(ui, c, ctx)` and
+cannot reference `idx_0`/bindings — see the F3 reproducer).
