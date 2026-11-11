@@ -153,6 +153,11 @@ pub fn build(b: *std.Build) void {
         .target = b.graph.host,
         .optimize = .ReleaseFast,
     });
+    const checker_mod = b.createModule(.{
+        .root_source_file = b.path("src/rt/checker.zig"),
+        .target = b.graph.host,
+        .optimize = .ReleaseFast,
+    });
     const golden_mod = b.createModule(.{
         .root_source_file = b.path("tools/golden.zig"),
         .target = b.graph.host,
@@ -178,6 +183,7 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseFast,
     });
     bench_mod.addImport("zsx_preprocess", preprocess_mod);
+    bench_mod.addImport("zsx_checker", checker_mod);
     const bench_exe = b.addExecutable(.{ .name = "zsx-bench", .root_module = bench_mod });
     const run_bench = b.addRunArtifact(bench_exe);
     run_bench.setCwd(b.path("."));
