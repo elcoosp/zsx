@@ -203,7 +203,74 @@ pub const List = struct {
     pub fn hasErrors(self: *const List) bool {
         return self.errorCount() != 0;
     }
+
+    /// Machine-readable presentation (`zsx check --format json`): the whole
+    /// list as one compact JSON document. Every diagnostic becomes an object
+    /// with the stable identity tooling needs — the `ZSX0xxx` code, the
+    /// snake-case name (`Code.name`), the severity, the file plus its 1-based
+    /// line/col and byte span, the message and the optional help text. Field
+    /// order is fixed and the output is single-line, so consumers can pin it
+    /// in golden tests; `schema` bumps on any incompatible shape change.
+    ///
+    /// Strings are JSON-escaped (`"`, `\` and the C0 controls; UTF-8 passes
+    /// through verbatim). The document is returned as freshly allocated
+    /// bytes; diagnostics themselves are never mutated.
+    ///
+    ///     var list = zsx.diag.List.init(arena);
+    ///     try zsx.checker.checkSource(arena, src, name, .{}, &list);
+    ///     try stdout.writeAll(try list.toJson(arena));
+    pub fn toJson(self: *const List, a: std.mem.Allocator) ![]const u8 {
+        var out = std.array_list.Managed(u8).init(a);
+        try out.appendSlice("{\"schema\":1,\"diagnostics\":[");
+        for (self.items.items, 0..) |d, i| {
+            if (i != 0) try out.append(',');
+            try out.appendSlice("{\"code\":\"ZSX");
+            try out.print("{d:0>4}", .{d.code.number()});
+            try out.appendSlice("\",\"name\":");
+            try appendJsonString(&out, d.code.name());
+            try out.appendSlice(",\"severity\":");
+            try appendJsonString(&out, switch (d.severity) {
+                .err => "error",
+                .warning => "warning",
+            });
+            try out.appendSlice(",\"file\":");
+            try appendJsonString(&out, d.file);
+            try out.print(",\"line\":{d},\"col\":{d},\"offset\":{d},\"len\":{d},\"message\":", .{ d.line, d.col, d.offset, d.len });
+            try appendJsonString(&out, d.message);
+            try out.appendSlice(",\"help\":");
+            if (d.help) |h| try appendJsonString(&out, h) else try out.appendSlice("null");
+            try out.append('}');
+        }
+        try out.appendSlice("]}");
+        return try out.toOwnedSlice();
+    }
 };
+
+/// Append `s` as a JSON string literal (with the surrounding quotes). Escapes
+/// `"` and `\` plus the C0 control bytes as `\n`, `\r`, `\t` or `\u00xx`;
+/// multi-byte UTF-8 passes through unescaped.
+fn appendJsonString(out: *std.array_list.Managed(u8), s: []const u8) !void {
+    try out.append('"');
+    for (s) |c| {
+        switch (c) {
+            '"' => try out.appendSlice("\\\""),
+            '\\' => try out.appendSlice("\\\\"),
+            '\n' => try out.appendSlice("\\n"),
+            '\r' => try out.appendSlice("\\r"),
+            '\t' => try out.appendSlice("\\t"),
+            else => if (c < 0x20) {
+                try out.print("\\u{x:0>4}", .{c});
+            } else {
+                try out.append(c);
+            },
+        }
+    }
+    try out.append('"');
+}
+
+// -- tests ---------------------------------------------------------------
+
+const ArenaAllocator = std.heap.ArenaAllocator;
 
 test "diag: line index maps offsets to 1-based line/col" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -241,7 +308,7 @@ test "diag: render header uses path:line:col and code" {
 }
 
 test "diag: list counts errors and warnings separately" {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena = ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const a = arena.allocator();
     const idx = try LineIndex.build(a, "x\ny\n");
@@ -253,4 +320,54 @@ test "diag: list counts errors and warnings separately" {
     try std.testing.expectEqual(@as(usize, 1), list.errorCount());
     try std.testing.expectEqual(@as(usize, 1), list.warningCount());
     try std.testing.expect(list.hasErrors());
+}
+
+test "diag: toJson on an empty list emits an empty diagnostics array" {
+    var arena = ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var list = List.init(arena.allocator());
+    const json = try list.toJson(arena.allocator());
+    try std.testing.expectEqualStrings(
+        \\{"schema":1,"diagnostics":[]}
+    , json);
+}
+
+test "diag: toJson emits code, name, severity, span and message" {
+    var arena = ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const idx = try LineIndex.build(a, "x\ny\n");
+    var list = List.init(a);
+    try list.err(idx, "src/views/demo.zsx", 0, 5, .stray_close_tag, "</row> with no open tag", .{});
+    const json = try list.toJson(a);
+    try std.testing.expectEqualStrings(
+        \\{"schema":1,"diagnostics":[{"code":"ZSX0001","name":"stray-close-tag","severity":"error","file":"src/views/demo.zsx","line":1,"col":1,"offset":0,"len":5,"message":"</row> with no open tag","help":null}]}
+    , json);
+}
+
+test "diag: toJson escapes JSON specials in message, help and file" {
+    var arena = ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const idx = try LineIndex.build(a, "x\n");
+    var list = List.init(a);
+    try list.err(idx, "we\"ird\\file.zsx", 0, 1, .junk_syntax, "bad \"token\"\nnewline\ttab", .{});
+    const json = try list.toJson(a);
+    try std.testing.expectEqualStrings(
+        \\{"schema":1,"diagnostics":[{"code":"ZSX0012","name":"junk-syntax","severity":"error","file":"we\"ird\\file.zsx","line":1,"col":1,"offset":0,"len":1,"message":"bad \"token\"\nnewline\ttab","help":null}]}
+    , json);
+}
+
+test "diag: toJson renders warnings and help text" {
+    var arena = ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const idx = try LineIndex.build(a, "x\n");
+    var list = List.init(a);
+    try list.warn(idx, "w.zsx", 0, 4, .unknown_class, "class 'made-up-class' is not in the built-in table", .{});
+    list.items.items[0].help = "check the class table in src/rt/style.zig";
+    const json = try list.toJson(a);
+    try std.testing.expectEqualStrings(
+        \\{"schema":1,"diagnostics":[{"code":"ZSX0009","name":"unknown-class","severity":"warning","file":"w.zsx","line":1,"col":1,"offset":0,"len":4,"message":"class 'made-up-class' is not in the built-in table","help":"check the class table in src/rt/style.zig"}]}
+    , json);
 }
