@@ -13,30 +13,40 @@ pub fn resetCounters() void {
     _buttons = 0;
     _labels = 0;
 }
-pub fn buttonsRendered() usize { return _buttons; }
-pub fn labelsRendered() usize { return _labels; }
+pub fn buttonsRendered() usize {
+    return _buttons;
+}
+pub fn labelsRendered() usize {
+    return _labels;
+}
 
 pub const Adapter = struct {
     pub const Box = struct {
         inner: *BoxWidget,
-        pub fn end(self: Box) void { _ = self; }
+        pub fn end(self: Box) void {
+            _ = self;
+        }
     };
 
     pub fn column(c: *Context, opts: anytype) Box {
-        _ = c; _ = opts;
+        _ = c;
+        _ = opts;
         return .{ .inner = &_box };
     }
     pub fn row(c: *Context, opts: anytype) Box {
-        _ = c; _ = opts;
+        _ = c;
+        _ = opts;
         return .{ .inner = &_box };
     }
     pub fn text(c: *Context, str: []const u8, opts: anytype) void {
-        _ = c; _ = opts;
+        _ = c;
+        _ = opts;
         _labels += 1;
         std.debug.print("[stub] label: {s}\n", .{str});
     }
     pub fn button(c: *Context, title: []const u8, opts: anytype) bool {
-        _ = c; _ = opts;
+        _ = c;
+        _ = opts;
         _buttons += 1;
         std.debug.print("[stub] button: {s}\n", .{title});
         return false;
