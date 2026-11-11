@@ -2,7 +2,9 @@
   "schema": 1,
   "metric": "wall_ns",
   "cases": {
-    "gen_1k": { "input_lines": 1000, "input_bytes": 62158, "output_bytes": 120136, "ns": 559042, "mb_per_s": 106.04 },
-    "gen_10k": { "input_lines": 10000, "input_bytes": 620158, "output_bytes": 1209137, "ns": 6038000, "mb_per_s": 97.95 }
+    "gen_1k": { "input_lines": 1000, "input_bytes": 62158, "output_bytes": 120136, "ns": 737145, "mb_per_s": 80.42 },
+    "gen_10k": { "input_lines": 10000, "input_bytes": 620158, "output_bytes": 1209137, "ns": 8129354, "mb_per_s": 72.75 },
+    "check_1k": { "input_lines": 1000, "input_bytes": 62158, "diagnostics": 0, "ns": 280395, "mb_per_s": 211.41 },
+    "fmt_1k": { "input_lines": 1000, "input_bytes": 62158, "output_bytes": 62158, "ns": 1018264, "mb_per_s": 58.22 }
   }
 }
