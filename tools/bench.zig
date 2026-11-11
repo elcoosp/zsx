@@ -3,14 +3,17 @@
 //! M0 measures wall-clock generator throughput on synthetic views and writes a
 //! baseline JSON. M1 adds `check_1k`: checker throughput over the same
 //! synthetic file, against the master-plan WP 1.7 acceptance target (< 20 ms
-//! per 1k lines). Instruction counts and per-backend frame costs land in M10.
+//! per 1k lines). `render_1k` covers the code-frame renderer (M1): check plus
+//! render of every diagnostic against a synthetic broken view, the full
+//! pipeline `zsx check` runs on a failing file. Instruction counts and
+//! per-backend frame costs land in M10.
 
 const std = @import("std");
 const checker = @import("zsx_checker");
 const diag = checker.diag;
 const preprocess = checker.preprocess;
 
-const Kind = enum { gen, check, fmt };
+const Kind = enum { gen, check, fmt, render };
 
 const Case = struct {
     name: []const u8,
@@ -51,18 +54,20 @@ pub fn main(init: std.process.Init) !void {
         try cases.append(.{ .name = "gen_1k", .kind = .gen, .lines = 1000, .iterations = 3 });
         try cases.append(.{ .name = "check_1k", .kind = .check, .lines = 1000, .iterations = 3 });
         try cases.append(.{ .name = "fmt_1k", .kind = .fmt, .lines = 1000, .iterations = 3 });
+        try cases.append(.{ .name = "render_1k", .kind = .render, .lines = 1000, .iterations = 3 });
     } else {
         try cases.append(.{ .name = "gen_1k", .kind = .gen, .lines = 1000, .iterations = 10 });
         try cases.append(.{ .name = "gen_10k", .kind = .gen, .lines = 10_000, .iterations = 5 });
         try cases.append(.{ .name = "check_1k", .kind = .check, .lines = 1000, .iterations = 10 });
         try cases.append(.{ .name = "fmt_1k", .kind = .fmt, .lines = 1000, .iterations = 10 });
+        try cases.append(.{ .name = "render_1k", .kind = .render, .lines = 1000, .iterations = 10 });
     }
     const case_slice = cases.items;
 
     var json = std.array_list.Managed(u8).init(a);
     try json.appendSlice("{\n  \"schema\": 1,\n  \"metric\": \"wall_ns\",\n  \"cases\": {\n");
     for (case_slice, 0..) |*c, idx| {
-        const src = try synthetic(a, c.lines);
+        const src = if (c.kind == .render) try syntheticBroken(a, c.lines) else try synthetic(a, c.lines);
         var best: u64 = std.math.maxInt(u64);
         var out_len: usize = 0;
         var diag_count: usize = 0;
@@ -84,6 +89,16 @@ pub fn main(init: std.process.Init) !void {
                     const body = try checker.fmt.formatSource(a, src, .{});
                     work = body.len;
                 },
+                .render => {
+                    var list = diag.List.init(a);
+                    try checker.checkSource(a, src, "synthetic-broken.zsx", .{}, &list);
+                    const r = try checker.render.Renderer.init(a, src);
+                    var bytes: usize = 0;
+                    for (list.items.items) |d| {
+                        bytes += (try r.render(d, .{})).len;
+                    }
+                    work = bytes;
+                },
             }
             const t1 = std.Io.Clock.Timestamp.now(io, .awake);
             const ns: u64 = @intCast(@max(0, t0.durationTo(t1).raw.nanoseconds));
@@ -91,7 +106,7 @@ pub fn main(init: std.process.Init) !void {
             switch (c.kind) {
                 .gen => out_len = work,
                 .check => diag_count = work,
-                .fmt => out_len = work,
+                .fmt, .render => out_len = work,
             }
         }
         if (c.kind == .gen) {
@@ -105,7 +120,7 @@ pub fn main(init: std.process.Init) !void {
 
         try json.appendSlice(if (idx == 0) "" else ",\n");
         const line = switch (c.kind) {
-            .gen, .fmt => try std.fmt.allocPrint(
+            .gen, .fmt, .render => try std.fmt.allocPrint(
                 a,
                 "    \"{s}\": {{ \"input_lines\": {d}, \"input_bytes\": {d}, \"output_bytes\": {d}, \"ns\": {d}, \"mb_per_s\": {d:.2} }}",
                 .{ c.name, c.lines, src.len, out_len, best, mb_per_s },
@@ -121,6 +136,7 @@ pub fn main(init: std.process.Init) !void {
             .gen => "gen",
             .check => "check",
             .fmt => "fmt",
+            .render => "render",
         };
         std.debug.print("bench: {s}  {s}  {d} lines  {d} ns  {d:.2} MB/s\n", .{ c.name, label, c.lines, best, mb_per_s });
     }
@@ -143,6 +159,24 @@ fn synthetic(a: std.mem.Allocator, lines: usize) ![]const u8 {
     var i: usize = 0;
     while (i < lines) : (i += 1) {
         try out.appendSlice("            <label class=\"text-sm text-slate-900\">row</label>\n");
+    }
+    try out.appendSlice("        </column>\n    }\n}\n");
+    return out.toOwnedSlice();
+}
+
+/// Same shape as `synthetic`, but every fifth label is never closed: the
+/// checker reports one `ZSX0003` per fifth row, giving the renderer a
+/// deterministic, sizeable diagnostic list to frame.
+fn syntheticBroken(a: std.mem.Allocator, lines: usize) ![]const u8 {
+    var out = std.array_list.Managed(u8).init(a);
+    try out.appendSlice("const std = @import(\"std\");\n\npub fn view(ui: anytype, c: anytype, ctx: anytype) void {\n    zsx!{\n        <column class=\"gap-2 p-4\">\n");
+    var i: usize = 0;
+    while (i < lines) : (i += 1) {
+        if (i % 5 == 0) {
+            try out.appendSlice("            <label class=\"text-sm text-slate-900\">row\n");
+        } else {
+            try out.appendSlice("            <label class=\"text-sm text-slate-900\">row</label>\n");
+        }
     }
     try out.appendSlice("        </column>\n    }\n}\n");
     return out.toOwnedSlice();
