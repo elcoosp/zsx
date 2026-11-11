@@ -37,6 +37,10 @@ pub const preprocess = @import("preprocess.zig");
 /// Native formatter (WP 1.6 slice). Lives on the same barrel for the same
 /// one-file-one-module reason; see `fmt.zig`.
 pub const fmt = @import("fmt.zig");
+/// Code-frame renderer (M1 slice): turns a `diag.Diagnostic` plus the checked
+/// source into the annotated snippet a developer reads. Same barrel, same
+/// one-file-one-module reason; see `render.zig`.
+pub const render = @import("render.zig");
 const style = @import("style.zig");
 
 pub const Options = struct {
