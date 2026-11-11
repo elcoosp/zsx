@@ -30,5 +30,8 @@ test {
     _ = @import("tests/fmt.zig");
 }
 test {
+    _ = @import("tests/render.zig");
+}
+test {
     _ = @import("tests/compat.zig");
 }
