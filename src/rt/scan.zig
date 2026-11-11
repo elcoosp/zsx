@@ -153,7 +153,7 @@ pub const Scanner = struct {
     }
 
     fn scanBrace(self: *Scanner, start: usize) !usize {
-        const close = self.matchBrace(start) orelse {
+        const close = matchBrace(self.src, start) orelse {
             try self.append(.{ .junk = .{
                 .msg = "unterminated expression: no matching '}'",
                 .off = self.abs(start),
@@ -205,54 +205,6 @@ pub const Scanner = struct {
         }
         try self.append(.{ .expression = .{ .raw = self.src[start .. close + 1], .off = tok_start, .end = tok_end } });
         return close + 1;
-    }
-
-    /// String-aware brace matching from the '{' at `start`.
-    fn matchBrace(self: *const Scanner, start: usize) ?usize {
-        var depth: usize = 0;
-        var i = start;
-        while (i < self.src.len) {
-            const c = self.src[i];
-            if (c == '"') {
-                i = self.skipString(i);
-                continue;
-            }
-            if (c == '\'') {
-                i = self.skipChar(i);
-                continue;
-            }
-            if (c == '{') depth += 1;
-            if (c == '}') {
-                depth -= 1;
-                if (depth == 0) return i;
-            }
-            i += 1;
-        }
-        return null;
-    }
-
-    fn skipString(self: *const Scanner, start: usize) usize {
-        var i = start + 1;
-        while (i < self.src.len) : (i += 1) {
-            if (self.src[i] == '\\' and i + 1 < self.src.len) {
-                i += 2;
-                continue;
-            }
-            if (self.src[i] == '"') return i + 1;
-        }
-        return i;
-    }
-
-    fn skipChar(self: *const Scanner, start: usize) usize {
-        var i = start + 1;
-        while (i < self.src.len) : (i += 1) {
-            if (self.src[i] == '\\' and i + 1 < self.src.len) {
-                i += 2;
-                continue;
-            }
-            if (self.src[i] == '\'') return i + 1;
-        }
-        return i;
     }
 
     /// Returns the index just past the tag token.
@@ -356,7 +308,7 @@ pub const Scanner = struct {
                         value = .{ .string = self.src[v_start..j] };
                         i = j + 1;
                     } else if (i < self.src.len and self.src[i] == '{') {
-                        const close = self.matchBrace(i) orelse {
+                        const close = matchBrace(self.src, i) orelse {
                             try self.append(.{ .junk = .{
                                 .msg = "unterminated expression attribute: no matching '}'",
                                 .off = self.abs(i),
@@ -412,6 +364,61 @@ pub fn isAttrNameChar(c: u8) bool {
 
 fn isSpace(c: u8) bool {
     return c == ' ' or c == '\t' or c == '\n' or c == '\r';
+}
+
+/// Index of the `'}'` matching the `'{'` at `src[start]`, or null. String- and
+/// char-aware: a `'}'` inside `"…"` or `'…'` never closes the brace, and
+/// `\` escapes inside literals are honoured. Shared by the tolerant scanner
+/// and the fail-fast parser — one matcher, not two drifting copies (F5).
+pub fn matchBrace(src: []const u8, start: usize) ?usize {
+    var depth: usize = 0;
+    var i = start;
+    while (i < src.len) {
+        const c = src[i];
+        if (c == '"') {
+            i = skipString(src, i);
+            continue;
+        }
+        if (c == '\'') {
+            i = skipChar(src, i);
+            continue;
+        }
+        if (c == '{') depth += 1;
+        if (c == '}') {
+            depth -= 1;
+            if (depth == 0) return i;
+        }
+        i += 1;
+    }
+    return null;
+}
+
+/// Index just past the `"…"` string starting at the `"` at `src[start]`; the
+/// end of `src` if the string never closes.
+pub fn skipString(src: []const u8, start: usize) usize {
+    var i = start + 1;
+    while (i < src.len) : (i += 1) {
+        if (src[i] == '\\' and i + 1 < src.len) {
+            i += 2;
+            continue;
+        }
+        if (src[i] == '"') return i + 1;
+    }
+    return i;
+}
+
+/// Index just past the `'…'` char literal starting at the `'` at
+/// `src[start]`; the end of `src` if the literal never closes.
+pub fn skipChar(src: []const u8, start: usize) usize {
+    var i = start + 1;
+    while (i < src.len) : (i += 1) {
+        if (src[i] == '\\' and i + 1 < src.len) {
+            i += 2;
+            continue;
+        }
+        if (src[i] == '\'') return i + 1;
+    }
+    return i;
 }
 
 // -- tests ---------------------------------------------------------------
