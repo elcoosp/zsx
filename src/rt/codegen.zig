@@ -23,7 +23,6 @@ fn discardPrefix(a: std.mem.Allocator, code: []const u8) ![]const u8 {
     return try out.toOwnedSlice();
 }
 
-
 pub const FILE_STRIDE: usize = 10_000_000_000_000;
 pub const LOOP_STRIDE_0: usize = 1_000_000;
 pub const LOOP_STRIDE_1: usize = 1_000_000_000;
@@ -44,7 +43,9 @@ const Emitter = struct {
     fn init(a: std.mem.Allocator, file_index: usize, block_index: usize) Emitter {
         return .{ .a = a, .file_index = file_index, .block_index = block_index, .preamble = std.array_list.Managed(u8).init(a) };
     }
-    fn deinit(self: *Emitter) void { self.preamble.deinit(); }
+    fn deinit(self: *Emitter) void {
+        self.preamble.deinit();
+    }
 
     fn fileBase(self: *const Emitter) usize {
         return self.file_index * BLOCK_STRIDE + self.block_index;
@@ -81,12 +82,22 @@ const Emitter = struct {
         return out.toOwnedSlice();
     }
 
-    fn isWs(c: u8) bool { return c == ' ' or c == '\t' or c == '\n' or c == '\r'; }
-    fn isWhitespaceOnly(s: []const u8) bool { for (s) |c| if (!isWs(c)) return false; return true; }
-    fn isUpper(c: u8) bool { return c >= 'A' and c <= 'Z'; }
+    fn isWs(c: u8) bool {
+        return c == ' ' or c == '\t' or c == '\n' or c == '\r';
+    }
+    fn isWhitespaceOnly(s: []const u8) bool {
+        for (s) |c| if (!isWs(c)) return false;
+        return true;
+    }
+    fn isUpper(c: u8) bool {
+        return c >= 'A' and c <= 'Z';
+    }
 
     fn hasElementChildren(el: ast.Element) bool {
-        for (el.children) |c| switch (c) { .element => return true, else => continue };
+        for (el.children) |c| switch (c) {
+            .element => return true,
+            else => continue,
+        };
         return false;
     }
     fn hasTextChild(el: ast.Element) bool {
@@ -106,17 +117,20 @@ const Emitter = struct {
     }
     fn getSlotName(el: ast.Element) ![]const u8 {
         for (el.attributes) |attr| {
-            if (std.mem.eql(u8, attr.name, "name")) return switch (attr.value) { .string => |s| s, else => error.ZsxParseError };
+            if (std.mem.eql(u8, attr.name, "name")) return switch (attr.value) {
+                .string => |s| s,
+                else => error.ZsxParseError,
+            };
         }
         return error.ZsxParseError;
     }
     fn sanitizeTag(a: std.mem.Allocator, tag: []const u8) ![]const u8 {
-    var out = std.array_list.Managed(u8).init(a);
-    for (tag) |ch| {
-        if (ch == '.') try out.append('_') else try out.append(ch);
-    }
-    return try out.toOwnedSlice();
-} // dots preserved in fn names via valid Zig idents
+        var out = std.array_list.Managed(u8).init(a);
+        for (tag) |ch| {
+            if (ch == '.') try out.append('_') else try out.append(ch);
+        }
+        return try out.toOwnedSlice();
+    } // dots preserved in fn names via valid Zig idents
 
     fn makeIndent(self: *Emitter, level: usize) ![]const u8 {
         const n = level * 4;
@@ -136,7 +150,10 @@ const Emitter = struct {
 
     fn findAttrExpr(el: ast.Element, name: []const u8) ?[]const u8 {
         for (el.attributes) |attr| {
-            if (std.mem.eql(u8, attr.name, name)) return switch (attr.value) { .expression => |e| e, else => null };
+            if (std.mem.eql(u8, attr.name, name)) return switch (attr.value) {
+                .expression => |e| e,
+                else => null,
+            };
         }
         return null;
     }
@@ -160,7 +177,11 @@ const Emitter = struct {
         if (s.expand) |ex| try writeFmt(self.a, &out, ", .expand = .{s}", .{@tagName(ex)});
         if (s.font_size) |fs| try writeFmt(self.a, &out, ", .font_size = {d}", .{@as(u32, @intFromFloat(fs))});
         if (s.font_weight) |fw| {
-            const w: u32 = switch (fw) { .regular => 400, .semibold => 600, .bold => 700 };
+            const w: u32 = switch (fw) {
+                .regular => 400,
+                .semibold => 600,
+                .bold => 700,
+            };
             try writeFmt(self.a, &out, ", .font_weight = {d}", .{w});
         }
         try out.append('}');
@@ -173,10 +194,17 @@ const Emitter = struct {
         for (el.attributes) |attr| {
             try writeFmt(self.a, &out, ", .{s} = ", .{attr.name});
             if (std.mem.eql(u8, attr.name, "on_click")) {
-                switch (attr.value) { .expression => |e| try out.appendSlice(try self.normalizeClickHandler(e)), else => try out.appendSlice("undefined") }
+                switch (attr.value) {
+                    .expression => |e| try out.appendSlice(try self.normalizeClickHandler(e)),
+                    else => try out.appendSlice("undefined"),
+                }
             } else switch (attr.value) {
                 .boolean => try out.appendSlice("true"),
-                .string => |s| { try out.append('"'); try out.appendSlice(try self.escapeString(s)); try out.append('"'); },
+                .string => |s| {
+                    try out.append('"');
+                    try out.appendSlice(try self.escapeString(s));
+                    try out.append('"');
+                },
                 .expression => |e| try out.appendSlice(e),
             }
         }
@@ -282,10 +310,17 @@ const Emitter = struct {
         for (el.attributes) |attr| {
             try writeFmt(self.a, &props, ", .{s} = ", .{attr.name});
             if (std.mem.eql(u8, attr.name, "on_click")) {
-                switch (attr.value) { .expression => |e| try props.appendSlice(try self.normalizeClickHandler(e)), else => try props.appendSlice("undefined") }
+                switch (attr.value) {
+                    .expression => |e| try props.appendSlice(try self.normalizeClickHandler(e)),
+                    else => try props.appendSlice("undefined"),
+                }
             } else switch (attr.value) {
                 .boolean => try props.appendSlice("true"),
-                .string => |s| { try props.append('"'); try props.appendSlice(try self.escapeString(s)); try props.append('"'); },
+                .string => |s| {
+                    try props.append('"');
+                    try props.appendSlice(try self.escapeString(s));
+                    try props.append('"');
+                },
                 .expression => |e| try props.appendSlice(e),
             }
         }
@@ -321,7 +356,9 @@ const Emitter = struct {
                     const cond = std.mem.trim(u8, e[3..], " \t\n\r");
                     if (cond.len == 0) return error.ZsxParseError;
                     try writeFmt(self.a, &code, "{s}if ({s}) {{\n", .{ try self.makeIndent(level), cond });
-                    stack[stack_depth] = 'i'; stack_depth += 1; level += 1;
+                    stack[stack_depth] = 'i';
+                    stack_depth += 1;
+                    level += 1;
                 } else if (std.mem.startsWith(u8, e, "for ") and std.mem.indexOf(u8, e, " as ") != null) {
                     const body = std.mem.trim(u8, e[4..], " \t\n\r");
                     const as_idx = std.mem.indexOf(u8, body, " as ").?;
@@ -329,12 +366,17 @@ const Emitter = struct {
                     const binding = std.mem.trim(u8, body[as_idx + 4 ..], " \t\n\r");
                     if (items.len == 0 or binding.len == 0 or cur_depth >= 3) return error.ZsxParseError;
                     try writeFmt(self.a, &code, "{s}for ({s}, 0..) |{s}, idx_{d}| {{\n", .{ try self.makeIndent(level), items, binding, cur_depth });
-                    stack[stack_depth] = 'f'; stack_depth += 1; level += 1; cur_depth += 1;
+                    stack[stack_depth] = 'f';
+                    stack_depth += 1;
+                    level += 1;
+                    cur_depth += 1;
                 } else if (std.mem.startsWith(u8, e, "switch ")) {
                     const expr = std.mem.trim(u8, e[7..], " \t\n\r");
                     if (expr.len == 0 or switch_depth >= 16) return error.ZsxParseError;
-                    switch_exprs[switch_depth] = expr; switch_depth += 1;
-                    stack[stack_depth] = 'S'; stack_depth += 1;
+                    switch_exprs[switch_depth] = expr;
+                    switch_depth += 1;
+                    stack[stack_depth] = 'S';
+                    stack_depth += 1;
                 } else if (std.mem.startsWith(u8, e, ":case ") or std.mem.startsWith(u8, e, "case ")) {
                     const pat = std.mem.trim(u8, if (std.mem.startsWith(u8, e, ":case ")) e[6..] else e[5..], " \t\n\r");
                     if (pat.len == 0 or stack_depth == 0) return error.ZsxParseError;
@@ -347,7 +389,9 @@ const Emitter = struct {
                         try std.fmt.allocPrint(self.a, "{s} == {s}", .{ expr, pat });
                     if (top == 'S') {
                         try writeFmt(self.a, &code, "{s}if ({s}) {{\n", .{ try self.makeIndent(level), predicate });
-                        level += 1; stack[stack_depth] = 'c'; stack_depth += 1;
+                        level += 1;
+                        stack[stack_depth] = 'c';
+                        stack_depth += 1;
                     } else {
                         level -= 1;
                         try writeFmt(self.a, &code, "{s}}} else if ({s}) {{\n", .{ try self.makeIndent(level), predicate });
@@ -377,21 +421,26 @@ const Emitter = struct {
                     if (stack_depth == 0) return error.ZsxParseError;
                     const top = stack[stack_depth - 1];
                     if (top != 'i' and top != 'e') return error.ZsxParseError;
-                    stack_depth -= 1; level -= 1;
+                    stack_depth -= 1;
+                    level -= 1;
                     try writeFmt(self.a, &code, "{s}}}\n", .{try self.makeIndent(level)});
                 } else if (std.mem.eql(u8, e, "/for") or std.mem.eql(u8, e, "endfor")) {
                     if (stack_depth == 0 or stack[stack_depth - 1] != 'f') return error.ZsxParseError;
-                    stack_depth -= 1; level -= 1; cur_depth -= 1;
+                    stack_depth -= 1;
+                    level -= 1;
+                    cur_depth -= 1;
                     try writeFmt(self.a, &code, "{s}}}\n", .{try self.makeIndent(level)});
                 } else if (std.mem.eql(u8, e, "/switch") or std.mem.eql(u8, e, "endswitch")) {
                     if (stack_depth == 0) return error.ZsxParseError;
                     const top = stack[stack_depth - 1];
                     if (top == 'S') return error.ZsxParseError;
                     if (top != 'c' and top != 'E') return error.ZsxParseError;
-                    stack_depth -= 1; level -= 1;
+                    stack_depth -= 1;
+                    level -= 1;
                     try writeFmt(self.a, &code, "{s}}}\n", .{try self.makeIndent(level)});
                     if (stack_depth == 0 or stack[stack_depth - 1] != 'S') return error.ZsxParseError;
-                    stack_depth -= 1; switch_depth -= 1;
+                    stack_depth -= 1;
+                    switch_depth -= 1;
                 } else return error.ZsxParseError;
             },
         };
@@ -399,7 +448,7 @@ const Emitter = struct {
         return .{ .code = try code.toOwnedSlice(), .preamble = "", .next_id = id };
     }
 
-        fn emitContentChildren(self: *Emitter, children: []const ast.Child, start_level: usize, start_id: usize) anyerror!EmitResult {
+    fn emitContentChildren(self: *Emitter, children: []const ast.Child, start_level: usize, start_id: usize) anyerror!EmitResult {
         // emitContentChildrenCF-v1
         var code = std.array_list.Managed(u8).init(self.a);
         var level = start_level;
@@ -423,7 +472,9 @@ const Emitter = struct {
                     const cond = std.mem.trim(u8, e[3..], " \t\n\r");
                     if (cond.len == 0) return error.ZsxParseError;
                     try code.appendSlice(try std.fmt.allocPrint(self.a, "{s}if ({s}) {{\n", .{ try self.makeIndent(level), cond }));
-                    stack[stack_depth] = 'i'; stack_depth += 1; level += 1;
+                    stack[stack_depth] = 'i';
+                    stack_depth += 1;
+                    level += 1;
                 } else if (std.mem.startsWith(u8, e, "for ") and std.mem.indexOf(u8, e, " as ") != null) {
                     const body = std.mem.trim(u8, e[4..], " \t\n\r");
                     const as_idx = std.mem.indexOf(u8, body, " as ").?;
@@ -431,12 +482,16 @@ const Emitter = struct {
                     const binding = std.mem.trim(u8, body[as_idx + 4 ..], " \t\n\r");
                     if (items.len == 0 or binding.len == 0) return error.ZsxParseError;
                     try code.appendSlice(try std.fmt.allocPrint(self.a, "{s}for ({s}, 0..) |{s}, idx_0| {{\n", .{ try self.makeIndent(level), items, binding }));
-                    stack[stack_depth] = 'f'; stack_depth += 1; level += 1;
+                    stack[stack_depth] = 'f';
+                    stack_depth += 1;
+                    level += 1;
                 } else if (std.mem.startsWith(u8, e, "switch ")) {
                     const expr = std.mem.trim(u8, e[7..], " \t\n\r");
                     if (expr.len == 0 or switch_depth >= 16) return error.ZsxParseError;
-                    switch_exprs[switch_depth] = expr; switch_depth += 1;
-                    stack[stack_depth] = 'S'; stack_depth += 1;
+                    switch_exprs[switch_depth] = expr;
+                    switch_depth += 1;
+                    stack[stack_depth] = 'S';
+                    stack_depth += 1;
                 } else if (std.mem.startsWith(u8, e, ":case ") or std.mem.startsWith(u8, e, "case ")) {
                     const pat = std.mem.trim(u8, if (std.mem.startsWith(u8, e, ":case ")) e[6..] else e[5..], " \t\n\r");
                     if (pat.len == 0 or stack_depth == 0) return error.ZsxParseError;
@@ -449,7 +504,9 @@ const Emitter = struct {
                         try std.fmt.allocPrint(self.a, "{s} == {s}", .{ expr, pat });
                     if (top == 'S') {
                         try code.appendSlice(try std.fmt.allocPrint(self.a, "{s}if ({s}) {{\n", .{ try self.makeIndent(level), predicate }));
-                        level += 1; stack[stack_depth] = 'c'; stack_depth += 1;
+                        level += 1;
+                        stack[stack_depth] = 'c';
+                        stack_depth += 1;
                     } else {
                         level -= 1;
                         try code.appendSlice(try std.fmt.allocPrint(self.a, "{s}}} else if ({s}) {{\n", .{ try self.makeIndent(level), predicate }));
@@ -479,28 +536,31 @@ const Emitter = struct {
                     if (stack_depth == 0) return error.ZsxParseError;
                     const top = stack[stack_depth - 1];
                     if (top != 'i' and top != 'e') return error.ZsxParseError;
-                    stack_depth -= 1; level -= 1;
+                    stack_depth -= 1;
+                    level -= 1;
                     try code.appendSlice(try std.fmt.allocPrint(self.a, "{s}}}\n", .{try self.makeIndent(level)}));
                 } else if (std.mem.eql(u8, e, "/for") or std.mem.eql(u8, e, "endfor")) {
                     if (stack_depth == 0 or stack[stack_depth - 1] != 'f') return error.ZsxParseError;
-                    stack_depth -= 1; level -= 1;
+                    stack_depth -= 1;
+                    level -= 1;
                     try code.appendSlice(try std.fmt.allocPrint(self.a, "{s}}}\n", .{try self.makeIndent(level)}));
                 } else if (std.mem.eql(u8, e, "/switch") or std.mem.eql(u8, e, "endswitch")) {
                     if (stack_depth == 0) return error.ZsxParseError;
                     const top = stack[stack_depth - 1];
                     if (top == 'S') return error.ZsxParseError;
                     if (top != 'c' and top != 'E') return error.ZsxParseError;
-                    stack_depth -= 1; level -= 1;
+                    stack_depth -= 1;
+                    level -= 1;
                     try code.appendSlice(try std.fmt.allocPrint(self.a, "{s}}}\n", .{try self.makeIndent(level)}));
                     if (stack_depth == 0 or stack[stack_depth - 1] != 'S') return error.ZsxParseError;
-                    stack_depth -= 1; switch_depth -= 1;
+                    stack_depth -= 1;
+                    switch_depth -= 1;
                 } else return error.ZsxParseError;
             },
         };
         return .{ .code = try code.toOwnedSlice(), .preamble = "", .next_id = id };
     }
 };
-
 
 fn fixDiscardPrefixes(a: std.mem.Allocator, preamble: []const u8) ![]const u8 {
     var out = std.array_list.Managed(u8).init(a);
@@ -517,7 +577,7 @@ fn fixDiscardPrefixes(a: std.mem.Allocator, preamble: []const u8) ![]const u8 {
                 break;
             };
             const body = preamble[brace + 1 .. fn_end_marker];
-            try out.appendSlice(preamble[pos..brace + 1]);
+            try out.appendSlice(preamble[pos .. brace + 1]);
 
             // Strip existing discard lines, compute which are needed
             var body_iter: []const u8 = body;
