@@ -38,5 +38,5 @@ Fork if you need to modify the emitter.
 - `zsx.zig` — `addViews` / `addViewsLocal`.
 - `src/gen.zig` — `zsx-gen` CLI.
 - Three adapters: DVUI, Nanoui, HTML.
-- 15 components in `src/lib/shadcn.zig`.
+- 20 components in `src/lib/shadcn.zig`.
 - `examples/consumer/` — working end-to-end.
