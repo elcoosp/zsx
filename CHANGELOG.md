@@ -13,12 +13,36 @@
 - `src/tests/reproducers.zig` — pinned reproducers for F1, F2, F3, F5.
 - `src/compat.zig` and ADR 0002 — Zig `current` / `current-1` support policy.
 - `VERSION` — single source of truth for release metadata.
+- **Code-frame diagnostic rendering (M1).** `src/rt/render.zig`: build a
+  `render.Renderer` once per file, then every `diag.Diagnostic` renders as the
+  annotated snippet a developer reads — `path:line:col: severity[ZSX0xxx]`
+  header, optional `  help:` line, source lines with a caret span clamped to
+  the line. Exported as `zsx.render` from the package root; `zsx check` now
+  prints frames; new consumer demo `examples/render/`; new `render_1k` case in
+  `zig build bench`.
 
 ### Changed
 - `dvui` and `nanoui` are lazy dependencies; `zig build test` and the consumer
   example no longer fetch either toolkit.
 - `build.zig.zon` version aligned with the README and CHANGELOG (was `0.0.1`).
 - CI now runs Ubuntu, macOS, and Windows stub jobs plus Linux real-DVUI build.
+- `tools/golden.zig` normalizes goldens through the canonical Zig formatter
+  (`std.zig.Ast` + `renderAlloc`), so committed goldens are always
+  `zig fmt`-clean and a tree-wide `zig fmt --check` can never drift from
+  `zig build golden`; all 20 goldens regenerated fmt-clean.
+- Vendored example adapters (`examples/{consumer,todo}/src/{stub,shadcn}.zig`)
+  are now `zig fmt`-clean.
+- `src/rt/scan.zig` exposes the string-aware matcher as free functions
+  (`matchBrace`, `skipString`, `skipChar`); the fail-fast parser consumes the
+  same implementation.
+
+### Fixed
+- **F5 closed in the fail-fast parser** (`src/rt/parser.zig`): expression
+  matching is string-aware (`{"}"}` no longer splits the expression) and
+  attribute separators accept any whitespace (tabs/newlines between
+  attributes used to be parse errors). The two F5 reproducers in
+  `src/tests/reproducers.zig` now pin the fixed behaviour; goldens are
+  byte-identical.
 
 ### Deprecated
 - `scripts/zsx-fmt.py` and `scripts/zsx-check.py` now sit behind `zsx fmt` /
