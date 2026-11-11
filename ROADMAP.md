@@ -147,7 +147,7 @@ Lower priority than the core pipeline. Zig highlighting works today for the oute
 
 ### H — More components
 
-Current 15 cover the basics. Missing: `Select`, `Dialog`, `Table`, `Tabs`, `Toast`, `Tooltip`, `Popover`, `Radio Group`, `Checkbox Group`, `Form wrapper`.
+Current 20 cover the basics. Missing: `Select`, `Dialog`, `Table`, `Toast`, `Tooltip`, `Popover`, `Radio Group`, `Checkbox Group`, `Form wrapper`.
 
 ## Non-goals
 
