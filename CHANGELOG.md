@@ -3,6 +3,17 @@
 ## [0.3.0] — 2026-11-09
 
 ### Added
+- **Lossless front-end (M1, spikes S1 + S2).** `src/rt/lossless.zig`: one
+  string-, char- and comment-aware pass partitions a `.zsx` file into typed,
+  byte-exact segments (`zig_text`, `string`, `char_literal`, `line_comment`,
+  `block_comment`, `zsx_block`), and `Document.render` re-emits the source
+  byte-for-byte. Exported as `zsx.lossless` and via the checker barrel;
+  consumer demo `examples/lossless/`; bench case `lossless_1k`.
+- **Machine-readable diagnostics (M1).** `zsx check --format json` prints one
+  compact JSON document on stdout (`diag.List.toJson`) with stable `ZSX0xxx`
+  codes, names, severities, line/col and byte spans; exit codes are
+  unchanged. Library consumers call `list.toJson()` directly; demoed in
+  `examples/checker/`.
 - **M0 ground-truth tooling.** `AGENTS.md`, `docs/STATE.md`, ADR/RFC templates,
   `zig build check-meta`, `zig build check-docs`, `zig build golden`,
   `zig build bench` / `bench-smoke`, and a `zsx` CLI stub.
@@ -22,6 +33,13 @@
   `zig build bench`.
 
 ### Changed
+- `src/rt/preprocess.zig` delegates block detection to the lossless
+  front-end; its two private Zig-side scanners and five skip helpers are gone
+  (one scanner instead of drifting copies — master-plan finding F11). Goldens
+  are byte-identical.
+- `zig build bench` validates the generator inside the timing loop; the
+  redundant post-loop preprocess call is removed, and `lossless_1k` joins the
+  suite.
 - `dvui` and `nanoui` are lazy dependencies; `zig build test` and the consumer
   example no longer fetch either toolkit.
 - `build.zig.zon` version aligned with the README and CHANGELOG (was `0.0.1`).
