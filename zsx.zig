@@ -62,6 +62,20 @@ pub const fmt = checker.fmt;
 /// implementation behind `zsx check` output.
 pub const render = checker.render;
 
+/// Lossless front-end for `.zsx` sources (spikes S1 + S2): one string-, char-
+/// and comment-aware pass partitions a file into typed byte-exact segments
+/// (`zig_text`, `string`, `char_literal`, `line_comment`, `block_comment`,
+/// `zsx_block`) and `Document.render` re-emits the source byte-for-byte.
+/// This is the seam the future CST parser (RFC-0001) builds on, and the one
+/// block scanner behind `preprocess`, `checker` and `fmt`.
+///
+///     const doc = try zsx.lossless.Document.init(arena, source);
+///     for (doc.blocks) |blk| {
+///         std.debug.print("{s}\n", .{doc.markup(blk)});
+///     }
+///     try std.testing.expectEqualStrings(source, try doc.render(arena));
+pub const lossless = @import("src/rt/lossless.zig");
+
 /// Check a `.zsx` source in one call:
 ///
 ///     const zsx = @import("zsx");
