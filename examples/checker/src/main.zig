@@ -78,6 +78,13 @@ pub fn main(init: std.process.Init) !void {
         .{ bad_list.errorCount(), bad_list.warningCount() },
     );
     try say(io, summary);
+
+    // Machine-readable presentation (`zsx check --format json`): the same
+    // diagnostics as one compact JSON document on stdout, ready for editor
+    // tooling, CI annotations or any JSON consumer.
+    try say(io, "\nJSON report (what `zsx check --format json` prints):\n");
+    try say(io, try bad_list.toJson(a));
+    try say(io, "\n");
 }
 
 fn say(io: std.Io, bytes: []const u8) !void {
@@ -102,4 +109,15 @@ test "checker demo: broken source yields two unclosed tags plus a class warning"
     try std.testing.expectEqual(@as(usize, 1), list.warningCount());
     try std.testing.expectEqual(zsx.diag.Code.unknown_class, list.items.items[0].code);
     try std.testing.expectEqual(zsx.diag.Code.unclosed_tag, list.items.items[1].code);
+}
+
+test "checker demo: toJson carries stable codes and spans" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var list = try check(arena.allocator(), "bad.zsx", bad_source);
+    const json = try list.toJson(arena.allocator());
+    try std.testing.expect(std.mem.startsWith(u8, json, "{\"schema\":1,\"diagnostics\":["));
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"code\":\"ZSX0003\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"severity\":\"error\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"code\":\"ZSX0009\"") != null);
 }
