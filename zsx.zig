@@ -56,6 +56,12 @@ pub const checker = @import("src/rt/checker.zig");
 /// byte-exact. The implementation behind `zsx fmt`.
 pub const fmt = checker.fmt;
 
+/// Code-frame renderer: `render.Renderer.init(a, source)` once per file, then
+/// `renderer.render(d, .{})` per diagnostic produces the header, the optional
+/// `  help:` line and the annotated source snippet with a caret span. The
+/// implementation behind `zsx check` output.
+pub const render = checker.render;
+
 /// Check a `.zsx` source in one call:
 ///
 ///     const zsx = @import("zsx");
