@@ -24,7 +24,10 @@ const Parser = struct {
         var col: usize = 1;
         const end = @min(self.pos, self.src.len);
         for (self.src[0..end]) |c| {
-            if (c == '\n') { line += 1; col = 1; } else col += 1;
+            if (c == '\n') {
+                line += 1;
+                col = 1;
+            } else col += 1;
         }
         return .{ .line = line, .col = col };
     }
@@ -47,7 +50,10 @@ const Parser = struct {
             while (self.pos < self.src.len and self.src[self.pos] == ' ') : (self.pos += 1) {}
             if (self.pos >= self.src.len) return self.fail("unexpected EOF in opening tag");
             const c = self.src[self.pos];
-            if (c == '>') { self.pos += 1; break; }
+            if (c == '>') {
+                self.pos += 1;
+                break;
+            }
             if (c == '/') {
                 self.pos += 1;
                 if (self.pos >= self.src.len or self.src[self.pos] != '>') return self.fail("expected '>' after '/'");
@@ -152,7 +158,9 @@ pub fn parseElement(a: std.mem.Allocator, src: []const u8, src_name: []const u8,
 fn isTagChar(c: u8) bool {
     return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c == '_' or c == '-' or c == '.';
 }
-fn isAttrNameChar(c: u8) bool { return isTagChar(c) or c == ':' or c == '.'; }
+fn isAttrNameChar(c: u8) bool {
+    return isTagChar(c) or c == ':' or c == '.';
+}
 
 test "rt parser: simple element" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
