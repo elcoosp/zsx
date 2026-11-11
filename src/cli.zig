@@ -196,7 +196,8 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
         return;
     }
 
-    var list = diag.List.init(a);
+    var error_total: usize = 0;
+    var warning_total: usize = 0;
     var io_errors: usize = 0;
     for (paths.items) |path| {
         const src = dir.readFileAlloc(io, path, a, .limited(max_file_bytes)) catch |e| {
@@ -205,17 +206,19 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
             io_errors += 1;
             continue;
         };
+        var list = diag.List.init(a);
         try checker.checkSource(a, src, path, opts, &list);
-    }
-
-    for (list.items.items) |d| {
-        const header = try d.renderHeader(a);
-        try stderr(io, header);
-        try stderr(io, "\n");
-        if (d.help) |h| {
-            const help = try std.fmt.allocPrint(a, "  help: {s}\n", .{h});
-            try stderr(io, help);
+        // Render with code frames: one Renderer per file reuses the O(n)
+        // line index for every diagnostic of that file (see render.zig).
+        if (list.count() != 0) {
+            const r = try checker.render.Renderer.init(a, src);
+            for (list.items.items) |d| {
+                try stderr(io, try r.render(d, .{}));
+                try stderr(io, "\n");
+            }
         }
+        error_total += list.errorCount();
+        warning_total += list.warningCount();
     }
 
     if (io_errors != 0) {
@@ -224,13 +227,13 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
         std.process.exit(2);
     }
 
-    if (list.hasErrors()) {
-        const line = try std.fmt.allocPrint(a, "zsx check: {d} error(s), {d} warning(s) in {d} file(s)\n", .{ list.errorCount(), list.warningCount(), paths.items.len });
+    if (error_total != 0) {
+        const line = try std.fmt.allocPrint(a, "zsx check: {d} error(s), {d} warning(s) in {d} file(s)\n", .{ error_total, warning_total, paths.items.len });
         try stderr(io, line);
         std.process.exit(1);
     }
 
-    const line = try std.fmt.allocPrint(a, "zsx check: {d} file(s) clean, {d} warning(s)\n", .{ paths.items.len, list.warningCount() });
+    const line = try std.fmt.allocPrint(a, "zsx check: {d} file(s) clean, {d} warning(s)\n", .{ paths.items.len, warning_total });
     try stderr(io, line);
 }
 
