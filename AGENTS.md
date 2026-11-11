@@ -22,10 +22,11 @@ lives in `.zig-cache` and is imported by module name.
 | `src/rt/scan.zig` | tolerant markup tokenizer (tooling front-end) |
 | `src/rt/checker.zig` | structural checker (`zsx check`) + tooling barrel |
 | `src/rt/fmt.zig` | native formatter (`zsx fmt`) |
+| `src/rt/lossless.zig` | lossless front-end: typed byte-exact segmentation + re-emission (S1+S2) |
 | `src/lib/style.zig` | comptime class → `Style` resolver (components) |
 | `src/gen.zig` | `zsx-gen` host executable |
 | `zsx.zig` | `addViews` / `addViewsLocal` build helpers |
-| `src/cli.zig` | `zsx` CLI (`fmt`, `check`, `gen`, …) |
+| `src/cli.zig` | `zsx` CLI (`fmt`, `check --format json`, `gen`, …) |
 | `src/lib/shadcn.zig` | shadcn-inspired components |
 | `src/adapters/*.zig` | dvui, nanoui, html backends + stubs |
 | `src/views/*.zsx` | demo views used by tests and goldens |
@@ -37,6 +38,8 @@ lives in `.zig-cache` and is imported by module name.
 | `docs/rfc/` | user-facing change proposals |
 | `examples/consumer/` | fetchable-path consumer example |
 | `examples/checker/` | checker-as-library consumer example |
+| `examples/render/` | code-frame renderer consumer example |
+| `examples/lossless/` | lossless front-end consumer example |
 
 ## Commands
 
