@@ -18,6 +18,10 @@ lives in `.zig-cache` and is imported by module name.
 | `src/rt/preprocess.zig` | scan Zig source for `zsx!{…}` blocks |
 | `src/rt/codegen.zig` | AST → plain Zig emitter |
 | `src/rt/style.zig` | runtime class → `Style` resolver |
+| `src/rt/diag.zig` | structured diagnostics (`ZSX0xxx`, spans) |
+| `src/rt/scan.zig` | tolerant markup tokenizer (tooling front-end) |
+| `src/rt/checker.zig` | structural checker (`zsx check`) + tooling barrel |
+| `src/rt/fmt.zig` | native formatter (`zsx fmt`) |
 | `src/lib/style.zig` | comptime class → `Style` resolver (components) |
 | `src/gen.zig` | `zsx-gen` host executable |
 | `zsx.zig` | `addViews` / `addViewsLocal` build helpers |
@@ -32,6 +36,7 @@ lives in `.zig-cache` and is imported by module name.
 | `docs/adr/` | architecture decision records |
 | `docs/rfc/` | user-facing change proposals |
 | `examples/consumer/` | fetchable-path consumer example |
+| `examples/checker/` | checker-as-library consumer example |
 
 ## Commands
 
@@ -55,8 +60,9 @@ The local gate (run before every PR) is:
 zig build test && zig build check-meta && zig build golden && zig build bench-smoke
 ```
 
-`zsx fmt --check` / `zsx check` are the CLI forms of the Python tools and run in
-CI until the native implementations land in M1.
+`zsx fmt --check` / `zsx check` are the native Zig implementations (M1/M2)
+and run in CI on every push; the Python scripts under `scripts/` are kept
+only for reference and are no longer invoked.
 
 ## Work loop (binding)
 
