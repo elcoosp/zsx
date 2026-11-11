@@ -33,6 +33,16 @@ pub fn parseClasses(class: []const u8) !Style {
     return s;
 }
 
+/// True when `token` resolves in the built-in class table. Single source of
+/// truth for tooling: `scripts/zsx-check.py` used to duplicate this table by
+/// hand and could silently drift; the native checker asks the resolver that
+/// codegen actually uses, so a warning here means a build error there, always.
+pub fn isKnownClass(token: []const u8) bool {
+    var s = Style{};
+    applyToken(&s, token) catch return false;
+    return true;
+}
+
 fn applyToken(s: *Style, token: []const u8) !void {
     const E = std.mem.eql;
     if (E(u8, token, "bg-blue-500")) {
