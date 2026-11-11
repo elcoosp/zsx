@@ -7,7 +7,7 @@ agents: assume your context does not include the previous session.
 
 | Field | Value |
 |---|---|
-| Current milestone | **M0 — Ground truth** (implemented, awaiting gate confirmation on CI) |
+| Current milestone | **M1/M2 tooling front-end — implemented** (native `zsx check` + `zsx fmt`; awaiting gate confirmation on CI) |
 | Last known green commit | see `git log -1`; local gate is the source of truth |
 | Release train | 0.3.0 shipped at the M0 gate; next tag at M1 |
 | Zig versions | 0.17.1 (`current`); policy in `docs/adr/0002-zig-version-policy.md` |
@@ -25,8 +25,18 @@ agents: assume your context does not include the previous session.
 | 0.6 Split root tests | done | tests live under `src/tests/`; `src/root.zig` is a thin aggregator |
 | 0.7 Benchmark skeleton | done | `zig build bench` writes `bench/baseline.json`; `bench-smoke` is the fast gate |
 | 0.8 CI matrix | done | Ubuntu + macOS + Windows stub jobs; consumer lazy-dependency assertion; Linux real-DVUI job with SDL3; flake policy in `AGENTS.md` |
-| 0.9 `zsx` CLI stub | done | wrappers around the Python tools until M1 |
+| 0.9 `zsx` CLI stub | superseded | wrappers replaced by native `check`/`fmt` (M1/M2); Python scripts unused |
 | 0.10 Zig-version policy | done | ADR 0002 + `src/compat.zig` |
+
+## M1/M2 tooling front-end (this handoff)
+
+| WP | Status | Notes |
+|---|---|---|
+| 1.7 Checker in Zig (slice) | done | `src/rt/checker.zig`: tolerant scanner (`scan.zig`), rule set with `ZSX0xxx` codes, `diag.zig` diagnostic type (spans, severities, help); unknown classes read `style.isKnownClass` — no duplicated table. `zsx check` CLI native; exit codes 0/1/2 parity. Bench `check_1k` ≈ 0.3 ms/1k lines (target < 20 ms) |
+| 1.6 Formatter in Zig (slice) | done | `src/rt/fmt.zig`: token-driven reprinter, idempotent, committed corpus byte-for-byte (`src/tests/fmt.zig`); `zsx fmt` CLI native (`--check`/`--write`) |
+| Public API | done | `zsx.zig` exports `diag` / `scan` / `checker` / `fmt` + `checkSource`; `examples/checker/` consumes it as a library (run + tests) |
+| F5 (brace/string) | partial | scanner brace matching is string-aware; the fail-fast parser still has the quirk (reproducers pin it) |
+| Python removal | partial | CLI no longer spawns python3; scripts kept on disk for reference, deletion is a maintainer call |
 
 ## Known flakiness / quarantine
 
@@ -35,5 +45,8 @@ None. Real-backend jobs fail only on compile/link errors, not pixel timings
 
 ## Next milestone
 
-M1 — Lossless front-end. Start with spikes S1 (Zig-side parsing via
-`std.zig.Ast` placeholders) and S2 (line-preserving emission), then RFC-0001.
+M1 full scope — Lossless front-end. Remaining after the M1/M2 tooling slice:
+spikes S1 (Zig-side parsing via `std.zig.Ast` placeholders) and S2
+(line-preserving emission), then RFC-0001 (grammar v1), CST parser with error
+recovery, `ZSX0xxx` rendering with code frames, and closing the pinned
+reproducers F1/F2/F3.
