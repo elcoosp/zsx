@@ -24,5 +24,11 @@ test {
     _ = @import("tests/reproducers.zig");
 }
 test {
+    _ = @import("tests/checker.zig");
+}
+test {
+    _ = @import("tests/fmt.zig");
+}
+test {
     _ = @import("tests/compat.zig");
 }
