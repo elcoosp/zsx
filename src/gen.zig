@@ -13,10 +13,16 @@ pub fn main(init: std.process.Init) !void {
 
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
-        if (std.mem.eql(u8, args[i], "--input")) { i += 1; input = args[i]; }
-        else if (std.mem.eql(u8, args[i], "--output")) { i += 1; output = args[i]; }
-        else if (std.mem.eql(u8, args[i], "--src-name")) { i += 1; src_name = args[i]; }
-        else if (std.mem.eql(u8, args[i], "--file-index")) {
+        if (std.mem.eql(u8, args[i], "--input")) {
+            i += 1;
+            input = args[i];
+        } else if (std.mem.eql(u8, args[i], "--output")) {
+            i += 1;
+            output = args[i];
+        } else if (std.mem.eql(u8, args[i], "--src-name")) {
+            i += 1;
+            src_name = args[i];
+        } else if (std.mem.eql(u8, args[i], "--file-index")) {
             i += 1;
             file_index = std.fmt.parseInt(usize, args[i], 10) catch {
                 std.debug.print("zsx-gen: bad --file-index '{s}'\n", .{args[i]});
