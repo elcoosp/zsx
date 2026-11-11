@@ -60,6 +60,8 @@ fn printHelp() void {
         \\  fmt [--check|--write] [paths...]   format .zsx markup (native; default = dry run)
         \\  check [paths...]                   validate .zsx structure (native)
         \\                                     --no-class-check skips unknown-class warnings
+        \\                                     --format json prints machine-readable
+        \\                                     diagnostics (stdout) instead of code frames
         \\  version                            print the ZSX version
         \\
     , .{});
@@ -166,16 +168,40 @@ fn runFmt(init: std.process.Init, rest: []const []const u8) !void {
 }
 
 /// Native `zsx check`: validate `.zsx` files without compiling.
+///
+/// `--format json` switches the presentation from human code frames (stderr)
+/// to one compact JSON document on stdout (`diag.List.toJson`): stable
+/// `ZSX0xxx` codes, names, severities, line/col and byte spans per diagnostic.
+/// Exit codes are presentation-independent: 0 = clean or warnings only,
+/// 1 = at least one error, 2 = a file could not be read or arguments were
+/// invalid — the same contract in both modes, so CI wrappers can keep their
+/// existing handling.
 fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
     const a = init.arena.allocator();
     const io = init.io;
     const dir = std.Io.Dir.cwd();
 
     var opts: checker.Options = .{};
+    var json_format = false;
     var paths = std.array_list.Managed([]const u8).init(a);
-    for (rest) |arg| {
+    var i: usize = 0;
+    while (i < rest.len) : (i += 1) {
+        const arg = rest[i];
         if (std.mem.eql(u8, arg, "--no-class-check")) {
             opts.check_classes = false;
+        } else if (std.mem.eql(u8, arg, "--format")) {
+            // Value form: `--format json`. A missing or unknown format is an
+            // argument error (exit 2), matching the unreadable-file contract.
+            i += 1;
+            if (i >= rest.len) {
+                std.debug.print("zsx check: --format requires a value (json)\n", .{});
+                std.process.exit(2);
+            }
+            if (!std.mem.eql(u8, rest[i], "json")) {
+                std.debug.print("zsx check: unknown format '{s}' (only 'json' is supported)\n", .{rest[i]});
+                std.process.exit(2);
+            }
+            json_format = true;
         } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1) {
             std.debug.print("zsx check: unknown flag '{s}'\n", .{arg});
             std.process.exit(2);
@@ -199,6 +225,10 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
     var error_total: usize = 0;
     var warning_total: usize = 0;
     var io_errors: usize = 0;
+    // One list across all files: diagnostics carry their own `.file`, so the
+    // JSON document is a single, self-contained report; text mode still
+    // renders per file, slicing the list at the boundaries below.
+    var combined = diag.List.init(a);
     for (paths.items) |path| {
         const src = dir.readFileAlloc(io, path, a, .limited(max_file_bytes)) catch |e| {
             const line = try std.fmt.allocPrint(a, "zsx check: cannot read {s}: {s}\n", .{ path, @errorName(e) });
@@ -206,19 +236,34 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
             io_errors += 1;
             continue;
         };
-        var list = diag.List.init(a);
-        try checker.checkSource(a, src, path, opts, &list);
+        const first = combined.count();
+        try checker.checkSource(a, src, path, opts, &combined);
         // Render with code frames: one Renderer per file reuses the O(n)
         // line index for every diagnostic of that file (see render.zig).
-        if (list.count() != 0) {
-            const r = try checker.render.Renderer.init(a, src);
-            for (list.items.items) |d| {
-                try stderr(io, try r.render(d, .{}));
-                try stderr(io, "\n");
+        if (!json_format) {
+            if (combined.count() != first) {
+                const r = try checker.render.Renderer.init(a, src);
+                for (combined.items.items[first..]) |d| {
+                    try stderr(io, try r.render(d, .{}));
+                    try stderr(io, "\n");
+                }
             }
         }
-        error_total += list.errorCount();
-        warning_total += list.warningCount();
+        var file_errors: usize = 0;
+        var file_warnings: usize = 0;
+        for (combined.items.items[first..]) |d| {
+            if (d.severity == .err) file_errors += 1 else file_warnings += 1;
+        }
+        error_total += file_errors;
+        warning_total += file_warnings;
+    }
+
+    if (json_format) {
+        // Machine-readable mode prints the report even when files failed to
+        // read (the JSON covers what was checked; the I/O note goes to
+        // stderr and still drives exit code 2).
+        try stdout(io, try combined.toJson(a));
+        try stdout(io, "\n");
     }
 
     if (io_errors != 0) {
