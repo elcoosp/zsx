@@ -322,12 +322,16 @@ What it normalizes:
 zsx check                # validate all .zsx in repo
 zsx check file.zsx       # validate one file
 zsx check --no-class-check   # skip unknown-class warnings
+zsx check --format json  # machine-readable diagnostics on stdout
 ```
 
 From this repo: `zig build zsx -Dcmd=check`. The checker is native Zig
 (`src/rt/checker.zig`) — no Python, no compile step. It is also a library:
 `zsx.checker.checkSource(...)` from the package root returns structured
-`ZSX0xxx` diagnostics (code, severity, line/col, span) that an editor plugin
+`ZSX0xxx` diagnostics (code, severity, line/col,.
+`--format json` (or `list.toJson()` as a library call) emits the same
+diagnostics as one compact JSON document — stable codes, severities and byte
+spans — for CI annotations and editor tooling. span) that an editor plugin
 can consume; see [`examples/checker/`](examples/checker/). Diagnostics render
 as annotated code frames — header, source lines, caret span — via
 `zsx.render.Renderer` (`src/rt/render.zig`); that is what `zsx check` prints.
