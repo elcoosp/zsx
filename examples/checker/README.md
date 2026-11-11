@@ -20,6 +20,20 @@ Every diagnostic carries a stable `ZSX0xxx` code (`ZSX0003` = unclosed tag,
 severity, a 1-based line/col pair and byte span. `renderHeader` produces the
 same `file:line:col: error[ZSX0003]: message` text the CLI prints.
 
+
+The same report is available as machine-readable JSON — what
+`zsx check --format json` prints to stdout, and what `list.toJson()`
+returns as a library call:
+
+```json
+{"schema":1,"diagnostics":[{"code":"ZSX0003","name":"unclosed-tag","severity":"error","file":"bad.zsx","line":6,"col":18,"offset":150,"len":4,"message":"<row> never closed","help":"add `</row>` or make the element self-closing"}]}
+```
+
+Field order is fixed and the document is single-line, so CI jobs and editor
+integrations can pin or diff it; `schema` bumps on any incompatible shape
+change. The demo prints the JSON report for the broken fixture after the
+text frames.
+
 ## Run
 
 ```bash
