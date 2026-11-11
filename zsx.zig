@@ -32,6 +32,49 @@ pub const Options = struct {
     imports: []const NamedImport = &.{},
 };
 
+// --- Tooling front-end (M1) ---------------------------------------------
+//
+// The `zsx` CLI ships the same seam, but consumers can call it directly:
+// validate `.zsx` sources in tests, editor plugins, or codegen pipelines
+// without spawning a process.
+
+/// Structured diagnostics: stable `ZSX0xxx` codes, severities, byte spans,
+/// and the byte-offset → line/col index they render against.
+pub const diag = @import("src/rt/diag.zig");
+
+/// Tolerant markup tokenizer: never fails, keeps byte offsets, classifies
+/// `{if}`/`{:else}`/`{/if}` control flow. Shared front-end for the checker
+/// and the formatter.
+pub const scan = @import("src/rt/scan.zig");
+
+/// Structural checker: balanced tags, matched control flow, `{:else}`/`{:case}`
+/// placement, unknown-class and legacy-alias warnings. The native
+/// implementation behind `zsx check`.
+pub const checker = @import("src/rt/checker.zig");
+
+/// Native formatter for `zsx!{ }` markup: idempotent, Zig outside blocks
+/// byte-exact. The implementation behind `zsx fmt`.
+pub const fmt = checker.fmt;
+
+/// Check a `.zsx` source in one call:
+///
+///     const zsx = @import("zsx");
+///
+///     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+///     defer arena.deinit();
+///     var list = zsx.diag.List.init(arena.allocator());
+///     try zsx.checker.checkSource(
+///         arena.allocator(),
+///         source,
+///         "src/views/home.zsx",
+///         .{},
+///         &list,
+///     );
+///     if (list.hasErrors()) return error.InvalidZsx;
+pub fn checkSource(a: std.mem.Allocator, source: []const u8, src_name: []const u8, opts: checker.Options, list: *diag.List) !void {
+    return checker.checkSource(a, source, src_name, opts, list);
+}
+
 pub fn addViewsLocal(b: *std.Build, opts: Options) []View {
     return addViewsFrom(b, opts, b.path("src/gen.zig"));
 }
