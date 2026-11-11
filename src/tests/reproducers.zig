@@ -4,6 +4,11 @@
 //! green story: when the fix lands, the assertion flips (the test is updated)
 //! and the finding is closed. Each test names the finding and links the master
 //! plan (`docs/ZSX_MASTER_PLAN.md` §2.2). Do not "loosen" these without an ADR.
+//!
+//! F5 status: FIXED. Both quirks (newline between attributes, string-blind
+//! brace matching) were closed in the fail-fast parser by sharing the
+//! string-aware matcher from `scan.zig`; the two F5 tests below now assert
+//! the *fixed* behaviour. F1, F2 and F3 remain pinned as bugs.
 
 const std = @import("std");
 const parser = @import("../rt/parser.zig");
@@ -73,24 +78,31 @@ test "reproducer F3: slot body cannot capture loop locals" {
     try std.testing.expect(std.mem.indexOf(u8, out.preamble, "item: ") == null);
 }
 
-test "reproducer F5: newline between attributes is a parse error" {
+test "reproducer F5 fixed: newline between attributes parses" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    try std.testing.expectError(
-        error.ZsxParseError,
-        parser.parse(arena.allocator(), "<column\n  class=\"gap-2\"></column>", "repro.zsx"),
-    );
+    const a = arena.allocator();
+
+    // Was: error.ZsxParseError (the attribute separator only accepted ' ').
+    // The parser now skips any whitespace between attributes, matching the
+    // tolerant scanner in scan.zig.
+    const el = try parser.parse(a, "<column\n  class=\"gap-2\"></column>", "repro.zsx");
+    try std.testing.expectEqual(@as(usize, 1), el.attributes.len);
+    try std.testing.expectEqualStrings("column", el.tag);
 }
 
-test "reproducer F5: brace matching ignores string literals" {
+test "reproducer F5 fixed: brace matching is string-aware" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    const el = try parser.parse(arena.allocator(), "<label>{\"}\"}</label>", "repro.zsx");
-    // Bug: the first '}' inside the string ends the expression. The AST is
-    // wrong even though parsing "succeeds".
-    try std.testing.expectEqual(@as(usize, 2), el.children.len);
+    const a = arena.allocator();
+
+    const el = try parser.parse(a, "<label>{\"}\"}</label>", "repro.zsx");
+    // Was: the first '}' inside the string ended the expression, splitting it
+    // into a broken expression plus junk text. The expression child is now
+    // exactly the string literal.
+    try std.testing.expectEqual(@as(usize, 1), el.children.len);
     switch (el.children[0]) {
-        .expression => |e| try std.testing.expect(!std.mem.eql(u8, e, "\"}\"")),
+        .expression => |e| try std.testing.expectEqualStrings("\"}\"", e),
         else => return error.TestUnexpected,
     }
 }
