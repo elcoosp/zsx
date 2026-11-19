@@ -1,5 +1,8 @@
 const std = @import("std");
 const preprocess = @import("rt/preprocess.zig");
+const checker = @import("rt/checker.zig");
+const diag = checker.diag;
+const render = checker.render;
 
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
@@ -41,6 +44,24 @@ pub fn main(init: std.process.Init) !void {
 
     const dir = std.Io.Dir.cwd();
     const src_bytes = try dir.readFileAlloc(io, input.?, a, .limited(10 * 1024 * 1024));
+
+    // F7: unknown props on built-in components are build errors, not silent
+    // no-ops. The checker shares the registry with `zsx check`, so the build
+    // and the CLI cannot disagree.
+    var list = diag.List.init(a);
+    checker.checkSource(a, src_bytes, src_name.?, .{}, &list) catch |e| {
+        std.debug.print("zsx: failed to check {s}: {any}\n", .{ src_name.?, e });
+        return e;
+    };
+    if (list.hasErrors()) {
+        var r = try render.Renderer.init(a, src_bytes);
+        for (list.items.items) |d| {
+            if (d.severity != .err) continue;
+            std.debug.print("{s}\n", .{try r.render(d, .{})});
+        }
+        return error.ZsxCheckFailed;
+    }
+
     const body = preprocess.preprocess(a, src_bytes, src_name.?, file_index) catch |e| {
         std.debug.print("zsx: failed to process {s}: {any}\n", .{ src_name.?, e });
         return e;
