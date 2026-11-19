@@ -7,33 +7,14 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const update_golden = b.option(bool, "update-golden", "Rewrite spec/golden from the current views") orelse false;
+    const fuzz_iterations = b.option(usize, "fuzz-iterations", "Iterations for `zig build fuzz`") orelse 20_000;
+    const fuzz_seed = b.option(u64, "fuzz-seed", "PRNG seed for `zig build fuzz`") orelse 0x5eed_2a17;
 
-    const zsx_files = [_][]const u8{
-        "src/views/demo.zsx",
-        "src/views/component_demo.zsx",
-        "src/views/shadcn_demo.zsx",
-        "src/views/shadcn_lib_demo.zsx",
-        "src/views/onclick_demo.zsx",
-        "src/views/struct_loop_demo.zsx",
-        "src/views/card_if_demo.zsx",
-        "src/views/else_if_demo.zsx",
-        "src/views/fragment_demo.zsx",
-        "src/views/class_override_demo.zsx",
-        "src/views/nested_card_demo.zsx",
-        "src/views/dashboard.zsx",
-        "src/views/input_demo.zsx",
-        "src/views/playground.zsx",
-        "src/views/component_lib_demo.zsx",
-        "src/views/extended_styles_demo.zsx",
-        "src/views/path_demo.zsx",
-        "src/views/switch_demo.zsx",
-        "src/views/slots_demo.zsx",
-        "src/views/components_demo.zsx",
-    };
+    const zsx_files = zsx.discoverViews(b, "src/views", &.{});
 
     const shadcn_mod = b.createModule(.{ .root_source_file = b.path("src/lib/shadcn.zig"), .target = target, .optimize = optimize });
     const views = zsx.addViewsLocal(b, .{
-        .paths = &zsx_files,
+        .paths = zsx_files,
         .target = target,
         .optimize = optimize,
         .imports = &.{.{ .name = "shadcn", .module = shadcn_mod }},
@@ -197,6 +178,29 @@ pub fn build(b: *std.Build) void {
     run_bench_smoke.addArg("--smoke");
     run_bench_smoke.has_side_effects = true;
     b.step("bench-smoke", "Fast benchmark sanity check").dependOn(&run_bench_smoke.step);
+
+    const fuzz_mod = b.createModule(.{
+        .root_source_file = b.path("src/rt/fuzz.zig"),
+        .target = b.graph.host,
+        .optimize = .ReleaseSafe,
+    });
+    const fuzz_exe = b.addExecutable(.{
+        .name = "zsx-fuzz",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/fuzz.zig"),
+            .target = b.graph.host,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+    fuzz_exe.root_module.addImport("zsx_fuzz", fuzz_mod);
+    const run_fuzz = b.addRunArtifact(fuzz_exe);
+    run_fuzz.setCwd(b.path("."));
+    run_fuzz.addArg("--iterations");
+    run_fuzz.addArg(b.fmt("{d}", .{fuzz_iterations}));
+    run_fuzz.addArg("--seed");
+    run_fuzz.addArg(b.fmt("0x{x}", .{fuzz_seed}));
+    run_fuzz.has_side_effects = true;
+    b.step("fuzz", "Property/mutation fuzz the front-end").dependOn(&run_fuzz.step);
 
     const cli_mod = b.createModule(.{
         .root_source_file = b.path("src/cli.zig"),
