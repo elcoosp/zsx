@@ -20,8 +20,11 @@ lives in `.zig-cache` and is imported by module name.
 | `src/rt/style.zig` | runtime class → `Style` resolver |
 | `src/rt/diag.zig` | structured diagnostics (`ZSX0xxx`, spans) |
 | `src/rt/scan.zig` | tolerant markup tokenizer (tooling front-end) |
+| `src/rt/cst.zig` | markup CST parser with spans and error recovery (M1 slice) |
+| `src/rt/astdump.zig` | reviewable lowered-AST dumps (`spec/ast`, fmt equivalence) |
 | `src/rt/checker.zig` | structural checker (`zsx check`) + tooling barrel |
 | `src/rt/fmt.zig` | native formatter (`zsx fmt`) |
+| `src/rt/fuzz.zig` | property/mutation fuzz harness for the front-end |
 | `src/rt/lossless.zig` | lossless front-end: typed byte-exact segmentation + re-emission (S1+S2) |
 | `src/lib/style.zig` | comptime class → `Style` resolver (components) |
 | `src/gen.zig` | `zsx-gen` host executable |
@@ -32,8 +35,12 @@ lives in `.zig-cache` and is imported by module name.
 | `src/views/*.zsx` | demo views used by tests and goldens |
 | `src/tests/*.zig` | split test suites (M0 0.6) |
 | `spec/golden/` | committed golden output of `zsx-gen` |
+| `spec/grammar/` | RFC-0001 conformance corpus (valid + deliberately invalid fixtures) |
+| `spec/ast/` | CST → AST lowering dump goldens (`.zsx` + `.txt` pairs) |
+| `spec/diagnostics/` | rendered diagnostic snapshot corpus (all codes × context 0–3) |
+| `spec/fuzz/` | saved fuzz crash reproducers (checked in after minimization) |
 | `bench/` | benchmark harness + committed baseline |
-| `tools/` | build-time helper executables (`check-meta`, `golden`, `bench`) |
+| `tools/` | build-time helper executables (`check-meta`, `golden`, `bench`, `fuzz`) |
 | `docs/adr/` | architecture decision records |
 | `docs/rfc/` | user-facing change proposals |
 | `examples/consumer/` | fetchable-path consumer example |
@@ -50,6 +57,7 @@ zig build check-docs        # required docs exist + relative links resolve
 zig build golden            # diff generated views against spec/golden
 zig build golden -Dupdate-golden   # regenerate goldens (review the diff!)
 zig build bench-smoke       # fast benchmark sanity check
+zig build fuzz              # 20k fuzz cases (-Dfuzz-iterations/-Dfuzz-seed)
 zig build bench             # full benchmark, writes bench/baseline.json
 zig build zsx -Dcmd=fmt   # run the ZSX CLI
 zig build zsx -Dcmd=check
