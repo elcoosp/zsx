@@ -1,0 +1,105 @@
+(*
+  ZSX markup grammar v1 — normative reference for RFC-0001.
+
+  This file specifies the bytes *inside* a `zsx!{ ... }` block. The
+  surrounding `.zsx` file is Zig; block detection is specified in RFC-0001
+  and implemented by `src/rt/lossless.zig`.
+
+  Notation: ISO/IEC 14977 EBNF. `,` concatenation, `|` alternation,
+  `[ ... ]` optional, `{ ... }` repetition, `(* ... *)` comments, double
+  quotes are literal terminals. `ws` means zero or more ASCII whitespace
+  characters (space, tab, CR, LF). `EOL` is not significant.
+
+  Syntactically permissive productions are annotated with the semantic rules
+  (S1, S2, ...) in RFC-0001. A conforming front-end must accept every string
+  in the "valid" corpus and reject every string in the "invalid" corpus with
+  the specified diagnostic code.
+*)
+
+zsx_block       = "zsx!{" , ws , markup , ws , "}" , [ ";" ] ;
+
+(* Exactly one root node. Text and control-flow tokens may not appear at the
+   block top level. *)
+markup          = node ;
+
+(* Children may be structural nodes or raw text. Text cannot appear at the
+   block top level. *)
+content         = node
+                | text ;
+
+node            = element
+                | expression
+                | control_open
+                | control_mid
+                | control_close ;
+
+element         = fragment
+                | tag ;
+
+fragment        = "<>" , { content } , "</>" ;
+
+tag             = "<" , tag_name , { ws , attribute } , ws ,
+                  ( "/>"
+                  | ">" , { content } , "</" , tag_name , ws , ">"
+                  ) ;
+
+(* Attribute values are adjacent to `=`: no whitespace is allowed between
+   the name and `=`, or between `=` and the value. *)
+attribute       = attr_name , [ "=" , attr_value ] ;
+
+attr_value      = string
+                | expression ;
+
+(* Double quotes only. No escape sequences: a string ends at the next `"`.
+   Use an `{expression}` when the value must contain `"`. *)
+string          = '"' , { any_char - '"' } , '"' ;
+
+(* `{ ... }` containing a Zig expression or block. The closing brace is
+   matched with nesting; `"..."` and '...' literals (with backslash escapes)
+   are skipped so braces inside them do not count. Comments inside the
+   expression are not skipped by the current matcher (see RFC-0001 U4). *)
+expression      = "{" , zig_source , "}" ;
+
+(* Raw text until the next `<` or `{`. Entities are not decoded. To emit a
+   literal `{`, use an expression such as `{ "{" }`. *)
+text            = text_char , { text_char } ;
+text_char       = any_char - ( "<" | "{" ) ;
+
+control_open    = "{" , ws , ( if_header | for_header | switch_header ) , ws , "}" ;
+if_header       = "if" , ws , zig_source ;
+for_header      = "for" , ws , zig_source , ws , "as" , ws , ident ;
+switch_header   = "switch" , ws , zig_source ;
+
+control_mid     = "{" , ws , ( else_branch | else_if_branch | case_branch ) , ws , "}" ;
+else_branch     = ":else" ;
+else_if_branch  = ":else" , ws , "if" , ws , zig_source ;
+case_branch     = ":case" , ws , case_pattern ;
+case_pattern    = string
+                | zig_source ;
+
+control_close   = "{" , ws , ( "/if" | "/for" | "/switch" ) , ws , "}" ;
+
+(* `else`/`case` without the leading colon and the legacy closers
+   `{endif}`/`{endfor}`/`{endswitch}` are accepted by codegen for source
+   compatibility, but are not part of the v1 grammar: `zsx check` warns on
+   legacy closers and `zsx migrate` rewrites them. *)
+legacy_close    = "{" , ws , ( "endif" | "endfor" | "endswitch" ) , ws , "}" ;
+
+(* Lexical classes. The first byte is not restricted by the lexer; tag
+   dispatch rejects names that cannot be an intrinsic, a component or a
+   fragment (RFC-0001 S2). *)
+tag_name        = tag_char , { tag_char } ;
+tag_char        = letter | digit | "_" | "-" | "." ;
+attr_name       = attr_char , { attr_char } ;
+attr_char       = tag_char | ":" ;
+ident           = letter | "_" , { letter | digit | "_" } ;
+
+(* Zig source is any token sequence; it is validated by the Zig compiler and,
+   once WP 1.5 lands, by the CST/AST parser with structured errors. *)
+zig_source      = ? any byte sequence with balanced braces, string- and
+                    char-literal aware, with no top-level `}` ? ;
+
+letter          = "A" | "B" | ... | "Z" | "a" | "b" | ... | "z" ;
+digit           = "0" | "1" | ... | "9" ;
+any_char        = ? any byte except NUL; UTF-8 is passed through unchanged ? ;
+ws              = ? space | tab | CR | LF ? ;
