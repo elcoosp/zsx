@@ -1,0 +1,10 @@
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8}>
+            <button on:click={ctx.bump()}>bump</button>
+            {for ctx.items as item}
+                <Button on:click={ctx.remove(item)}>{item}</Button>
+            {/for}
+        </column>
+    }
+}

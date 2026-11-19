@@ -1,0 +1,15 @@
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8}>
+            <Card>
+                <Slot name="body">
+                    {for ctx.rows as row}
+                        {for row.cells as cell}
+                            <label>{cell}</label>
+                        {/for}
+                    {/for}
+                </Slot>
+            </Card>
+        </column>
+    }
+}

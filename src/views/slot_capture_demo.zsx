@@ -1,0 +1,13 @@
+pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column padding={8}>
+            {for ctx.items as item}
+                <Card>
+                    <Slot name="body">
+                        <label>{item}</label>
+                    </Slot>
+                </Card>
+            {/for}
+        </column>
+    }
+}

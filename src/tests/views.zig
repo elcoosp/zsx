@@ -421,3 +421,86 @@ test "switch_demo: status=other" {
     demo.view(A, &c, &ctx);
     try std.testing.expectEqual(@as(usize, 1), dvui_adapter.StubDvui.labelsRendered());
 }
+
+const SlotCaptureCtx = struct {
+    pub const Card = @import("shadcn").Card;
+    items: []const []const u8 = &[_][]const u8{},
+};
+
+test "slot_capture: slot body inside a loop captures the loop binding (F3)" {
+    const dvui_adapter = @import("../adapters/dvui.zig");
+    const demo = @import("slot_capture_demo");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = SlotCaptureCtx{ .items = &[_][]const u8{ "alpha", "beta", "gamma" } };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 3), dvui_adapter.StubDvui.labelsRendered());
+}
+
+const SlotLoopRow = struct { cells: []const []const u8 };
+const SlotLoopCtx = struct {
+    pub const Card = @import("shadcn").Card;
+    rows: []const SlotLoopRow = &[_]SlotLoopRow{},
+};
+
+test "slot_loop: nested loops inside a slot body do not collide (F2)" {
+    const dvui_adapter = @import("../adapters/dvui.zig");
+    const demo = @import("slot_loop_demo");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = SlotLoopCtx{ .rows = &[_]SlotLoopRow{
+        .{ .cells = &[_][]const u8{ "a", "b" } },
+        .{ .cells = &[_][]const u8{"c"} },
+    } };
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 3), dvui_adapter.StubDvui.labelsRendered());
+}
+
+const EventArgsCtx = struct {
+    pub const Button = @import("shadcn").Button;
+    items: []const []const u8 = &[_][]const u8{},
+    bumps: usize = 0,
+    removed: [4][]const u8 = @splat(""),
+    remove_count: usize = 0,
+
+    pub fn bump(self: *@This()) void {
+        self.bumps += 1;
+    }
+
+    pub fn remove(self: *@This(), v: []const u8) void {
+        if (self.remove_count < self.removed.len) {
+            self.removed[self.remove_count] = v;
+            self.remove_count += 1;
+        }
+    }
+};
+
+test "event_args: intrinsic on:click expression" {
+    const dvui_adapter = @import("../adapters/dvui.zig");
+    const demo = @import("event_args_demo");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = EventArgsCtx{ .items = &[_][]const u8{ "10", "20" } };
+    dvui_adapter.StubDvui.queue_click();
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.bumps);
+    try std.testing.expectEqual(@as(usize, 0), ctx.remove_count);
+}
+
+test "event_args: component handler captures loop binding and takes args" {
+    const dvui_adapter = @import("../adapters/dvui.zig");
+    const demo = @import("event_args_demo");
+    const A = dvui_adapter.Adapter(dvui_adapter.StubDvui);
+    var c: dvui_adapter.StubDvui.Context = .{};
+    dvui_adapter.StubDvui.resetCounters();
+    var ctx = EventArgsCtx{ .items = &[_][]const u8{ "10", "20" } };
+    dvui_adapter.StubDvui.queue_click();
+    dvui_adapter.StubDvui.queue_click();
+    demo.view(A, &c, &ctx);
+    try std.testing.expectEqual(@as(usize, 1), ctx.bumps);
+    try std.testing.expectEqual(@as(usize, 1), ctx.remove_count);
+    try std.testing.expectEqualStrings("10", ctx.removed[0]);
+}
