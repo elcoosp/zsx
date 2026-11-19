@@ -12,7 +12,7 @@
     <a href="https://github.com/elcoosp/zsx/blob/main/build.zig.zon"><img src="https://img.shields.io/badge/zig-0.17.0%2B-F7A41D?style=flat-square&logo=zig&logoColor=white" alt="Zig version"/></a>
     <a href="https://github.com/elcoosp/zsx/tree/main/src/adapters"><img src="https://img.shields.io/badge/backends-dvui%20%7C%20nanoui%20%7C%20html-lightgrey?style=flat-square" alt="Supported backends"/></a>
     <a href="https://github.com/elcoosp/zsx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/></a>
-    <a href="https://github.com/elcoosp/zsx/releases/tag/v0.3.0"><img src="https://img.shields.io/badge/distribution-fetchable-orange?style=flat-square" alt="Fetchable"/></a>
+    <a href="https://github.com/elcoosp/zsx/releases/tag/v0.4.0"><img src="https://img.shields.io/badge/distribution-fetchable-orange?style=flat-square" alt="Fetchable"/></a>
   </p>
 </div>
 
@@ -84,13 +84,14 @@ Add `zsx` to `build.zig.zon`:
 ```zig
 .dependencies = .{
     .zsx = .{
-        .url = "git+https://github.com/elcoosp/zsx#v0.3.0",
-        .hash = "zsx-0.3.0-AAAA...",
+        .url = "git+https://github.com/elcoosp/zsx#v0.4.0",
+        .hash = "zsx-0.4.0-AAAA...",
     },
 },
 ```
 
-Call `zsx.addViews` from `build.zig`:
+Call `zsx.addViews` from `build.zig`. `.dir` scans a directory, so adding a
+view needs no `build.zig` edit (`.paths` still works for an explicit list):
 
 ```zig
 const zsx = @import("zsx");
@@ -105,7 +106,8 @@ pub fn build(b: *std.Build) void {
     });
 
     const views = zsx.addViews(b, .{
-        .paths = &.{ "src/views/home.zsx", "src/views/about.zsx" },
+        .dir = "src/views",          // every *.zsx is discovered (WP 2.10)
+        .exclude = &.{"scratch.zsx"}, // optional
         .target = target,
         .optimize = optimize,
         .imports = &.{.{ .name = "shadcn", .module = shadcn_mod }},
@@ -154,13 +156,13 @@ See [`examples/consumer/`](examples/consumer/) for a working end-to-end project.
 
 - **One source, three toolkits.** The same view renders through `src/adapters/dvui.zig` (dvui on SDL3), `src/adapters/nanoui.zig` (nanoui on Metal), and `src/adapters/html.zig` (plain HTML for the web). Each adapter implements the same primitive surface — `column`, `row`, `text`, `button`, `textEntry`, `textArea`, `checkbox`, `progress`, `divider`, `slider`, `toggle`, `skeleton` — and generated code only speaks that surface.
 
-- **Control flow in markup, native code out.** `{if}`, `{:else if}`, `{:else}`, `{/if}`, `{for items as item}`, `{/for}`, `{switch expr}`, `{:case "val"}`, `{/switch}`, and `<>...</>` fragments lower to literal Zig `if`/`for`/if-else-if chains. Widget IDs in loops get stable strided arithmetic, so identity survives dynamic item counts. Old `{endif}`/`{endfor}`/`{endswitch}` forms still work as aliases.
+- **Control flow in markup, native code out.** `{if}`, `{:else if}`, `{:else}`, `{/if}`, `{for items as item}`, `{/for}`, `{switch expr}`, `{:case "val"}`, `{/switch}`, and `<>...</>` fragments lower to literal Zig `if`/`for`/if-else-if chains. Widget IDs are stable hashes of the source key, block and structural path (mixed with loop indices), so identity survives loop counts and build-list reordering. Old `{endif}`/`{endfor}`/`{endswitch}` forms still work as aliases.
 
 - **Styling resolved at build time.** A Tailwind-named class subset (`bg-blue-500`, `p-4`, `gap-2`, `font-bold`, `rounded-lg`, ...) maps to concrete colors, spacing, and font values during code generation. An unrecognized class is a build error (`error.ZsxUnknownClass`), not a silently unstyled widget.
 
 - **20 shadcn-inspired components.** `src/lib/shadcn.zig` defines `Button`, `Input`, `Textarea`, `Checkbox`, `Card`, `Section`, `Badge`, `Heading`, `Caption`, `Link`, `Label`, `Alert`, `Breadcrumb`, `Tabs`, `Pagination`, `Progress`, `Divider`, `Slider`, `Switch`, and `Skeleton` as pure compositions of adapter primitives.
 
-- **Named slots.** `<Card><Slot name="header">...</Slot><Slot name="body">...</Slot></Card>` compiles to an `.header` / `.body` fn field in the props struct. `Card` and `Section` iterate slots and call whichever are present.
+- **Named slots.** `<Card><Slot name="header">...</Slot><Slot name="body">...</Slot></Card>` compiles to an `.header` / `.body` callable in the props struct. Bodies that read surrounding loop locals are emitted as capture structs, so `<label>{item}</label>` inside a `{for}` works; bodies without captures stay plain functions. `Card` and `Section` invoke whichever slots are present through `invokeSlot`.
 
 - **Path-qualified tags.** `<shadcn.Button>` compiles to `shadcn.Button(ctx, ui, c, .{...})`. No `pub const Button` boilerplate on the context struct — the import at the top of the `.zsx` file is enough.
 
@@ -257,7 +259,13 @@ The grammar is a strict subset of HTML with Zig in braces:
 | Switch | `{switch ctx.status}{:case "ok"}...{:else}...{/switch}` |
 | Fragment | `<>...</>` |
 
-Click handlers must be `on_click={ctx.method()}`; the emitter rewrites them to `@field(@TypeOf(ctx.*), "method")` for dispatch through the context pointer. Bare text inside `<column>` or `<row>` is rejected — wrap in `<label>`. Components accept text children, lowered to `text` calls.
+Event props accept arbitrary Zig expressions: `on:click={ctx.save()}`,
+`on_click={ctx.remove(item)}` (also inside `{for … as item}`, captured by a
+generated handler struct), and namespaced `on:<event>` attributes are
+normalized to `on_<event>` fields. `shadcn.invokeHandler(f, self)` dispatches
+both plain functions and capture structs. Bare text inside `<column>` or
+`<row>` is rejected — wrap in `<label>`. Components accept text children,
+lowered to `text` calls.
 
 **Bare tags** (`<Button>`) resolve through the context struct: `ctx.Button(ui, c, .{...})`. For these, declare `pub const Button = @import("shadcn").Button;` on your `Ctx` struct. **Path tags** (`<shadcn.Button>`) resolve through a file-level import: `shadcn.Button(ctx, ui, c, .{...})`. No `Ctx` boilerplate needed.
 
@@ -316,14 +324,40 @@ What it normalizes:
 
 ## Validation
 
-`zsx check` validates `.zsx` structure (balanced tags, control-flow nesting) in **<100ms**, without compiling. Catches errors `zig build test` takes ~30s to surface.
+`zsx check` validates `.zsx` structure (balanced tags, control-flow nesting),
+unknown classes and unknown props on built-in components in **<100ms**,
+without compiling. A misspelled prop like `<Button varient="primary">` is an
+error with a did-you-mean suggestion (`ZSX0013`); `zsx-gen` runs the same
+check, so it fails the build too. Catches errors `zig build test` takes ~30s
+to surface.
 
 ```bash
 zsx check                # validate all .zsx in repo
 zsx check file.zsx       # validate one file
 zsx check --no-class-check   # skip unknown-class warnings
+zsx check --no-prop-check    # skip unknown-prop errors (built-in components)
+zsx check --no-lint          # skip lint warnings (unused binding, empty for, column text)
+zsx check --explain-cost    # compile-cost report per file + total
+zsx check --explain-cost --cost-budget 5000  # fail CI when the score exceeds N
 zsx check --format json  # machine-readable diagnostics on stdout
 ```
+
+## Migration
+
+`zsx migrate` rewrites pre-0.3 markup using the same lossless front-end as
+`zsx fmt`, so the Zig side and untouched markup stay byte-exact:
+
+```bash
+zsx migrate                    # dry-run: list files that need migration
+zsx migrate --write            # apply
+zsx migrate --check            # exit 1 if anything would change (CI-friendly)
+```
+
+Rewrites: `on_click=` → `on:click=` (also `change`, `input`, `submit`, `key`,
+`focus`, `blur`, `hover`, `drag`) and `{endif}`/`{endfor}`/`{endswitch}` →
+`{/if}`/`{/for}`/`{/switch}`. It is idempotent and ignores unrelated `on_`
+props such as `on_ready`. `<label>` → `<text>` is deferred until `<text>`
+exists as an intrinsic tag.
 
 From this repo: `zig build zsx -Dcmd=check`. The checker is native Zig
 (`src/rt/checker.zig`) — no Python, no compile step. It is also a library:
@@ -397,7 +431,7 @@ zig build snapshot                    # generate playground screenshot (macOS)
 ## Status
 
 > [!NOTE]
-> Version **0.3.0**, tagged and released. The single runtime pipeline is the only pipeline; the earlier comptime pipeline was removed in `v0.2.0`; M0 ground-truth tooling landed in `v0.3.0`. The `.zsx` grammar and the adapter primitive surface may still change between 0.x releases.
+> Version **0.4.0**, tagged and released. The single runtime pipeline is the only pipeline; the earlier comptime pipeline was removed in `v0.2.0`; M0 ground-truth tooling landed in `v0.3.0`. The `.zsx` grammar and the adapter primitive surface may still change between 0.x releases.
 >
 > Targets Zig **0.17.0+**, tested on 0.17.1 across ubuntu-latest and macos-latest. Both real binaries build on macOS every push; Nanoui is macOS-only (Metal), DVUI needs SDL3 and freetype.
 >
