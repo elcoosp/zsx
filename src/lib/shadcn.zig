@@ -76,7 +76,7 @@ pub inline fn Button(self: anytype, ui: anytype, c: anytype, props: anytype) voi
     const clicked = ui.button(c, props.text, opts);
     if (clicked) {
         if (@hasField(@TypeOf(props), "on_click")) {
-            props.on_click(self);
+            invokeHandler(props.on_click, self);
         }
     }
 }
@@ -101,7 +101,7 @@ pub inline fn Badge(self: anytype, ui: anytype, c: anytype, props: anytype) void
     ui.text(c, props.text, opts);
 }
 
-pub inline fn Card(self: anytype, ui: anytype, c: anytype, comptime props: anytype) void {
+pub inline fn Card(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     const card_id: ?usize = if (@hasField(@TypeOf(props), "id_extra")) @as(?usize, props.id_extra) else null;
     var b = ui.column(c, .{
         .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
@@ -166,7 +166,7 @@ pub inline fn Link(self: anytype, ui: anytype, c: anytype, props: anytype) void 
     ui.text(c, props.text, opts);
 }
 
-pub inline fn Section(self: anytype, ui: anytype, c: anytype, comptime props: anytype) void {
+pub inline fn Section(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     const section_id: ?usize = if (@hasField(@TypeOf(props), "id_extra")) @as(?usize, props.id_extra) else null;
     var box = ui.column(c, .{
         .padding = .{ .x = 12, .y = 12, .w = 12, .h = 12 },
@@ -264,16 +264,40 @@ pub inline fn Skeleton(self: anytype, ui: anytype, c: anytype, props: anytype) v
     ui.skeleton(c, opts);
 }
 
-inline fn callComponentFns(self: anytype, ui: anytype, c: anytype, comptime props: anytype) void {
+/// Invoke a slot/content callable. Generated bodies are plain functions when
+/// no surrounding loop locals are captured, and local capture structs with a
+/// `call` method when they are (see master-plan WP 2.3). Both protocols are
+/// accepted here so components and user code do not need to know which one the
+/// generator picked.
+/// Invoke a generated event handler. Expressions without captured loop
+/// locals are plain `fn(ctx)` values; expressions that capture a loop binding
+/// are structs with a `call(ctx)` method (WP 2.6).
+pub inline fn invokeHandler(f: anytype, self: anytype) void {
+    if (comptime @typeInfo(@TypeOf(f)) == .@"struct") {
+        f.call(self);
+    } else {
+        f(self);
+    }
+}
+
+pub inline fn invokeSlot(f: anytype, ui: anytype, c: anytype, self: anytype) void {
+    if (comptime @typeInfo(@TypeOf(f)) == .@"struct") {
+        f.call(ui, c, self);
+    } else {
+        f(ui, c, self);
+    }
+}
+
+inline fn callComponentFns(self: anytype, ui: anytype, c: anytype, props: anytype) void {
     const SelfT = @TypeOf(self);
     const is_double_ptr = @typeInfo(SelfT) == .pointer and @typeInfo(@typeInfo(SelfT).pointer.child) == .pointer;
     inline for ([_][]const u8{ "content", "header", "body", "footer" }) |slot_name| {
         if (comptime @hasField(@TypeOf(props), slot_name)) {
             const f = @field(props, slot_name);
             if (comptime is_double_ptr) {
-                f(ui, c, self.*);
+                invokeSlot(f, ui, c, self.*);
             } else {
-                f(ui, c, self);
+                invokeSlot(f, ui, c, self);
             }
         }
     }
@@ -415,9 +439,9 @@ pub inline fn Tabs(self: anytype, ui: anytype, c: anytype, props: anytype) void 
         if (comptime @hasField(@TypeOf(props), slot_name)) {
             const f = @field(props, slot_name);
             if (comptime is_double_ptr) {
-                f(ui, c, self.*);
+                invokeSlot(f, ui, c, self.*);
             } else {
-                f(ui, c, self);
+                invokeSlot(f, ui, c, self);
             }
         }
     }
