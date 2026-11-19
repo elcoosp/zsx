@@ -1,0 +1,5 @@
+pub fn view_045_fragment_control(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <>{if ctx.show}{for ctx.items1 as x}<label>{x}</label>{/for}{/if}</>
+    }
+}

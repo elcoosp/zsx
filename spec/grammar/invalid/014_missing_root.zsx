@@ -1,0 +1,6 @@
+// expect: ZSX0016
+pub fn bad_014_missing_root(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+
+    }
+}

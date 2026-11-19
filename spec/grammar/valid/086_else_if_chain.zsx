@@ -1,0 +1,5 @@
+pub fn view_086_else_if_chain(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <>{if ctx.a}<label>A</label>{:else if ctx.b}<label>B</label>{:else}<label>C</label>{/if}</>
+    }
+}

@@ -1,0 +1,6 @@
+// expect: ZSX0008
+pub fn bad_007_misplaced_case(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<column>{if true}{:case 1}{/if}</column>
+    }
+}

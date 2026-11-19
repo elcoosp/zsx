@@ -1,0 +1,6 @@
+// expect: ZSX0014
+pub fn bad_042_multiple_roots(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<label>a</label><label>b</label>
+    }
+}

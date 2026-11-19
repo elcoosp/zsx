@@ -1,0 +1,6 @@
+// expect: ZSX0015
+pub fn bad_028_top_level_text(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+hello1
+    }
+}

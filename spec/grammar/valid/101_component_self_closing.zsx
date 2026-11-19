@@ -1,0 +1,5 @@
+pub fn view_101_component_self_closing(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <Divider/>
+    }
+}

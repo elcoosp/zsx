@@ -1,0 +1,5 @@
+pub fn view_071_spaced_control(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <>{ if ctx.ok2 }<label>Y</label>{ /if }</>
+    }
+}

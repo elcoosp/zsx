@@ -1,0 +1,6 @@
+// expect: ZSX0005
+pub fn bad_004_ctrl_mismatch(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+{if true}{/for}
+    }
+}

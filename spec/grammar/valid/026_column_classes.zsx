@@ -1,0 +1,5 @@
+pub fn view_026_column_classes(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column class="gap-1 p-4"><label>A</label><label>B</label></column>
+    }
+}

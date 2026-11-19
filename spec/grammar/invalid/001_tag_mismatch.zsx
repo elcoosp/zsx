@@ -1,0 +1,6 @@
+// expect: ZSX0002
+pub fn bad_001_tag_mismatch(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<column></row>
+    }
+}

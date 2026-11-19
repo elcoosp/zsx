@@ -1,0 +1,5 @@
+pub fn view_049_nested_components(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <Card><Slot name="body"><Section title="inner"><Slot name="content"><label>deep</label></Slot></Section></Slot></Card>
+    }
+}

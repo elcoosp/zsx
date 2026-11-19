@@ -1,0 +1,6 @@
+// expect: ZSX0012
+pub fn bad_025_junk_syntax(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+< column>
+    }
+}

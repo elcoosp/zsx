@@ -1,0 +1,6 @@
+// expect: ZSX0010
+pub fn bad_039_legacy_alias(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<>{if ctx.flag2}<label>x2</label>{endif}</>
+    }
+}

@@ -1,0 +1,6 @@
+// expect: ZSX0013
+pub fn bad_011_unknown_prop(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<Button varient="primary">x</Button>
+    }
+}

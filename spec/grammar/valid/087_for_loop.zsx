@@ -1,0 +1,5 @@
+pub fn view_087_for_loop(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column>{for ctx.items3 as item}<label>{item}</label>{/for}</column>
+    }
+}

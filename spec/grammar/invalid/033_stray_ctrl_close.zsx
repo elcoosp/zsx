@@ -1,0 +1,6 @@
+// expect: ZSX0004
+pub fn bad_033_stray_ctrl_close(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+{/if}
+    }
+}

@@ -1,0 +1,5 @@
+pub fn view_022_loop_component_handler(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column>{for ctx.items as item}<Button on:click={ctx.pick(item)}>{item}</Button>{/for}</column>
+    }
+}

@@ -1,0 +1,5 @@
+pub fn view_100_empty_fragment(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <></>
+    }
+}

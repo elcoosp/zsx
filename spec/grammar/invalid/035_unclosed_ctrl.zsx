@@ -1,0 +1,6 @@
+// expect: ZSX0006
+pub fn bad_035_unclosed_ctrl(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<>{if ctx.flag2}</>
+    }
+}

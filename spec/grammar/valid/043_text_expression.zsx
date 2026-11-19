@@ -1,0 +1,5 @@
+pub fn view_043_text_expression(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <label>{ctx.count}</label>
+    }
+}

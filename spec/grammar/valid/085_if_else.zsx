@@ -1,0 +1,5 @@
+pub fn view_085_if_else(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <>{if ctx.ok3}<label>Y</label>{:else}<label>N</label>{/if}</>
+    }
+}

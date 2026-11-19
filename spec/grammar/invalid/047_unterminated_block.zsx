@@ -1,0 +1,3 @@
+// expect: ZSX0011
+pub fn bad_u_2(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{ <label>open2</label>

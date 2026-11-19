@@ -1,0 +1,5 @@
+pub fn view_078_fragment_siblings(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <><label>A</label><label>B</label></>
+    }
+}

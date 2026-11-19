@@ -1,0 +1,5 @@
+pub fn view_082_component_dotted(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <shadcn.Button variant="secondary" class="p-4">Go</shadcn.Button>
+    }
+}

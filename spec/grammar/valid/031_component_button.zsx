@@ -1,0 +1,5 @@
+pub fn view_031_component_button(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <Button variant="primary">Save</Button>
+    }
+}

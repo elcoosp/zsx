@@ -1,0 +1,5 @@
+pub fn view_033_card_slots(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <Card><Slot name="header"><label>H</label></Slot><Slot name="body"><label>B</label></Slot></Card>
+    }
+}

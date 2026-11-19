@@ -1,0 +1,5 @@
+pub fn view_016_self_closing_input(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <Input buffer={&ctx.buf} placeholder="Type"/>
+    }
+}

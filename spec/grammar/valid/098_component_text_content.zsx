@@ -1,0 +1,5 @@
+pub fn view_098_component_text_content(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <Card><Slot name="content"><label>content</label></Slot></Card>
+    }
+}

@@ -1,0 +1,6 @@
+// expect: ZSX0007
+pub fn bad_021_misplaced_else(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<column>{for ctx.items as item}{:else}{/for}</column>
+    }
+}

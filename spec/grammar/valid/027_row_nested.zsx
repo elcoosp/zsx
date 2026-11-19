@@ -1,0 +1,5 @@
+pub fn view_027_row_nested(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <row class="gap-1"><column><label>L</label></column><column><label>R</label></column></row>
+    }
+}

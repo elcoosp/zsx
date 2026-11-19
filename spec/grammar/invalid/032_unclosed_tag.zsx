@@ -1,0 +1,6 @@
+// expect: ZSX0003
+pub fn bad_032_unclosed_tag(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<column>
+    }
+}

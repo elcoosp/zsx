@@ -1,0 +1,5 @@
+pub fn view_065_switch_else(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <>{switch ctx.n}{:case 1}<label>one</label>{:else}<label>other</label>{/switch}</>
+    }
+}

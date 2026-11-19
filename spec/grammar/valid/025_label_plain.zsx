@@ -1,0 +1,5 @@
+pub fn view_025_label_plain(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <label>Hi</label>
+    }
+}

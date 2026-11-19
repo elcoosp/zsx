@@ -1,0 +1,5 @@
+pub fn view_064_switch_string(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <>{switch ctx.s}{:case "a"}<label>A</label>{:case "b"}<label>B</label>{/switch}</>
+    }
+}

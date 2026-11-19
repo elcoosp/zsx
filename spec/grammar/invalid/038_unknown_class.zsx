@@ -1,0 +1,6 @@
+// expect: ZSX0009
+pub fn bad_038_unknown_class(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<label class="zzz-unknown">x2</label>
+    }
+}

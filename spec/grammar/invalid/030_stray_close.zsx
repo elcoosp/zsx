@@ -1,0 +1,6 @@
+// expect: ZSX0001
+pub fn bad_030_stray_close(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+</label>
+    }
+}

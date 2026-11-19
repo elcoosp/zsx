@@ -1,0 +1,5 @@
+pub fn view_029_button_click(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <button on:click={ctx.save()}>Save</button>
+    }
+}

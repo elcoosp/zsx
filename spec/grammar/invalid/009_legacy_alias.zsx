@@ -1,0 +1,6 @@
+// expect: ZSX0010
+pub fn bad_009_legacy_alias(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+<>{if true}<label>x</label>{endif}</>
+    }
+}

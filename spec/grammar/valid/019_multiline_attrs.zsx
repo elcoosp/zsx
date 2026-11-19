@@ -1,0 +1,7 @@
+pub fn view_019_multiline_attrs(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column
+        class="gap-4"
+            id_extra="multi"><label>M</label></column>
+    }
+}

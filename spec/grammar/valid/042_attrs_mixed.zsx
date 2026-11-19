@@ -1,0 +1,5 @@
+pub fn view_042_attrs_mixed(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <label id_extra="x" data={ctx.v}>Text</label>
+    }
+}

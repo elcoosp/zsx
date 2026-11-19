@@ -1,0 +1,5 @@
+pub fn view_088_nested_for(ui: anytype, c: anytype, ctx: anytype) void {
+    zsx!{
+        <column>{for ctx.rows as row}{for row.cells as cell}<label>{cell}</label>{/for}{/for}</column>
+    }
+}
