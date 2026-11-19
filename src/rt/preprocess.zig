@@ -1,5 +1,6 @@
 const std = @import("std");
-const parser = @import("parser.zig");
+const cst = @import("cst.zig");
+const diag = @import("diag.zig");
 const codegen = @import("codegen.zig");
 const lossless = @import("lossless.zig");
 
@@ -13,6 +14,9 @@ const lossless = @import("lossless.zig");
 /// so strings, chars and comments are scanned by exactly one implementation —
 /// this file no longer carries its own skip helpers (master-plan finding F11).
 pub fn preprocess(a: std.mem.Allocator, source: []const u8, src_name: []const u8, file_index: usize) ![]const u8 {
+    // Kept for API compatibility; widget identity is derived from `src_name`
+    // (stable across build-list reordering), not the file index (F1).
+    _ = file_index;
     const doc = try lossless.Document.init(a, source);
     var out = std.array_list.Managed(u8).init(a);
     var preamble_acc = std.array_list.Managed(u8).init(a);
@@ -38,16 +42,17 @@ pub fn preprocess(a: std.mem.Allocator, source: []const u8, src_name: []const u8
         if (cursor < source.len and source[cursor] == ';') cursor += 1;
         if (!blk.closed) return error.ZsxParseError;
 
-        const markup_start = blk.markup_off;
-        var p = markup_start;
-        while (p < source.len and std.ascii.isWhitespace(source[p])) : (p += 1) {}
-        var pp = p;
-        const el = try parser.parseElement(a, source, src_name, &pp);
-        while (pp < source.len and std.ascii.isWhitespace(source[pp])) : (pp += 1) {}
-        if (pp >= source.len or source[pp] != '}') return error.ZsxParseError;
+        // One parser: the tolerant CST with recovery, lowered to the AST
+        // codegen consumes. `gen` has already rendered diagnostics from its
+        // checker pass, so a dummy index avoids rebuilding line data here.
+        const markup = doc.markup(blk);
+        var block_diags = diag.List.init(a);
+        const root = try cst.parse(a, markup, blk.markup_off, src_name, .{ .starts = &.{} }, &block_diags);
+        if (block_diags.hasErrors()) return error.ZsxParseError;
+        const el = cst.lowerBlock(a, root) catch return error.ZsxParseError;
 
-        const split = try codegen.emitBlock(a, el, file_index, block_idx - 1);
-        if (std.mem.indexOf(u8, split.code, "std.") != null) needs_std = true;
+        const split = try codegen.emitBlock(a, el, src_name, block_idx - 1);
+        if (try mentionsStd(a, split.code)) needs_std = true;
         try preamble_acc.appendSlice(split.preamble);
 
         // Strip the leading indent from `out` — the emitted body starts at the
@@ -61,11 +66,44 @@ pub fn preprocess(a: std.mem.Allocator, source: []const u8, src_name: []const u8
 
     // Hoist preamble above the pass-through body, prepend `std` import if needed.
     var final = std.array_list.Managed(u8).init(a);
-    const has_std = std.mem.indexOf(u8, out.items, "@import(\"std\")") != null;
-    if (needs_std and !has_std) try final.appendSlice("const std = @import(\"std\");\n\n");
+    if (needs_std and !try importsStd(a, out.items)) try final.appendSlice("const std = @import(\"std\");\n\n");
     try final.appendSlice(preamble_acc.items);
     try final.appendSlice(out.items);
     return try final.toOwnedSlice();
+}
+
+/// Token-level check: does the generated code reference the `std` namespace
+/// (identifier `std` followed by `.`)? Comments and string literals are skipped
+/// by the tokenizer, so a label containing `"std."` does not pull in an import
+/// (WP 2.9, closes the last substring heuristic).
+fn mentionsStd(a: std.mem.Allocator, code: []const u8) !bool {
+    // Fast negative filter; the positive answer is always confirmed on tokens.
+    if (std.mem.indexOf(u8, code, "std") == null) return false;
+    const z = try a.dupeSentinel(u8, code, 0);
+    defer a.free(z);
+    var tok = std.zig.Tokenizer.init(z);
+    var prev_std = false;
+    while (true) {
+        const t = tok.next();
+        if (t.tag == .eof) return false;
+        if (prev_std and t.tag == .period) return true;
+        prev_std = t.tag == .identifier and std.mem.eql(u8, code[t.loc.start..t.loc.end], "std");
+    }
+}
+
+/// Token-level check for an existing `@import("std")` in pass-through source.
+fn importsStd(a: std.mem.Allocator, code: []const u8) !bool {
+    if (std.mem.indexOf(u8, code, "@import") == null) return false;
+    const z = try a.dupeSentinel(u8, code, 0);
+    defer a.free(z);
+    var tok = std.zig.Tokenizer.init(z);
+    var prev_import = false;
+    while (true) {
+        const t = tok.next();
+        if (t.tag == .eof) return false;
+        if (prev_import and t.tag == .string_literal) return std.mem.eql(u8, code[t.loc.start..t.loc.end], "\"std\"");
+        prev_import = t.tag == .builtin and std.mem.eql(u8, code[t.loc.start..t.loc.end], "@import");
+    }
 }
 
 /// Byte range of one `zsx!{ ... }` block: `start` is the offset of the `z`
