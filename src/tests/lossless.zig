@@ -1,8 +1,8 @@
 //! M1 lossless front-end tests (master-plan spikes S1 + S2).
 //!
 //! The lossless front-end (`src/rt/lossless.zig`) partitions a `.zsx` file
-//! into typed, byte-exact segments: Zig text, string and char literals,
-//! line/block comments and `zsx!{ }` blocks. Two properties matter:
+//! into typed, byte-exact segments: Zig text, string/multiline-string and char
+//! literals, line/block comments and `zsx!{ }` blocks. Two properties matter:
 //!
 //! 1. **S2 (lossless emission):** `Document.render` reproduces the source
 //!    byte-for-byte. This is the guarantee the future CST parser and
@@ -138,6 +138,7 @@ test "lossless: classifies segments (strings, comments, blocks)" {
         .line_comment => line_comments += 1,
         .block_comment => block_comments += 1,
         .char_literal => char_literals += 1,
+        .multiline_string => {},
         .zsx_block => blocks += 1,
         .zig_text => {},
     };
@@ -245,4 +246,26 @@ test "lossless: render allocates fresh bytes, not an alias" {
     // segment slices into new storage).
     @constCast(out)[0] = 'Z';
     try std.testing.expectEqual(@as(u8, 'z'), src[0]);
+}
+
+test "lossless: multiline strings and nested comments hide block openers" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const src = "pub fn view() void {\n" ++
+        "    const doc =\n" ++
+        "        \\\\fake zsx!{ <label>fake</label> }\n" ++
+        "    ;\n" ++
+        "    /* outer /* zsx!{ <label>nested</label> } */ done */\n" ++
+        "    zsx!{ <label>real</label> }\n" ++
+        "}\n";
+    const doc = try lossless.Document.init(a, src);
+    try std.testing.expectEqual(@as(usize, 1), doc.blocks.len);
+    try std.testing.expectEqualStrings("zsx!{ <label>real</label> }", src[doc.blocks[0].start..doc.blocks[0].end]);
+    try std.testing.expectEqualStrings(src, try doc.render(a));
+
+    const blocks = try preprocess.findBlocks(a, src);
+    try std.testing.expectEqual(@as(usize, 1), blocks.len);
+    try std.testing.expectEqualStrings("zsx!{ <label>real</label> }", src[blocks[0].start..blocks[0].end]);
 }
