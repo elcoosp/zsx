@@ -3,10 +3,10 @@
 
 inline fn render_Card_2(ui: anytype, c: anytype, ctx: anytype) void {
     if (ctx.show) {
-        ui.text(c, "visible", .{ .id_extra = 600000000000000001 });
+        ui.text(c, "visible", .{ .id_extra = @as(usize, @truncate(@as(u64, 6192360328811035963))) });
     }
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Card(ui, c, .{ .id_extra = 600000000000000000, .content = render_Card_2 });
+    ctx.Card(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 3363449255921341274))), .content = render_Card_2 });
 }

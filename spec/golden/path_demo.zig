@@ -5,11 +5,11 @@ const shadcn = @import("shadcn");
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{ .id_extra = 1600000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
+        var b_0 = ui.column(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 2354567144158187087))), .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
         defer b_0.end();
-        shadcn.Badge(ctx, ui, c, .{ .id_extra = 1600000000000000001, .color = "green", .text = "ok" });
-        shadcn.Badge(ctx, ui, c, .{ .id_extra = 1600000000000000002, .color = "red", .text = "error" });
-        shadcn.Button(ctx, ui, c, .{ .id_extra = 1600000000000000003, .variant = "primary", .text = "Save" });
-        shadcn.Button(ctx, ui, c, .{ .id_extra = 1600000000000000004, .variant = "secondary", .text = "Cancel" });
+        shadcn.Badge(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 5584112170988704515))), .color = "green", .text = "ok" });
+        shadcn.Badge(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 5542752622823041097))), .color = "red", .text = "error" });
+        shadcn.Button(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 7678909543617317251))), .variant = "primary", .text = "Save" });
+        shadcn.Button(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 18157837249410494721))), .variant = "secondary", .text = "Cancel" });
     }
 }

@@ -3,11 +3,11 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{ .id_extra = 1200000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
+        var b_0 = ui.column(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 15577188193242630704))), .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
         defer b_0.end();
-        ctx.Heading(ui, c, .{ .id_extra = 1200000000000000001, .size = 2, .text = "Input Demo" });
-        ctx.Caption(ui, c, .{ .id_extra = 1200000000000000002, .text = "Type in the field, value persists across frames." });
-        ctx.Input(ui, c, .{ .id_extra = 1200000000000000003, .buffer = &ctx.name, .placeholder = "Your name" });
-        ctx.Input(ui, c, .{ .id_extra = 1200000000000000004, .buffer = &ctx.email, .placeholder = "you@example.com" });
+        ctx.Heading(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 18217912402696439855))), .size = 2, .text = "Input Demo" });
+        ctx.Caption(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 6183458921866126345))), .text = "Type in the field, value persists across frames." });
+        ctx.Input(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 17589080025690454920))), .buffer = &ctx.name, .placeholder = "Your name" });
+        ctx.Input(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 9971766115697233951))), .buffer = &ctx.email, .placeholder = "you@example.com" });
     }
 }

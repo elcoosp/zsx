@@ -5,14 +5,14 @@ const std = @import("std");
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{ .id_extra = 1700000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 } });
+        var b_0 = ui.column(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 16680081769547113527))), .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 } });
         defer b_0.end();
         if (std.mem.eql(u8, ctx.status, "ok")) {
-            ui.text(c, "All good", .{ .id_extra = 1700000000000000001 });
+            ui.text(c, "All good", .{ .id_extra = @as(usize, @truncate(@as(u64, 2975191569325887728))) });
         } else if (std.mem.eql(u8, ctx.status, "warn")) {
-            ui.text(c, "Warning", .{ .id_extra = 1700000000000000002 });
+            ui.text(c, "Warning", .{ .id_extra = @as(usize, @truncate(@as(u64, 12271927601439335191))) });
         } else {
-            ui.text(c, "Error", .{ .id_extra = 1700000000000000003 });
+            ui.text(c, "Error", .{ .id_extra = @as(usize, @truncate(@as(u64, 14613082766688578331))) });
         }
     }
 }

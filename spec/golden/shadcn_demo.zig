@@ -3,10 +3,10 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{ .id_extra = 200000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
+        var b_0 = ui.column(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 965475500759044793))), .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
         defer b_0.end();
-        ctx.Button(ui, c, .{ .id_extra = 200000000000000001, .variant = "primary", .text = "Save" });
-        ctx.Button(ui, c, .{ .id_extra = 200000000000000002, .variant = "ghost", .text = "Cancel" });
-        ctx.Badge(ui, c, .{ .id_extra = 200000000000000003, .color = "green", .text = "new" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 7314645243412521755))), .variant = "primary", .text = "Save" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 12349039636729663009))), .variant = "ghost", .text = "Cancel" });
+        ctx.Badge(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 10851219393811497318))), .color = "green", .text = "new" });
     }
 }

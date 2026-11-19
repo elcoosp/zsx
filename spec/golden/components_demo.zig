@@ -2,25 +2,25 @@
 // do not edit by hand
 
 inline fn render_shadcn_Tabs_12(ui: anytype, c: anytype, ctx: anytype) void {
-    shadcn.Caption(ctx, ui, c, .{ .id_extra = 1900000000000000011, .text = "Active tab content goes here." });
+    shadcn.Caption(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 15262249095926677709))), .text = "Active tab content goes here." });
 }
 
 const shadcn = @import("shadcn");
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{ .id_extra = 1900000000000000000, .padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 }, .gap = 16 });
+        var b_0 = ui.column(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 8747655500642252758))), .padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 }, .gap = 16 });
         defer b_0.end();
-        shadcn.Heading(ctx, ui, c, .{ .id_extra = 1900000000000000001, .size = 1, .text = "More components" });
-        shadcn.Caption(ctx, ui, c, .{ .id_extra = 1900000000000000002, .text = "Label, Alert, Breadcrumb, Tabs, Pagination" });
-        shadcn.Label(ctx, ui, c, .{ .id_extra = 1900000000000000003, .text = "Full name" });
-        shadcn.Input(ctx, ui, c, .{ .id_extra = 1900000000000000004, .buffer = &ctx.name, .placeholder = "Your name" });
-        shadcn.Alert(ctx, ui, c, .{ .id_extra = 1900000000000000005, .variant = "info", .title = "Info", .text = "This is an informational alert." });
-        shadcn.Alert(ctx, ui, c, .{ .id_extra = 1900000000000000006, .variant = "success", .title = "Success", .text = "Operation completed successfully." });
-        shadcn.Alert(ctx, ui, c, .{ .id_extra = 1900000000000000007, .variant = "warning", .title = "Warning", .text = "Check your input." });
-        shadcn.Alert(ctx, ui, c, .{ .id_extra = 1900000000000000008, .variant = "error", .title = "Error", .text = "Something went wrong." });
-        shadcn.Breadcrumb(ctx, ui, c, .{ .id_extra = 1900000000000000009, .path = "Home / Users / Alice" });
-        shadcn.Tabs(ctx, ui, c, .{ .id_extra = 1900000000000000010, .labels = "Overview,Details,Settings", .selected = &ctx.active_tab, .content = render_shadcn_Tabs_12 });
-        shadcn.Pagination(ctx, ui, c, .{ .id_extra = 1900000000000000013, .total = 5, .selected = &ctx.active_page });
+        shadcn.Heading(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 10948394260508268256))), .size = 1, .text = "More components" });
+        shadcn.Caption(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 7324310479638154132))), .text = "Label, Alert, Breadcrumb, Tabs, Pagination" });
+        shadcn.Label(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 847729129053866568))), .text = "Full name" });
+        shadcn.Input(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 16684465176372974306))), .buffer = &ctx.name, .placeholder = "Your name" });
+        shadcn.Alert(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 15289641567233380585))), .variant = "info", .title = "Info", .text = "This is an informational alert." });
+        shadcn.Alert(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 13342721457522245847))), .variant = "success", .title = "Success", .text = "Operation completed successfully." });
+        shadcn.Alert(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 6139101102457602196))), .variant = "warning", .title = "Warning", .text = "Check your input." });
+        shadcn.Alert(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 11077746832525455727))), .variant = "error", .title = "Error", .text = "Something went wrong." });
+        shadcn.Breadcrumb(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 518315067149029884))), .path = "Home / Users / Alice" });
+        shadcn.Tabs(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 9307188531349983129))), .labels = "Overview,Details,Settings", .selected = &ctx.active_tab, .content = render_shadcn_Tabs_12 });
+        shadcn.Pagination(ctx, ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 4361321257181799702))), .total = 5, .selected = &ctx.active_page });
     }
 }

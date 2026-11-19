@@ -3,13 +3,13 @@
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{ .id_extra = 300000000000000000, .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
+        var b_0 = ui.column(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 1479503046021332131))), .padding = .{ .x = 8, .y = 8, .w = 8, .h = 8 }, .gap = 8 });
         defer b_0.end();
-        ctx.Button(ui, c, .{ .id_extra = 300000000000000001, .variant = "primary", .text = "Save" });
-        ctx.Button(ui, c, .{ .id_extra = 300000000000000002, .variant = "secondary", .text = "Cancel" });
-        ctx.Button(ui, c, .{ .id_extra = 300000000000000003, .variant = "ghost", .text = "Skip" });
-        ctx.Button(ui, c, .{ .id_extra = 300000000000000004, .variant = "danger", .text = "Delete" });
-        ctx.Badge(ui, c, .{ .id_extra = 300000000000000005, .color = "red", .text = "error" });
-        ctx.Badge(ui, c, .{ .id_extra = 300000000000000006, .color = "green", .text = "ok" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 17227848590338214400))), .variant = "primary", .text = "Save" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 7409405797544160674))), .variant = "secondary", .text = "Cancel" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 10024213236160569240))), .variant = "ghost", .text = "Skip" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 382852689612293748))), .variant = "danger", .text = "Delete" });
+        ctx.Badge(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 11158685218851632180))), .color = "red", .text = "error" });
+        ctx.Badge(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 5071285202408450561))), .color = "green", .text = "ok" });
     }
 }

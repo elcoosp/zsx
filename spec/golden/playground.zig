@@ -2,67 +2,67 @@
 // do not edit by hand
 
 inline fn render_Section_13(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Input(ui, c, .{ .id_extra = 1300000000000000008, .buffer = &ctx.name, .placeholder = "Your name" });
-    ctx.Input(ui, c, .{ .id_extra = 1300000000000000009, .buffer = &ctx.email, .placeholder = "you@example.com" });
-    ctx.Textarea(ui, c, .{ .id_extra = 1300000000000000010, .buffer = &ctx.notes, .placeholder = "Notes..." });
-    ctx.Checkbox(ui, c, .{ .id_extra = 1300000000000000011, .checked = &ctx.remember, .text = "Remember me" });
-    ctx.Switch(ui, c, .{ .id_extra = 1300000000000000012, .checked = &ctx.notifications, .text = "Notifications" });
+    ctx.Input(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 514384834856918853))), .buffer = &ctx.name, .placeholder = "Your name" });
+    ctx.Input(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 15127211063882864323))), .buffer = &ctx.email, .placeholder = "you@example.com" });
+    ctx.Textarea(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 12441689610853042002))), .buffer = &ctx.notes, .placeholder = "Notes..." });
+    ctx.Checkbox(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 881980616527644779))), .checked = &ctx.remember, .text = "Remember me" });
+    ctx.Switch(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 2033502342470462589))), .checked = &ctx.notifications, .text = "Notifications" });
 }
 
 inline fn render_Section_17(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Progress(ui, c, .{ .id_extra = 1300000000000000015, .value = ctx.completion });
-    ctx.Caption(ui, c, .{ .id_extra = 1300000000000000016, .text = "Completion progress" });
+    ctx.Progress(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 12710216603922113043))), .value = ctx.completion });
+    ctx.Caption(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 10127366177424768802))), .text = "Completion progress" });
 }
 
 inline fn render_Section_23(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_20 = ui.row(c, .{ .id_extra = 1300000000000000020, .gap = 8 });
+        var b_20 = ui.row(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 15572610819690746935))), .gap = 8 });
         defer b_20.end();
-        ctx.Caption(ui, c, .{ .id_extra = 1300000000000000021, .text = "Volume:" });
-        ctx.Slider(ui, c, .{ .id_extra = 1300000000000000022, .value = &ctx.volume });
+        ctx.Caption(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 16147670763579208375))), .text = "Volume:" });
+        ctx.Slider(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 4905593449239676867))), .value = &ctx.volume });
     }
 }
 
 inline fn render_Section_28(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Skeleton(ui, c, .{ .id_extra = 1300000000000000025, .width = 320, .height = 24 });
-    ctx.Skeleton(ui, c, .{ .id_extra = 1300000000000000026, .width = 220, .height = 16 });
-    ctx.Skeleton(ui, c, .{ .id_extra = 1300000000000000027, .width = 280, .height = 16 });
+    ctx.Skeleton(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 12889380022863438488))), .width = 320, .height = 24 });
+    ctx.Skeleton(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 12410625565489643704))), .width = 220, .height = 16 });
+    ctx.Skeleton(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 17498865839957423718))), .width = 280, .height = 16 });
 }
 
 inline fn render_Section_34(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_30 = ui.row(c, .{ .id_extra = 1300000000000000030, .gap = 8 });
+        var b_30 = ui.row(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 14336015111421647585))), .gap = 8 });
         defer b_30.end();
-        ctx.Button(ui, c, .{ .id_extra = 1300000000000000031, .variant = "primary", .text = "Install" });
-        ctx.Button(ui, c, .{ .id_extra = 1300000000000000032, .variant = "secondary", .text = "Docs" });
-        ctx.Button(ui, c, .{ .id_extra = 1300000000000000033, .variant = "danger", .text = "Remove" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 9383249769092284987))), .variant = "primary", .text = "Install" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 3304723772435386396))), .variant = "secondary", .text = "Docs" });
+        ctx.Button(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 17648181588267203535))), .variant = "danger", .text = "Remove" });
     }
 }
 
 inline fn render_Card_38(ui: anytype, c: anytype, ctx: anytype) void {
-    ctx.Caption(ui, c, .{ .id_extra = 1300000000000000036, .text = "Card content goes here." });
-    ctx.Link(ui, c, .{ .id_extra = 1300000000000000037, .text = "Learn more" });
+    ctx.Caption(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 7046067702229565891))), .text = "Card content goes here." });
+    ctx.Link(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 13996729021981613369))), .text = "Learn more" });
 }
 
 pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
     {
-        var b_0 = ui.column(c, .{ .id_extra = 1300000000000000000, .padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 }, .gap = 8 });
+        var b_0 = ui.column(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 7639376207582633036))), .padding = .{ .x = 16, .y = 16, .w = 16, .h = 16 }, .gap = 8 });
         defer b_0.end();
-        ctx.Heading(ui, c, .{ .id_extra = 1300000000000000001, .size = 1, .text = "ZSX Playground" });
-        ctx.Caption(ui, c, .{ .id_extra = 1300000000000000002, .text = "Twenty components, one source, two frameworks." });
+        ctx.Heading(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 5926580652364607609))), .size = 1, .text = "ZSX Playground" });
+        ctx.Caption(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 5167105967448926734))), .text = "Twenty components, one source, two frameworks." });
         {
-            var b_3 = ui.row(c, .{ .id_extra = 1300000000000000003, .gap = 8 });
+            var b_3 = ui.row(c, .{ .id_extra = @as(usize, @truncate(@as(u64, 18323628786944020343))), .gap = 8 });
             defer b_3.end();
-            ctx.Badge(ui, c, .{ .id_extra = 1300000000000000004, .color = "blue", .text = "new" });
-            ctx.Badge(ui, c, .{ .id_extra = 1300000000000000005, .color = "green", .text = "stable" });
-            ctx.Badge(ui, c, .{ .id_extra = 1300000000000000006, .color = "red", .text = "deprecated" });
+            ctx.Badge(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 9934910740124904118))), .color = "blue", .text = "new" });
+            ctx.Badge(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 16774922983388870938))), .color = "green", .text = "stable" });
+            ctx.Badge(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 16881653162227498386))), .color = "red", .text = "deprecated" });
         }
-        ctx.Section(ui, c, .{ .id_extra = 1300000000000000007, .title = "Forms", .content = render_Section_13 });
-        ctx.Section(ui, c, .{ .id_extra = 1300000000000000014, .title = "Progress", .content = render_Section_17 });
-        ctx.Divider(ui, c, .{ .id_extra = 1300000000000000018 });
-        ctx.Section(ui, c, .{ .id_extra = 1300000000000000019, .title = "Settings", .content = render_Section_23 });
-        ctx.Section(ui, c, .{ .id_extra = 1300000000000000024, .title = "Loading", .content = render_Section_28 });
-        ctx.Section(ui, c, .{ .id_extra = 1300000000000000029, .title = "Actions", .content = render_Section_34 });
-        ctx.Card(ui, c, .{ .id_extra = 1300000000000000035, .content = render_Card_38 });
+        ctx.Section(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 2875652844477708197))), .title = "Forms", .content = render_Section_13 });
+        ctx.Section(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 5818368369261804679))), .title = "Progress", .content = render_Section_17 });
+        ctx.Divider(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 14805846315092575207))) });
+        ctx.Section(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 1180847795333590570))), .title = "Settings", .content = render_Section_23 });
+        ctx.Section(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 1863029924368684168))), .title = "Loading", .content = render_Section_28 });
+        ctx.Section(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 18005326855536637060))), .title = "Actions", .content = render_Section_34 });
+        ctx.Card(ui, c, .{ .id_extra = @as(usize, @truncate(@as(u64, 16816477708494708078))), .content = render_Card_38 });
     }
 }
