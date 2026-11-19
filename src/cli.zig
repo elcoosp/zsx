@@ -15,6 +15,8 @@
 const std = @import("std");
 const diag = @import("rt/diag.zig");
 const checker = @import("rt/checker.zig");
+const cost = @import("rt/cost.zig");
+const migrate = @import("rt/migrate.zig");
 const fmt = checker.fmt;
 
 const max_file_bytes = 10 * 1024 * 1024;
@@ -47,6 +49,9 @@ pub fn main(init: std.process.Init) !void {
     if (std.mem.eql(u8, cmd, "check")) {
         return runCheck(init, args[2..]);
     }
+    if (std.mem.eql(u8, cmd, "migrate")) {
+        return runMigrate(init, args[2..]);
+    }
     std.debug.print("zsx: unknown command '{s}'\n", .{cmd});
     printHelp();
     return error.UnknownCommand;
@@ -60,8 +65,13 @@ fn printHelp() void {
         \\  fmt [--check|--write] [paths...]   format .zsx markup (native; default = dry run)
         \\  check [paths...]                   validate .zsx structure (native)
         \\                                     --no-class-check skips unknown-class warnings
+        \\                                     --no-prop-check skips unknown-prop errors
+        \\                                     --no-lint skips lint warnings (unused binding, ...)
+        \\                                     --explain-cost prints a compile-cost report
+        \\                                     --cost-budget N fails when the score > N
         \\                                     --format json prints machine-readable
         \\                                     diagnostics (stdout) instead of code frames
+        \\  migrate [--check|--write] [paths...]  rewrite legacy markup (on_click=, {{endif}})
         \\  version                            print the ZSX version
         \\
     , .{});
@@ -167,6 +177,105 @@ fn runFmt(init: std.process.Init, rest: []const []const u8) !void {
     try stdout(io, "all formatted\n");
 }
 
+/// Native `zsx migrate`: rewrite legacy markup to current syntax. Default is a
+/// dry run listing files that would change; `--write` applies; `--check` exits
+/// 1 when anything would change (CI-friendly), mirroring `zsx fmt`.
+fn runMigrate(init: std.process.Init, rest: []const []const u8) !void {
+    const a = init.arena.allocator();
+    const io = init.io;
+    const dir = std.Io.Dir.cwd();
+
+    var check_mode = false;
+    var write_mode = false;
+    var paths = std.array_list.Managed([]const u8).init(a);
+    for (rest) |arg| {
+        if (std.mem.eql(u8, arg, "--check")) {
+            check_mode = true;
+        } else if (std.mem.eql(u8, arg, "--write")) {
+            write_mode = true;
+        } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1) {
+            std.debug.print("zsx migrate: unknown flag '{s}'\n", .{arg});
+            std.process.exit(2);
+        } else {
+            try paths.append(arg);
+        }
+    }
+
+    if (paths.items.len == 0) {
+        try collectZsxFiles(a, io, dir, &paths);
+        std.mem.sort([]const u8, paths.items, {}, lessThanStr);
+    }
+    if (paths.items.len == 0) {
+        try stdout(io, "zsx migrate: no .zsx files found\n");
+        return;
+    }
+
+    var changed = std.array_list.Managed([]const u8).init(a);
+    var io_errors: usize = 0;
+    for (paths.items) |path| {
+        const src = dir.readFileAlloc(io, path, a, .limited(max_file_bytes)) catch |e| {
+            const line = try std.fmt.allocPrint(a, "zsx migrate: {s}: {s}\n", .{ path, @errorName(e) });
+            try stderr(io, line);
+            io_errors += 1;
+            continue;
+        };
+        const out = migrate.migrate(a, src) catch |e| {
+            const line = try std.fmt.allocPrint(a, "zsx migrate: {s}: {s}\n", .{ path, @errorName(e) });
+            try stderr(io, line);
+            io_errors += 1;
+            continue;
+        };
+        if (std.mem.eql(u8, out, src)) continue;
+        try changed.append(path);
+        if (write_mode) {
+            const f = dir.createFile(io, path, .{ .truncate = true }) catch |e| {
+                const line = try std.fmt.allocPrint(a, "zsx migrate: {s}: {s}\n", .{ path, @errorName(e) });
+                try stderr(io, line);
+                io_errors += 1;
+                continue;
+            };
+            defer f.close(io);
+            try f.writeStreamingAll(io, out);
+        }
+    }
+
+    if (io_errors != 0) {
+        const line = try std.fmt.allocPrint(a, "zsx migrate: {d} file(s) failed\n", .{io_errors});
+        try stderr(io, line);
+        std.process.exit(2);
+    }
+
+    if (check_mode) {
+        for (changed.items) |p| {
+            const line = try std.fmt.allocPrint(a, "would migrate: {s}\n", .{p});
+            try stdout(io, line);
+        }
+        if (changed.items.len != 0) std.process.exit(1);
+        try stdout(io, "all up to date\n");
+        return;
+    }
+
+    if (write_mode) {
+        for (changed.items) |p| {
+            const line = try std.fmt.allocPrint(a, "migrated: {s}\n", .{p});
+            try stdout(io, line);
+        }
+        if (changed.items.len == 0) try stdout(io, "all up to date\n");
+        return;
+    }
+
+    for (changed.items) |p| {
+        const line = try std.fmt.allocPrint(a, "would migrate: {s}\n", .{p});
+        try stdout(io, line);
+    }
+    if (changed.items.len != 0) {
+        const line = try std.fmt.allocPrint(a, "\n{d} file(s) need migration. Run with --write to apply.\n", .{changed.items.len});
+        try stdout(io, line);
+        return;
+    }
+    try stdout(io, "all up to date\n");
+}
+
 /// Native `zsx check`: validate `.zsx` files without compiling.
 ///
 /// `--format json` switches the presentation from human code frames (stderr)
@@ -183,12 +292,30 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
 
     var opts: checker.Options = .{};
     var json_format = false;
+    var explain_cost = false;
+    var cost_budget: ?usize = null;
     var paths = std.array_list.Managed([]const u8).init(a);
     var i: usize = 0;
     while (i < rest.len) : (i += 1) {
         const arg = rest[i];
         if (std.mem.eql(u8, arg, "--no-class-check")) {
             opts.check_classes = false;
+        } else if (std.mem.eql(u8, arg, "--no-prop-check")) {
+            opts.check_props = false;
+        } else if (std.mem.eql(u8, arg, "--no-lint")) {
+            opts.check_lints = false;
+        } else if (std.mem.eql(u8, arg, "--explain-cost")) {
+            explain_cost = true;
+        } else if (std.mem.eql(u8, arg, "--cost-budget")) {
+            i += 1;
+            if (i >= rest.len) {
+                std.debug.print("zsx check: --cost-budget requires a number\n", .{});
+                std.process.exit(2);
+            }
+            cost_budget = std.fmt.parseInt(usize, rest[i], 10) catch {
+                std.debug.print("zsx check: invalid --cost-budget '{s}'\n", .{rest[i]});
+                std.process.exit(2);
+            };
         } else if (std.mem.eql(u8, arg, "--format")) {
             // Value form: `--format json`. A missing or unknown format is an
             // argument error (exit 2), matching the unreadable-file contract.
@@ -222,9 +349,15 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
         return;
     }
 
+    if (explain_cost and json_format) {
+        std.debug.print("zsx check: --explain-cost cannot be combined with --format json\n", .{});
+        std.process.exit(2);
+    }
+
     var error_total: usize = 0;
     var warning_total: usize = 0;
     var io_errors: usize = 0;
+    var cost_total: cost.Report = .{};
     // One list across all files: diagnostics carry their own `.file`, so the
     // JSON document is a single, self-contained report; text mode still
     // renders per file, slicing the list at the boundaries below.
@@ -256,6 +389,29 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
         }
         error_total += file_errors;
         warning_total += file_warnings;
+
+        if (explain_cost or cost_budget != null) {
+            const rep = cost.analyze(a, src) catch |e| {
+                const line = try std.fmt.allocPrint(a, "zsx check: cannot analyze cost of {s}: {s}\n", .{ path, @errorName(e) });
+                try stderr(io, line);
+                io_errors += 1;
+                continue;
+            };
+            cost_total.merge(rep);
+            if (explain_cost) {
+                const line = try std.fmt.allocPrint(a, "cost: {s} score={d} elements={d} components={d} attrs={d} expressions={d} events={d} depth={d} loops/ifs={d} control_depth={d} setEvalBranchQuota={d}\n", .{
+                    path, rep.score(), rep.elements, rep.components, rep.attrs, rep.expressions, rep.events, rep.max_depth, rep.control_flow, rep.max_control_depth, rep.set_eval_branch_quota,
+                });
+                try stderr(io, line);
+            }
+        }
+    }
+
+    if (explain_cost) {
+        const line = try std.fmt.allocPrint(a, "cost: total score={d} elements={d} components={d} attrs={d} expressions={d} events={d} depth={d} loops/ifs={d} control_depth={d} setEvalBranchQuota={d}\n", .{
+            cost_total.score(), cost_total.elements, cost_total.components, cost_total.attrs, cost_total.expressions, cost_total.events, cost_total.max_depth, cost_total.control_flow, cost_total.max_control_depth, cost_total.set_eval_branch_quota,
+        });
+        try stderr(io, line);
     }
 
     if (json_format) {
@@ -276,6 +432,14 @@ fn runCheck(init: std.process.Init, rest: []const []const u8) !void {
         const line = try std.fmt.allocPrint(a, "zsx check: {d} error(s), {d} warning(s) in {d} file(s)\n", .{ error_total, warning_total, paths.items.len });
         try stderr(io, line);
         std.process.exit(1);
+    }
+
+    if (cost_budget) |budget| {
+        if (cost_total.score() > budget) {
+            const line = try std.fmt.allocPrint(a, "zsx check: cost score {d} exceeds budget {d}\n", .{ cost_total.score(), budget });
+            try stderr(io, line);
+            std.process.exit(1);
+        }
     }
 
     const line = try std.fmt.allocPrint(a, "zsx check: {d} file(s) clean, {d} warning(s)\n", .{ paths.items.len, warning_total });
@@ -324,7 +488,11 @@ fn collectZsxFiles(a: std.mem.Allocator, io: std.Io, dir: std.Io.Dir, paths: *st
         while (try it.next(io)) |entry| {
             if (entry.kind == .directory) {
                 if (excludedDirName(entry.name)) continue;
-                try queue.append(try std.fs.path.join(a, &.{ rel, entry.name }));
+                const joined = try std.fs.path.join(a, &.{ rel, entry.name });
+                // Deliberately broken fixtures for the RFC-0001 corpus; the
+                // conformance test runs them, `zsx check` must not report them.
+                if (std.mem.eql(u8, joined, "./spec/grammar/invalid")) continue;
+                try queue.append(joined);
                 continue;
             }
             if (entry.kind != .file) continue;
