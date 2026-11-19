@@ -171,7 +171,7 @@ const OnClickCtx = struct {
         self.button_rendered += 1;
         if (ui.button(c, props.text, .{})) {
             if (@hasField(@TypeOf(props), "on_click")) {
-                props.on_click(self);
+                @import("shadcn").invokeHandler(props.on_click, self);
             }
         }
     }
