@@ -4,8 +4,8 @@
 //! `std.zig.Ast` cannot parse the `zsx!{ … }` blocks yet, so this module
 //! provides the placeholder scanner until RFC-0001 makes `.zsx` valid Zig:
 //! one string-, char- and comment-aware pass that partitions the whole file
-//! into typed, byte-exact segments (`zig_text`, `string`, `char_literal`,
-//! `line_comment`, `block_comment`, `zsx_block`).
+//! into typed, byte-exact segments (`zig_text`, `string`, `multiline_string`,
+//! `char_literal`, `line_comment`, `block_comment`, `zsx_block`).
 //!
 //! S2 (line-preserving emission): `Document.render` re-assembles those
 //! segments and reproduces the input byte-for-byte. That is the guarantee
@@ -50,6 +50,9 @@ pub const Kind = enum {
     /// A `"…"` string literal, including both quotes; unterminated strings
     /// run to end of source.
     string,
+    /// A Zig multiline string: one or more lines beginning with `\\`;
+    /// the trailing newline is not part of the segment.
+    multiline_string,
     /// A `'…'` char literal, including both quotes; unterminated literals
     /// run to end of source.
     char_literal,
@@ -128,6 +131,14 @@ pub const Document = struct {
                 const end = skipChar(src, i);
                 try pushZigText(&segs, run_start, i);
                 try segs.append(.{ .kind = .char_literal, .off = i, .end = end });
+                i = end;
+                run_start = end;
+                continue;
+            }
+            if (c == '\\' and i + 1 < src.len and src[i + 1] == '\\') {
+                const end = skipMultilineString(src, i);
+                try pushZigText(&segs, run_start, i);
+                try segs.append(.{ .kind = .multiline_string, .off = i, .end = end });
                 i = end;
                 run_start = end;
                 continue;
@@ -263,6 +274,26 @@ fn skipString(src: []const u8, start: usize) usize {
     return p;
 }
 
+/// Index one past the last byte of the Zig multiline string that starts with
+/// `\\` at `src[start]`. A multiline literal runs until a line that does not
+/// begin (after optional spaces/tabs) with another `\\`; the newline before
+/// that line is not included.
+fn skipMultilineString(src: []const u8, start: usize) usize {
+    var p = start;
+    while (p < src.len) {
+        while (p < src.len and src[p] != '\n') p += 1;
+        if (p >= src.len) return src.len;
+        var q = p + 1;
+        while (q < src.len and (src[q] == ' ' or src[q] == '\t')) q += 1;
+        if (q + 1 < src.len and src[q] == '\\' and src[q + 1] == '\\') {
+            p = q;
+            continue;
+        }
+        return p;
+    }
+    return p;
+}
+
 /// Index just past the `'…'` char literal starting at the `'` at
 /// `src[start]`; the end of `src` if the literal never closes.
 fn skipChar(src: []const u8, start: usize) usize {
@@ -289,8 +320,16 @@ fn skipLineComment(src: []const u8, start: usize) usize {
 /// of `src` if the comment never closes.
 fn skipBlockComment(src: []const u8, start: usize) usize {
     var p = start + 2;
+    var depth: usize = 1;
     while (p + 1 < src.len) : (p += 1) {
-        if (src[p] == '*' and src[p + 1] == '/') return p + 2;
+        if (src[p] == '/' and src[p + 1] == '*') {
+            depth += 1;
+            p += 1;
+        } else if (src[p] == '*' and src[p + 1] == '/') {
+            depth -= 1;
+            if (depth == 0) return p + 2;
+            p += 1;
+        }
     }
     return src.len;
 }
@@ -343,4 +382,35 @@ test "lossless: markup excludes the closing brace" {
     const doc = try Document.init(a, src);
     try testing.expectEqual(@as(usize, 1), doc.blockCount());
     try testing.expectEqualStrings(" <row><label>x</label></row> ", doc.markup(doc.blocks[0]));
+}
+
+test "lossless: block in a Zig multiline string is not a block" {
+    var arena = ArenaAllocator.init(page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const src = "const s =\n    \\\\one\n    \\\\zsx!{ <label>x</label> }\n    ;\n";
+    const doc = try Document.init(a, src);
+    try testing.expectEqual(@as(usize, 0), doc.blockCount());
+    var multiline: usize = 0;
+    for (doc.segs) |seg| {
+        if (seg.kind == .multiline_string) {
+            multiline += 1;
+            try testing.expectEqualStrings(
+                "\\\\one\n    \\\\zsx!{ <label>x</label> }",
+                src[seg.off..seg.end],
+            );
+        }
+    }
+    try testing.expectEqual(@as(usize, 1), multiline);
+    try testing.expectEqualStrings(src, try doc.render(a));
+}
+
+test "lossless: nested block comments hide zsx blocks" {
+    var arena = ArenaAllocator.init(page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const src = "/* outer /* zsx!{ <label>x</label> } */ still comment */\nzsx!{ <label>real</label> }";
+    const doc = try Document.init(a, src);
+    try testing.expectEqual(@as(usize, 1), doc.blockCount());
+    try testing.expectEqualStrings("zsx!{ <label>real</label> }", src[doc.blocks[0].start..doc.blocks[0].end]);
 }
