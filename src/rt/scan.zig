@@ -103,7 +103,42 @@ pub const Token = union(enum) {
             inline else => |t| t.end,
         };
     }
+
+    /// True for whitespace/text runs: everything between structural tokens.
+    /// Trivia still carries a byte span, so a lossless consumer concatenates
+    /// trivia and tokens back into the original markup.
+    pub fn isTrivia(self: Token) bool {
+        return self == .text;
+    }
+
+    /// Stable short kind name, used by the conformance/fuzz tests in failure
+    /// messages (never for semantics).
+    pub fn kindName(self: Token) []const u8 {
+        return switch (self) {
+            .open_tag => "open_tag",
+            .close_tag => "close_tag",
+            .ctrl_open => "ctrl_open",
+            .ctrl_mid => "ctrl_mid",
+            .ctrl_close => "ctrl_close",
+            .expression => "expression",
+            .text => "text",
+            .junk => "junk",
+        };
+    }
 };
+
+/// Lossless invariant: the tokens emitted for `src` (starting at absolute
+/// `base`) tile the whole buffer — no gaps, no overlaps, last token ends at
+/// `base + src.len`. The scanner never drops bytes during recovery: a bad
+/// construct becomes a `junk` token that owns its span.
+pub fn coversSource(toks: []const Token, src: []const u8, base: usize) bool {
+    var cursor = base;
+    for (toks) |t| {
+        if (t.off() != cursor) return false;
+        cursor = t.end();
+    }
+    return cursor == base + src.len;
+}
 
 pub const Scanner = struct {
     a: std.mem.Allocator,
@@ -187,15 +222,15 @@ pub const Scanner = struct {
             try self.append(.{ .ctrl_mid = .{ .kind = .else_, .off = tok_start, .end = tok_end } });
             return close + 1;
         }
-        if (std.mem.startsWith(u8, inner, "if ") or std.mem.eql(u8, inner, "if")) {
+        if (ctrlStarts(inner, "if")) {
             try self.append(.{ .ctrl_open = .{ .kind = .if_, .off = tok_start, .end = tok_end } });
             return close + 1;
         }
-        if (std.mem.startsWith(u8, inner, "switch ")) {
+        if (ctrlStarts(inner, "switch")) {
             try self.append(.{ .ctrl_open = .{ .kind = .switch_, .off = tok_start, .end = tok_end } });
             return close + 1;
         }
-        if (std.mem.startsWith(u8, inner, "for ") and std.mem.indexOf(u8, inner, " as ") != null) {
+        if (ctrlStarts(inner, "for") and hasAsBinding(inner)) {
             try self.append(.{ .ctrl_open = .{ .kind = .for_, .off = tok_start, .end = tok_end } });
             return close + 1;
         }
@@ -280,15 +315,19 @@ pub const Scanner = struct {
                 while (i < self.src.len and isAttrNameChar(self.src[i])) i += 1;
                 const name = self.src[name_start..i];
                 if (name.len == 0) {
-                    // Stray character inside a tag: skip it and keep going so
-                    // one typo does not hide every later diagnostic.
+                    // Stray character inside a tag: consume through `>` and
+                    // emit one junk token for the whole tag. Emitting a
+                    // fragment would sit inside the open-tag span (tokens
+                    // must tile the source) and recovery still continues.
+                    var end = i;
+                    while (end < self.src.len and self.src[end] != '>') end += 1;
+                    if (end < self.src.len) end += 1;
                     try self.append(.{ .junk = .{
                         .msg = "unexpected character inside opening tag",
-                        .off = self.abs(i),
-                        .end = self.abs(i + 1),
+                        .off = self.abs(start),
+                        .end = self.abs(end),
                     } });
-                    i += 1;
-                    continue;
+                    return end;
                 }
                 var value: AttrValue = .boolean;
                 if (i < self.src.len and self.src[i] == '=') {
@@ -300,7 +339,7 @@ pub const Scanner = struct {
                         if (j >= self.src.len) {
                             try self.append(.{ .junk = .{
                                 .msg = "unterminated string attribute",
-                                .off = self.abs(i),
+                                .off = self.abs(start),
                                 .end = self.abs(self.src.len),
                             } });
                             return self.src.len;
@@ -311,7 +350,7 @@ pub const Scanner = struct {
                         const close = matchBrace(self.src, i) orelse {
                             try self.append(.{ .junk = .{
                                 .msg = "unterminated expression attribute: no matching '}'",
-                                .off = self.abs(i),
+                                .off = self.abs(start),
                                 .end = self.abs(self.src.len),
                             } });
                             return self.src.len;
@@ -339,6 +378,28 @@ pub const Scanner = struct {
         return std.mem.eql(u8, self.src[i .. i + prefix.len], prefix);
     }
 };
+
+fn ctrlWs(c: u8) bool {
+    return c == ' ' or c == '\t' or c == '\r' or c == '\n';
+}
+
+fn ctrlStarts(inner: []const u8, word: []const u8) bool {
+    if (!std.mem.startsWith(u8, inner, word)) return false;
+    if (inner.len == word.len) return true;
+    return ctrlWs(inner[word.len]);
+}
+
+fn hasAsBinding(inner: []const u8) bool {
+    var from: usize = 0;
+    while (std.mem.indexOfPos(u8, inner, from, "as")) |at| {
+        const before_ok = at > 0 and ctrlWs(inner[at - 1]);
+        const after = at + 2;
+        const after_ok = after >= inner.len or ctrlWs(inner[after]);
+        if (before_ok and after_ok) return true;
+        from = at + 2;
+    }
+    return false;
+}
 
 fn ctrlKindFromString(s: []const u8) ?CtrlKind {
     if (std.mem.eql(u8, s, "if")) return .if_;
@@ -470,6 +531,21 @@ test "scan: brace matching is string-aware (F5)" {
     }
 }
 
+test "scan: control keywords accept any whitespace, including newlines" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const markup = "{if\nctx.a}{for ctx.items as\nitem}{switch\nctx.mode}{:case 1}{/switch}{/for}{/if}";
+    var s = Scanner.init(arena.allocator(), markup, 0);
+    const toks = try s.run();
+    try testing.expect(toks[0] == .ctrl_open and toks[0].ctrl_open.kind == .if_);
+    try testing.expect(toks[1] == .ctrl_open and toks[1].ctrl_open.kind == .for_);
+    try testing.expect(toks[2] == .ctrl_open and toks[2].ctrl_open.kind == .switch_);
+    try testing.expect(toks[3] == .ctrl_mid and toks[3].ctrl_mid.kind == .case_);
+    try testing.expect(toks[4] == .ctrl_close and toks[4].ctrl_close.kind == .switch_);
+    try testing.expect(toks[5] == .ctrl_close and toks[5].ctrl_close.kind == .for_);
+    try testing.expect(toks[6] == .ctrl_close and toks[6].ctrl_close.kind == .if_);
+}
+
 test "scan: control flow classification" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -525,4 +601,68 @@ test "scan: fragment open and close" {
     try testing.expectEqual(@as(usize, 3), toks.len);
     try testing.expect(toks[0] == .open_tag and toks[0].open_tag.tag.len == 0);
     try testing.expect(toks[2] == .close_tag and toks[2].close_tag.tag.len == 0);
+}
+
+test "scan: tokens tile the source byte-for-byte (lossless)" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const cases = [_][]const u8{
+        "",
+        "plain text only",
+        "<column class=\"gap-2\">x</column>",
+        "<>a{if ctx.x}b{:else}c{/if}</>",
+        "{for rows as row}<label>{row}</label>{/for}",
+        "<Button on:click={ctx.save(\"}\")}>Save</Button>",
+        "< label> junk </tag>",
+        "{ unterminated",
+        "héllo — 日本語 <label>émoji 🚀</label>",
+    };
+    for (cases) |src| {
+        var sc = Scanner.init(a, src, 0);
+        const toks = try sc.run();
+        if (!coversSource(toks, src, 0)) {
+            std.debug.print("scan lossless: coverage failed for {s}\n", .{src});
+            return error.TestUnexpected;
+        }
+    }
+}
+
+test "scan: UTF-8 text and attribute values survive unchanged" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const src = "<label title=\"日本語\">héllo 🚀</label>";
+    var sc = Scanner.init(a, src, 0);
+    const toks = try sc.run();
+    try testing.expect(coversSource(toks, src, 0));
+    try testing.expectEqualStrings(src, src[toks[0].off()..toks[toks.len - 1].end()]);
+    // Text token is the UTF-8 run between the tags.
+    var found_text = false;
+    for (toks) |t| {
+        if (t == .text and std.mem.eql(u8, t.text.raw, "héllo 🚀")) found_text = true;
+    }
+    try testing.expect(found_text);
+}
+
+test "scan: deterministic fuzz never crashes and always covers the input" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    var prng = std.Random.DefaultPrng.init(0x5eed_1234);
+    const random = prng.random();
+    const alphabet = "<>{}/=: \"'\\[]()\n\tabcXYZ0123_-." ++ "é日🚀";
+    var buf: [128]u8 = undefined;
+    var case: usize = 0;
+    while (case < 5_000) : (case += 1) {
+        const len = random.intRangeAtMost(usize, 0, buf.len);
+        for (buf[0..len]) |*b| b.* = alphabet[random.intRangeLessThan(usize, 0, alphabet.len)];
+        var sc = Scanner.init(a, buf[0..len], 17);
+        const toks = try sc.run();
+        if (!coversSource(toks, buf[0..len], 17)) {
+            std.debug.print("scan fuzz: coverage failed at case {d} len {d}: {s}\n", .{ case, len, buf[0..len] });
+            return error.TestUnexpected;
+        }
+    }
 }
