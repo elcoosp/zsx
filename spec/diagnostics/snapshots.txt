@@ -1,0 +1,564 @@
+=== stray-close-tag context=0 ===
+snap.zsx:3:1: error[ZSX0002]: </row> closes <column> opened at line 2
+3 | </row>
+  | ^^^^^^
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+4 | </column>
+  | ^^^^^^^^^
+=== stray-close-tag context=1 ===
+snap.zsx:3:1: error[ZSX0002]: </row> closes <column> opened at line 2
+2 | <column>
+3 | </row>
+  | ^^^^^^
+4 | </column>
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+3 | </row>
+4 | </column>
+  | ^^^^^^^^^
+5 | }
+=== stray-close-tag context=2 ===
+snap.zsx:3:1: error[ZSX0002]: </row> closes <column> opened at line 2
+1 | zsx!{
+2 | <column>
+3 | </row>
+  | ^^^^^^
+4 | </column>
+5 | }
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+2 | <column>
+3 | </row>
+4 | </column>
+  | ^^^^^^^^^
+5 | }
+=== stray-close-tag context=3 ===
+snap.zsx:3:1: error[ZSX0002]: </row> closes <column> opened at line 2
+1 | zsx!{
+2 | <column>
+3 | </row>
+  | ^^^^^^
+4 | </column>
+5 | }
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+1 | zsx!{
+2 | <column>
+3 | </row>
+4 | </column>
+  | ^^^^^^^^^
+5 | }
+=== tag-mismatch context=0 ===
+snap.zsx:3:1: error[ZSX0002]: </column> closes <row> opened at line 2
+3 | </column>
+  | ^^^^^^^^^
+=== tag-mismatch context=1 ===
+snap.zsx:3:1: error[ZSX0002]: </column> closes <row> opened at line 2
+2 | <row>
+3 | </column>
+  | ^^^^^^^^^
+4 | }
+=== tag-mismatch context=2 ===
+snap.zsx:3:1: error[ZSX0002]: </column> closes <row> opened at line 2
+1 | zsx!{
+2 | <row>
+3 | </column>
+  | ^^^^^^^^^
+4 | }
+=== tag-mismatch context=3 ===
+snap.zsx:3:1: error[ZSX0002]: </column> closes <row> opened at line 2
+1 | zsx!{
+2 | <row>
+3 | </column>
+  | ^^^^^^^^^
+4 | }
+=== unclosed-tag context=0 ===
+snap.zsx:2:1: error[ZSX0003]: <column> never closed
+2 | <column>
+  | ^^^^^^^
+=== unclosed-tag context=1 ===
+snap.zsx:2:1: error[ZSX0003]: <column> never closed
+1 | zsx!{
+2 | <column>
+  | ^^^^^^^
+3 | <label>x</label>
+=== unclosed-tag context=2 ===
+snap.zsx:2:1: error[ZSX0003]: <column> never closed
+1 | zsx!{
+2 | <column>
+  | ^^^^^^^
+3 | <label>x</label>
+4 | }
+=== unclosed-tag context=3 ===
+snap.zsx:2:1: error[ZSX0003]: <column> never closed
+1 | zsx!{
+2 | <column>
+  | ^^^^^^^
+3 | <label>x</label>
+4 | }
+=== stray-ctrl-close context=0 ===
+snap.zsx:3:1: error[ZSX0004]: {/if} with no matching {if}/{for}/{switch}
+3 | {/if}
+  | ^^^^^
+=== stray-ctrl-close context=1 ===
+snap.zsx:3:1: error[ZSX0004]: {/if} with no matching {if}/{for}/{switch}
+2 | <column>
+3 | {/if}
+  | ^^^^^
+4 | </column>
+=== stray-ctrl-close context=2 ===
+snap.zsx:3:1: error[ZSX0004]: {/if} with no matching {if}/{for}/{switch}
+1 | zsx!{
+2 | <column>
+3 | {/if}
+  | ^^^^^
+4 | </column>
+5 | }
+=== stray-ctrl-close context=3 ===
+snap.zsx:3:1: error[ZSX0004]: {/if} with no matching {if}/{for}/{switch}
+1 | zsx!{
+2 | <column>
+3 | {/if}
+  | ^^^^^
+4 | </column>
+5 | }
+=== ctrl-mismatch context=0 ===
+snap.zsx:5:1: error[ZSX0005]: {/for} closes {if}
+5 | {/for}
+  | ^^^^^^
+=== ctrl-mismatch context=1 ===
+snap.zsx:5:1: error[ZSX0005]: {/for} closes {if}
+4 | <label>x</label>
+5 | {/for}
+  | ^^^^^^
+6 | </column>
+=== ctrl-mismatch context=2 ===
+snap.zsx:5:1: error[ZSX0005]: {/for} closes {if}
+3 | {if ctx.a}
+4 | <label>x</label>
+5 | {/for}
+  | ^^^^^^
+6 | </column>
+7 | }
+=== ctrl-mismatch context=3 ===
+snap.zsx:5:1: error[ZSX0005]: {/for} closes {if}
+2 | <column>
+3 | {if ctx.a}
+4 | <label>x</label>
+5 | {/for}
+  | ^^^^^^
+6 | </column>
+7 | }
+=== unclosed-ctrl context=0 ===
+snap.zsx:3:1: error[ZSX0006]: {if} never closed
+3 | {if ctx.a}
+  | ^^^^
+=== unclosed-ctrl context=1 ===
+snap.zsx:3:1: error[ZSX0006]: {if} never closed
+2 | <column>
+3 | {if ctx.a}
+  | ^^^^
+4 | <label>x</label>
+=== unclosed-ctrl context=2 ===
+snap.zsx:3:1: error[ZSX0006]: {if} never closed
+1 | zsx!{
+2 | <column>
+3 | {if ctx.a}
+  | ^^^^
+4 | <label>x</label>
+5 | </column>
+=== unclosed-ctrl context=3 ===
+snap.zsx:3:1: error[ZSX0006]: {if} never closed
+1 | zsx!{
+2 | <column>
+3 | {if ctx.a}
+  | ^^^^
+4 | <label>x</label>
+5 | </column>
+6 | }
+=== misplaced-else context=0 ===
+snap.zsx:3:1: error[ZSX0007]: {:else} at top level (no open {if/for/switch})
+3 | {:else}
+  | ^^^^^^^
+=== misplaced-else context=1 ===
+snap.zsx:3:1: error[ZSX0007]: {:else} at top level (no open {if/for/switch})
+2 | <column>
+3 | {:else}
+  | ^^^^^^^
+4 | <label>x</label>
+=== misplaced-else context=2 ===
+snap.zsx:3:1: error[ZSX0007]: {:else} at top level (no open {if/for/switch})
+1 | zsx!{
+2 | <column>
+3 | {:else}
+  | ^^^^^^^
+4 | <label>x</label>
+5 | </column>
+=== misplaced-else context=3 ===
+snap.zsx:3:1: error[ZSX0007]: {:else} at top level (no open {if/for/switch})
+1 | zsx!{
+2 | <column>
+3 | {:else}
+  | ^^^^^^^
+4 | <label>x</label>
+5 | </column>
+6 | }
+=== misplaced-case context=0 ===
+snap.zsx:4:1: error[ZSX0008]: {:case} inside {if} (only valid in {switch})
+4 | {:case 1}
+  | ^^^^^^^^^
+=== misplaced-case context=1 ===
+snap.zsx:4:1: error[ZSX0008]: {:case} inside {if} (only valid in {switch})
+3 | {if ctx.a}
+4 | {:case 1}
+  | ^^^^^^^^^
+5 | {/if}
+=== misplaced-case context=2 ===
+snap.zsx:4:1: error[ZSX0008]: {:case} inside {if} (only valid in {switch})
+2 | <column>
+3 | {if ctx.a}
+4 | {:case 1}
+  | ^^^^^^^^^
+5 | {/if}
+6 | </column>
+=== misplaced-case context=3 ===
+snap.zsx:4:1: error[ZSX0008]: {:case} inside {if} (only valid in {switch})
+1 | zsx!{
+2 | <column>
+3 | {if ctx.a}
+4 | {:case 1}
+  | ^^^^^^^^^
+5 | {/if}
+6 | </column>
+7 | }
+=== unknown-class context=0 ===
+snap.zsx:2:9: warning[ZSX0009]: unknown class 'not-a-zsx-class' (will error at build)
+2 | <column class="not-a-zsx-class">
+  |         ^^^^^^^^^^^^^^^^^^^^^^^
+=== unknown-class context=1 ===
+snap.zsx:2:9: warning[ZSX0009]: unknown class 'not-a-zsx-class' (will error at build)
+1 | zsx!{
+2 | <column class="not-a-zsx-class">
+  |         ^^^^^^^^^^^^^^^^^^^^^^^
+3 | <label>x</label>
+=== unknown-class context=2 ===
+snap.zsx:2:9: warning[ZSX0009]: unknown class 'not-a-zsx-class' (will error at build)
+1 | zsx!{
+2 | <column class="not-a-zsx-class">
+  |         ^^^^^^^^^^^^^^^^^^^^^^^
+3 | <label>x</label>
+4 | </column>
+=== unknown-class context=3 ===
+snap.zsx:2:9: warning[ZSX0009]: unknown class 'not-a-zsx-class' (will error at build)
+1 | zsx!{
+2 | <column class="not-a-zsx-class">
+  |         ^^^^^^^^^^^^^^^^^^^^^^^
+3 | <label>x</label>
+4 | </column>
+5 | }
+=== legacy-alias context=0 ===
+snap.zsx:5:1: warning[ZSX0010]: {endif} is a legacy alias; use {/if}
+5 | {endif}
+  | ^^^^^^^
+=== legacy-alias context=1 ===
+snap.zsx:5:1: warning[ZSX0010]: {endif} is a legacy alias; use {/if}
+4 | <label>x</label>
+5 | {endif}
+  | ^^^^^^^
+6 | </column>
+=== legacy-alias context=2 ===
+snap.zsx:5:1: warning[ZSX0010]: {endif} is a legacy alias; use {/if}
+3 | {if ctx.a}
+4 | <label>x</label>
+5 | {endif}
+  | ^^^^^^^
+6 | </column>
+7 | }
+=== legacy-alias context=3 ===
+snap.zsx:5:1: warning[ZSX0010]: {endif} is a legacy alias; use {/if}
+2 | <column>
+3 | {if ctx.a}
+4 | <label>x</label>
+5 | {endif}
+  | ^^^^^^^
+6 | </column>
+7 | }
+=== unterminated-block context=0 ===
+snap.zsx:1:1: error[ZSX0011]: zsx!{ block is never closed: no matching '}' before end of file
+1 | zsx!{
+  | ^^^^^
+=== unterminated-block context=1 ===
+snap.zsx:1:1: error[ZSX0011]: zsx!{ block is never closed: no matching '}' before end of file
+1 | zsx!{
+  | ^^^^^
+2 | <label>x</label>
+=== unterminated-block context=2 ===
+snap.zsx:1:1: error[ZSX0011]: zsx!{ block is never closed: no matching '}' before end of file
+1 | zsx!{
+  | ^^^^^
+2 | <label>x</label>
+=== unterminated-block context=3 ===
+snap.zsx:1:1: error[ZSX0011]: zsx!{ block is never closed: no matching '}' before end of file
+1 | zsx!{
+  | ^^^^^
+2 | <label>x</label>
+=== junk-syntax context=0 ===
+snap.zsx:3:1: error[ZSX0012]: stray '<' in markup
+3 | < label>x</label>
+  | ^
+snap.zsx:3:2: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+3 | < label>x</label>
+  |  ^^^^^^^^
+snap.zsx:3:10: error[ZSX0002]: </label> closes <column> opened at line 2
+3 | < label>x</label>
+  |          ^^^^^^^^
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+4 | </column>
+  | ^^^^^^^^^
+=== junk-syntax context=1 ===
+snap.zsx:3:1: error[ZSX0012]: stray '<' in markup
+2 | <column>
+3 | < label>x</label>
+  | ^
+4 | </column>
+snap.zsx:3:2: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+2 | <column>
+3 | < label>x</label>
+  |  ^^^^^^^^
+4 | </column>
+snap.zsx:3:10: error[ZSX0002]: </label> closes <column> opened at line 2
+2 | <column>
+3 | < label>x</label>
+  |          ^^^^^^^^
+4 | </column>
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+3 | < label>x</label>
+4 | </column>
+  | ^^^^^^^^^
+5 | }
+=== junk-syntax context=2 ===
+snap.zsx:3:1: error[ZSX0012]: stray '<' in markup
+1 | zsx!{
+2 | <column>
+3 | < label>x</label>
+  | ^
+4 | </column>
+5 | }
+snap.zsx:3:2: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+1 | zsx!{
+2 | <column>
+3 | < label>x</label>
+  |  ^^^^^^^^
+4 | </column>
+5 | }
+snap.zsx:3:10: error[ZSX0002]: </label> closes <column> opened at line 2
+1 | zsx!{
+2 | <column>
+3 | < label>x</label>
+  |          ^^^^^^^^
+4 | </column>
+5 | }
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+2 | <column>
+3 | < label>x</label>
+4 | </column>
+  | ^^^^^^^^^
+5 | }
+=== junk-syntax context=3 ===
+snap.zsx:3:1: error[ZSX0012]: stray '<' in markup
+1 | zsx!{
+2 | <column>
+3 | < label>x</label>
+  | ^
+4 | </column>
+5 | }
+snap.zsx:3:2: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+1 | zsx!{
+2 | <column>
+3 | < label>x</label>
+  |  ^^^^^^^^
+4 | </column>
+5 | }
+snap.zsx:3:10: error[ZSX0002]: </label> closes <column> opened at line 2
+1 | zsx!{
+2 | <column>
+3 | < label>x</label>
+  |          ^^^^^^^^
+4 | </column>
+5 | }
+snap.zsx:4:1: error[ZSX0001]: </column> with no open tag
+1 | zsx!{
+2 | <column>
+3 | < label>x</label>
+4 | </column>
+  | ^^^^^^^^^
+5 | }
+=== unknown-prop context=0 ===
+snap.zsx:2:9: error[ZSX0013]: unknown prop 'varient' on <Button>
+  help: did you mean `variant`?
+2 | <Button varient="primary">x</Button>
+  |         ^^^^^^^
+=== unknown-prop context=1 ===
+snap.zsx:2:9: error[ZSX0013]: unknown prop 'varient' on <Button>
+  help: did you mean `variant`?
+1 | zsx!{
+2 | <Button varient="primary">x</Button>
+  |         ^^^^^^^
+3 | }
+=== unknown-prop context=2 ===
+snap.zsx:2:9: error[ZSX0013]: unknown prop 'varient' on <Button>
+  help: did you mean `variant`?
+1 | zsx!{
+2 | <Button varient="primary">x</Button>
+  |         ^^^^^^^
+3 | }
+=== unknown-prop context=3 ===
+snap.zsx:2:9: error[ZSX0013]: unknown prop 'varient' on <Button>
+  help: did you mean `variant`?
+1 | zsx!{
+2 | <Button varient="primary">x</Button>
+  |         ^^^^^^^
+3 | }
+=== multiple-roots context=0 ===
+snap.zsx:3:1: error[ZSX0014]: second root element; a zsx!{ block has exactly one root (wrap siblings in a <> fragment)
+3 | <label>b</label>
+  | ^^^^^^^
+=== multiple-roots context=1 ===
+snap.zsx:3:1: error[ZSX0014]: second root element; a zsx!{ block has exactly one root (wrap siblings in a <> fragment)
+2 | <label>a</label>
+3 | <label>b</label>
+  | ^^^^^^^
+4 | }
+=== multiple-roots context=2 ===
+snap.zsx:3:1: error[ZSX0014]: second root element; a zsx!{ block has exactly one root (wrap siblings in a <> fragment)
+1 | zsx!{
+2 | <label>a</label>
+3 | <label>b</label>
+  | ^^^^^^^
+4 | }
+=== multiple-roots context=3 ===
+snap.zsx:3:1: error[ZSX0014]: second root element; a zsx!{ block has exactly one root (wrap siblings in a <> fragment)
+1 | zsx!{
+2 | <label>a</label>
+3 | <label>b</label>
+  | ^^^^^^^
+4 | }
+=== stray-top-level context=0 ===
+snap.zsx:1:6: error[ZSX0015]: text at block top level; put it inside the root element
+1 | zsx!{
+  |      ^
+=== stray-top-level context=1 ===
+snap.zsx:1:6: error[ZSX0015]: text at block top level; put it inside the root element
+1 | zsx!{
+  |      ^
+2 | text
+=== stray-top-level context=2 ===
+snap.zsx:1:6: error[ZSX0015]: text at block top level; put it inside the root element
+1 | zsx!{
+  |      ^
+2 | text
+3 | <label>x</label>
+=== stray-top-level context=3 ===
+snap.zsx:1:6: error[ZSX0015]: text at block top level; put it inside the root element
+1 | zsx!{
+  |      ^
+2 | text
+3 | <label>x</label>
+4 | }
+=== missing-root context=0 ===
+snap.zsx:1:6: error[ZSX0016]: block has no root element
+1 | zsx!{
+  |      ^
+=== missing-root context=1 ===
+snap.zsx:1:6: error[ZSX0016]: block has no root element
+1 | zsx!{
+  |      ^
+2 |    
+=== missing-root context=2 ===
+snap.zsx:1:6: error[ZSX0016]: block has no root element
+1 | zsx!{
+  |      ^
+2 |    
+3 | }
+=== missing-root context=3 ===
+snap.zsx:1:6: error[ZSX0016]: block has no root element
+1 | zsx!{
+  |      ^
+2 |    
+3 | }
+=== unused-binding context=0 ===
+snap.zsx:3:19: warning[ZSX0020]: loop binding 'item' is never used in the body
+3 | {for ctx.items as item}
+  |                   ^^^^
+=== unused-binding context=1 ===
+snap.zsx:3:19: warning[ZSX0020]: loop binding 'item' is never used in the body
+2 | <column>
+3 | {for ctx.items as item}
+  |                   ^^^^
+4 | <label>x</label>
+=== unused-binding context=2 ===
+snap.zsx:3:19: warning[ZSX0020]: loop binding 'item' is never used in the body
+1 | zsx!{
+2 | <column>
+3 | {for ctx.items as item}
+  |                   ^^^^
+4 | <label>x</label>
+5 | {/for}
+=== unused-binding context=3 ===
+snap.zsx:3:19: warning[ZSX0020]: loop binding 'item' is never used in the body
+1 | zsx!{
+2 | <column>
+3 | {for ctx.items as item}
+  |                   ^^^^
+4 | <label>x</label>
+5 | {/for}
+6 | </column>
+=== empty-for-body context=0 ===
+snap.zsx:3:1: warning[ZSX0021]: {for} has an empty body; add content or remove the loop
+3 | {for ctx.items as _it}
+  | ^^^^^^^^^^^^^^^^^^^^^^
+=== empty-for-body context=1 ===
+snap.zsx:3:1: warning[ZSX0021]: {for} has an empty body; add content or remove the loop
+2 | <column>
+3 | {for ctx.items as _it}
+  | ^^^^^^^^^^^^^^^^^^^^^^
+4 | {/for}
+=== empty-for-body context=2 ===
+snap.zsx:3:1: warning[ZSX0021]: {for} has an empty body; add content or remove the loop
+1 | zsx!{
+2 | <column>
+3 | {for ctx.items as _it}
+  | ^^^^^^^^^^^^^^^^^^^^^^
+4 | {/for}
+5 | </column>
+=== empty-for-body context=3 ===
+snap.zsx:3:1: warning[ZSX0021]: {for} has an empty body; add content or remove the loop
+1 | zsx!{
+2 | <column>
+3 | {for ctx.items as _it}
+  | ^^^^^^^^^^^^^^^^^^^^^^
+4 | {/for}
+5 | </column>
+6 | }
+=== text-in-layout-container context=0 ===
+snap.zsx:2:9: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+2 | <column>
+  |         ^
+=== text-in-layout-container context=1 ===
+snap.zsx:2:9: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+1 | zsx!{
+2 | <column>
+  |         ^
+3 | stray
+=== text-in-layout-container context=2 ===
+snap.zsx:2:9: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+1 | zsx!{
+2 | <column>
+  |         ^
+3 | stray
+4 | </column>
+=== text-in-layout-container context=3 ===
+snap.zsx:2:9: warning[ZSX0022]: text directly inside <column> is not rendered; wrap it in <label>
+1 | zsx!{
+2 | <column>
+  |         ^
+3 | stray
+4 | </column>
+5 | }
