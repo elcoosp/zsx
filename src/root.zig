@@ -38,3 +38,21 @@ test {
 test {
     _ = @import("tests/lossless.zig");
 }
+test {
+    _ = @import("tests/cost.zig");
+}
+test {
+    _ = @import("tests/migrate.zig");
+}
+test {
+    _ = @import("tests/grammar.zig");
+}
+test {
+    _ = @import("tests/cst.zig");
+    // M1 WP 1.5: CST -> AST lowering dumps.
+    _ = @import("tests/ast_lowering.zig");
+    // M1 WP 1.8: rendered diagnostic snapshots.
+    _ = @import("tests/diagnostics_snapshot.zig");
+    // M1 WP 1.9: property/mutation fuzz smoke.
+    _ = @import("tests/fuzz.zig");
+}
