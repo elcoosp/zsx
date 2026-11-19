@@ -1,0 +1,8 @@
+fragment
+  expr if ctx.a
+  element label
+    text "A"
+  expr :else
+  element label
+    text "B"
+  expr /if

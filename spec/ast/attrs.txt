@@ -1,0 +1,5 @@
+element Button
+  attr variant string primary
+  attr disabled boolean
+  attr on:click expr ctx.save()
+  text "Go"

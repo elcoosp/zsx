@@ -1,0 +1,5 @@
+element column
+  attr class string gap-2
+  element label
+    text "Hi"
+  expr ctx.name

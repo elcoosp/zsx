@@ -1,0 +1,5 @@
+element column
+  text "\n    "
+  element label
+    text " spaced "
+  text "\n  "
