@@ -30,6 +30,37 @@ fn expectOneError(a: std.mem.Allocator, src: []const u8, code: diag.Code, line: 
     try std.testing.expectEqual(line, d.line);
 }
 
+test "checker: unknown built-in prop is an error with a did-you-mean" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var list = try check(a, "<Button varient=\"primary\">Save</Button>");
+    try std.testing.expectEqual(@as(usize, 1), list.errorCount());
+    const d = list.items.items[0];
+    try std.testing.expectEqual(diag.Code.unknown_prop, d.code);
+    try std.testing.expectEqual(diag.Severity.err, d.severity);
+    try std.testing.expect(d.help != null);
+    try std.testing.expect(std.mem.indexOf(u8, d.help.?, "variant") != null);
+}
+
+test "checker: built-in props, events and slots are accepted" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var list = try check(a, "<shadcn.Button variant=\"primary\" on:click={ctx.save()} class=\"p-2\">Save</shadcn.Button>");
+    try std.testing.expectEqual(@as(usize, 0), list.count());
+    list = try check(a, "<Card><Slot name=\"body\"><label>x</label></Slot></Card>");
+    try std.testing.expectEqual(@as(usize, 0), list.count());
+}
+
+test "checker: user-namespaced components are not second-guessed" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var list = try check(a, "<myapp.Button whatever={1}>x</myapp.Button>");
+    try std.testing.expectEqual(@as(usize, 0), list.count());
+}
+
 test "checker: clean view produces no diagnostics" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -310,4 +341,135 @@ test "checker: corpus views are clean" {
             return error.TestUnexpected;
         }
     }
+}
+
+test "checker: multiple roots (ZSX0014)" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var list = try checkFile(arena.allocator(),
+        \\pub fn view() void {
+        \\    zsx!{ <label>a</label><label>b</label> }
+        \\}
+    );
+    try std.testing.expectEqual(@as(usize, 1), list.errorCount());
+    try std.testing.expectEqual(diag.Code.multiple_roots, list.items.items[0].code);
+    try std.testing.expectEqual(@as(usize, 2), list.items.items[0].line);
+}
+
+test "checker: top-level text (ZSX0015)" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var list = try checkFile(arena.allocator(),
+        \\pub fn view() void {
+        \\    zsx!{ hello }
+        \\}
+    );
+    try std.testing.expectEqual(@as(usize, 1), list.errorCount());
+    try std.testing.expectEqual(diag.Code.stray_top_level, list.items.items[0].code);
+}
+
+test "checker: missing root (ZSX0016)" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var list = try checkFile(arena.allocator(),
+        \\pub fn view() void {
+        \\    zsx!{ }
+        \\}
+    );
+    try std.testing.expectEqual(@as(usize, 1), list.errorCount());
+    try std.testing.expectEqual(diag.Code.missing_root, list.items.items[0].code);
+}
+
+test "checker: fragment is a single root and may hold siblings" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var list = try checkFile(arena.allocator(),
+        \\pub fn view() void {
+        \\    zsx!{ <><label>a</label><label>b</label></> }
+        \\}
+    );
+    try std.testing.expectEqual(@as(usize, 0), list.count());
+}
+
+fn findCode(list: *const diag.List, code: diag.Code) ?diag.Diagnostic {
+    for (list.items.items) |d| if (d.code == code) return d;
+    return null;
+}
+
+test "lint: unused for binding is a warning with the binding span" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var list = try check(a, "<column>{for ctx.items as item}<label>x</label>{/for}</column>");
+    const d = findCode(&list, .unused_binding) orelse return error.TestUnexpected;
+    try std.testing.expectEqual(diag.Severity.warning, d.severity);
+    try std.testing.expectEqualStrings("item", markupSlice("<column>{for ctx.items as item}<label>x</label>{/for}</column>", d.offset, d.len));
+    try std.testing.expectEqual(@as(usize, 0), list.errorCount());
+}
+
+test "lint: loop binding used in body is clean; underscore opts out" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var list = try check(a, "<column>{for ctx.items as item}<label>{item}</label>{/for}</column>");
+    try std.testing.expectEqual(@as(usize, 0), list.count());
+    list = try check(a, "<column>{for ctx.items as _ignored}<label>x</label>{/for}</column>");
+    try std.testing.expectEqual(@as(usize, 0), list.count());
+}
+
+test "lint: empty for body is a warning" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var list = try check(a, "<column>{for ctx.items as item}{/for}</column>");
+    const d = findCode(&list, .empty_for_body) orelse return error.TestUnexpected;
+    try std.testing.expectEqual(diag.Severity.warning, d.severity);
+    try std.testing.expect(findCode(&list, .unused_binding) != null);
+}
+
+test "lint: text directly in column warns, nested label text does not" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var list = try check(a, "<column>stray</column>");
+    const d = findCode(&list, .text_in_layout_container) orelse return error.TestUnexpected;
+    try std.testing.expectEqual(diag.Severity.warning, d.severity);
+    list = try check(a, "<column><label>ok</label></column>");
+    try std.testing.expectEqual(@as(usize, 0), list.count());
+}
+
+test "lint: // zsx-ignore suppresses the named warning for the next block" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const src =
+        \\pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+        \\    // zsx-ignore ZSX0022
+        \\    zsx!{
+        \\        <column>stray</column>
+        \\    }
+        \\}
+    ;
+    var list = try checkFile(a, src);
+    try std.testing.expect(findCode(&list, .text_in_layout_container) == null);
+    try std.testing.expectEqual(@as(usize, 0), list.errorCount());
+}
+
+test "lint: comments about linting are not directives" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const src =
+        \\pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+        \\    zsx!{
+        \\        <column>stray</column>
+        \\    }
+        \\}
+    ;
+    var list = try checkFile(a, src);
+    try std.testing.expect(findCode(&list, .text_in_layout_container) != null);
+}
+
+fn markupSlice(src: []const u8, off: usize, len: usize) []const u8 {
+    return src[off .. off + len];
 }
