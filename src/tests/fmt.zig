@@ -58,3 +58,22 @@ test "fmt: corpus is idempotent" {
         try std.testing.expectEqualStrings(once, twice);
     }
 }
+
+test "fmt: multi-line opening tag does not crash and is idempotent" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const src =
+        \\pub fn view(ui: anytype, c: anytype, ctx: anytype) void {
+        \\    zsx!{
+        \\        <column
+        \\            class="gap-4"
+        \\            id_extra="multi"><label>M</label></column>
+        \\    }
+        \\}
+        \\
+    ;
+    const once = try fmt.formatSource(a, src, .{});
+    const twice = try fmt.formatSource(a, once, .{});
+    try std.testing.expectEqualStrings(once, twice);
+}
