@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const views = zsx.addViews(b, .{
-        .paths = &.{ "src/views/home.zsx", "src/views/about.zsx" },
+        .dir = "src/views",
         .target = target,
         .optimize = optimize,
         .imports = &.{.{ .name = "shadcn", .module = shadcn }},
