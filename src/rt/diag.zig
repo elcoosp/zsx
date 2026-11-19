@@ -52,6 +52,23 @@ pub const Code = enum(u16) {
     /// unterminated tag or attribute). Errors, not warnings: AGENTS.md
     /// forbids silently ignoring malformed input.
     junk_syntax = 12,
+    /// Attribute that the built-in component does not accept (F7). Error:
+    /// AGENTS.md forbids unknown props being silent no-ops.
+    unknown_prop = 13,
+    /// A `zsx!{…}` block with more than one root element (RFC-0001 S1).
+    multiple_roots = 14,
+    /// Text, an expression or control flow at block top level, outside the
+    /// single root element (RFC-0001 S1).
+    stray_top_level = 15,
+    /// A `zsx!{…}` block with no root element at all (RFC-0001 S1).
+    missing_root = 16,
+    /// `{for … as name}` binding never referenced in the loop body. Warning.
+    unused_binding = 20,
+    /// `{for …}` with no content in its body. Warning.
+    empty_for_body = 21,
+    /// Raw text directly inside a layout container such as `<column>`.
+    /// Warning: layout containers do not render text; wrap it in `<label>`.
+    text_in_layout_container = 22,
 
     /// `ZSX0xxx` string form, zero-padded to four digits.
     pub fn number(self: Code) u16 {
@@ -73,6 +90,13 @@ pub const Code = enum(u16) {
             .legacy_alias => "legacy-alias",
             .unterminated_block => "unterminated-block",
             .junk_syntax => "junk-syntax",
+            .unknown_prop => "unknown-prop",
+            .multiple_roots => "multiple-roots",
+            .stray_top_level => "stray-top-level",
+            .missing_root => "missing-root",
+            .unused_binding => "unused-binding",
+            .empty_for_body => "empty-for-body",
+            .text_in_layout_container => "text-in-layout-container",
         };
     }
 };
@@ -160,15 +184,20 @@ pub const List = struct {
 
     /// Append an error at a source position.
     pub fn err(self: *List, idx: LineIndex, file: []const u8, offset: usize, len: usize, code: Code, comptime fmt: []const u8, args: anytype) !void {
-        try self.appendAt(.err, idx, file, offset, len, code, fmt, args);
+        try self.appendAt(.err, idx, file, offset, len, code, fmt, args, null);
     }
 
     /// Append a warning at a source position.
     pub fn warn(self: *List, idx: LineIndex, file: []const u8, offset: usize, len: usize, code: Code, comptime fmt: []const u8, args: anytype) !void {
-        try self.appendAt(.warning, idx, file, offset, len, code, fmt, args);
+        try self.appendAt(.warning, idx, file, offset, len, code, fmt, args, null);
     }
 
-    fn appendAt(self: *List, severity: Severity, idx: LineIndex, file: []const u8, offset: usize, len: usize, code: Code, comptime fmt: []const u8, args: anytype) !void {
+    /// Append an error with a `help:` line (e.g. did-you-mean suggestions).
+    pub fn errHelp(self: *List, idx: LineIndex, file: []const u8, offset: usize, len: usize, code: Code, comptime fmt: []const u8, args: anytype, help: []const u8) !void {
+        try self.appendAt(.err, idx, file, offset, len, code, fmt, args, help);
+    }
+
+    fn appendAt(self: *List, severity: Severity, idx: LineIndex, file: []const u8, offset: usize, len: usize, code: Code, comptime fmt: []const u8, args: anytype, help: ?[]const u8) !void {
         const pos = idx.lineCol(offset);
         const lc = pos.line;
         const cc = pos.col;
@@ -176,6 +205,7 @@ pub const List = struct {
             .code = code,
             .severity = severity,
             .message = try std.fmt.allocPrint(self.a, fmt, args),
+            .help = help,
             .file = file,
             .line = lc,
             .col = cc,
