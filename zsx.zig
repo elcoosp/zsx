@@ -12,7 +12,7 @@
 //!             .target = target, .optimize = optimize,
 //!         });
 //!         const views = zsx.addViews(b, .{
-//!             .paths = &.{ "src/views/dashboard.zsx" },
+//!             .dir = "src/views",          // discover every *.zsx
 //!             .target = target, .optimize = optimize,
 //!         });
 //!         for (views) |v| app.addImport(v.name, v.module);
@@ -26,7 +26,13 @@ pub const View = struct { name: []const u8, module: *std.Build.Module };
 pub const NamedImport = struct { name: []const u8, module: *std.Build.Module };
 
 pub const Options = struct {
-    paths: []const []const u8,
+    /// Explicit view paths. Combine with `dir` if needed; both are merged.
+    paths: []const []const u8 = &.{},
+    /// Directory scanned for `*.zsx` files at configure time (non-recursive).
+    /// Adding a view then needs no `build.zig` edit (WP 2.10).
+    dir: ?[]const u8 = null,
+    /// File names (not paths) to skip when scanning `dir`.
+    exclude: []const []const u8 = &.{},
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     imports: []const NamedImport = &.{},
@@ -55,6 +61,16 @@ pub const checker = @import("src/rt/checker.zig");
 /// Native formatter for `zsx!{ }` markup: idempotent, Zig outside blocks
 /// byte-exact. The implementation behind `zsx fmt`.
 pub const fmt = checker.fmt;
+
+/// Codemod behind `zsx migrate`: rewrites legacy `on_click=` to
+/// `on:click=` and `{endif}`/`{endfor}`/`{endswitch}` to the current closers,
+/// leaving the Zig side and untouched markup byte-exact.
+pub const migrate = @import("src/rt/migrate.zig");
+
+/// Static compile-cost analyzer behind `zsx check --explain-cost`: counts
+/// markup elements/components/attrs, nesting, control flow and
+/// `@setEvalBranchQuota` occurrences, and returns a deterministic score.
+pub const cost = @import("src/rt/cost.zig");
 
 /// Code-frame renderer: `render.Renderer.init(a, source)` once per file, then
 /// `renderer.render(d, .{})` per diagnostic produces the header, the optional
@@ -107,6 +123,62 @@ pub fn addViews(b: *std.Build, opts: Options) []View {
     return addViewsFrom(b, opts, zsx_dep.path("src/gen.zig"));
 }
 
+/// Scan `dir` for `*.zsx` files, excluding names in `exclude`, sorted by path
+/// for a deterministic module/file-index mapping. Intended both for
+/// `Options.dir` and for consumers that need the same list elsewhere (e.g. to
+/// feed golden tests).
+pub fn discoverViews(b: *std.Build, dir: []const u8, exclude: []const []const u8) []const []const u8 {
+    // Re-run the configure phase when a file is added/removed in `dir`, so a
+    // new view needs no `build.zig` edit (WP 2.10).
+    b.dependOnDirectoryMetadata(b.path(dir));
+    var list = std.array_list.Managed([]const u8).init(b.allocator);
+    const io = b.graph.io;
+    const d = std.Io.Dir.cwd().openDir(io, dir, .{ .iterate = true }) catch |e| {
+        std.debug.print("zsx: cannot scan view dir '{s}': {any}\n", .{ dir, e });
+        @panic("zsx: view dir not found");
+    };
+    defer d.close(io);
+    var it = d.iterate();
+    while (it.next(io) catch |e| {
+        std.debug.print("zsx: cannot scan view dir '{s}': {any}\n", .{ dir, e });
+        @panic("zsx: view dir scan failed");
+    }) |entry| {
+        if (entry.kind != .file) continue;
+        if (!std.mem.endsWith(u8, entry.name, ".zsx")) continue;
+        var skip = false;
+        for (exclude) |ex| {
+            if (std.mem.eql(u8, ex, entry.name)) skip = true;
+        }
+        if (skip) continue;
+        const full = std.fs.path.join(b.allocator, &.{ dir, entry.name }) catch @panic("OOM");
+        list.append(full) catch @panic("OOM");
+    }
+    std.mem.sort([]const u8, list.items, {}, struct {
+        fn lt(_: void, a: []const u8, c: []const u8) bool {
+            return std.mem.lessThan(u8, a, c);
+        }
+    }.lt);
+    return list.toOwnedSlice() catch @panic("OOM");
+}
+
+fn resolvePaths(b: *std.Build, opts: Options) []const []const u8 {
+    var list = std.array_list.Managed([]const u8).init(b.allocator);
+    list.appendSlice(opts.paths) catch @panic("OOM");
+    if (opts.dir) |dir| {
+        for (discoverViews(b, dir, opts.exclude)) |p| list.append(p) catch @panic("OOM");
+    }
+    if (list.items.len == 0) {
+        std.debug.print("zsx: addViews needs `paths` and/or `dir`\n", .{});
+        @panic("zsx: no views configured");
+    }
+    std.mem.sort([]const u8, list.items, {}, struct {
+        fn lt(_: void, a: []const u8, c: []const u8) bool {
+            return std.mem.lessThan(u8, a, c);
+        }
+    }.lt);
+    return list.toOwnedSlice() catch @panic("OOM");
+}
+
 fn addViewsFrom(b: *std.Build, opts: Options, gen_path: std.Build.LazyPath) []View {
     const gen_exe = b.addExecutable(.{
         .name = "zsx-gen",
@@ -117,8 +189,9 @@ fn addViewsFrom(b: *std.Build, opts: Options, gen_path: std.Build.LazyPath) []Vi
         }),
     });
 
-    const views = b.allocator.alloc(View, opts.paths.len) catch @panic("OOM");
-    for (opts.paths, 0..) |path, idx| {
+    const paths = resolvePaths(b, opts);
+    const views = b.allocator.alloc(View, paths.len) catch @panic("OOM");
+    for (paths, 0..) |path, idx| {
         const run = b.addRunArtifact(gen_exe);
         run.addArg("--input");
         run.addFileArg(b.path(path));
