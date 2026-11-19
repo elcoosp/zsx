@@ -11,17 +11,21 @@
 //! - trailing whitespace disappears; leading/trailing blank lines inside a
 //!   block are removed; interior blank lines are kept (as empty lines);
 //! - idempotent: `fmt(fmt(x)) == fmt(x)`, because depth is derived from the
-//!   token stream, never from the file's current indentation;
+//!   CST, never from the file's current indentation;
 //! - a block whose `zsx!{` shares a line with other code is left untouched
 //!   (there is no unambiguous base indent).
 //!
 //! The old tool decided depth with regexes over raw lines; this one decides
-//! on the token stream from `scan.zig` — the same scanner the checker uses —
-//! which is the repo convention ("decide on tokens/AST, never substring or
-//! regex heuristics") and keeps one front-end instead of three (finding F11).
+//! on the CST from `cst.zig` (master-plan WP 1.6): nesting comes from the
+//! tree, never from the file's current indentation. Malformed markup (the CST
+//! reports diagnostics) falls back to the token scanner so `fmt` can still
+//! normalize broken files. Either way the convention holds: decide on
+//! tokens/AST, never substring/regex heuristics (finding F11).
 
 const std = @import("std");
 const checker = @import("checker.zig");
+const cst = @import("cst.zig");
+const diag = @import("diag.zig");
 
 const preprocess = checker.preprocess;
 const scan = checker.scan;
@@ -88,7 +92,128 @@ const Line = struct {
 
 /// Reindent one block's markup. `base_indent` is the number of spaces before
 /// `zsx!{` on its line; the first body level is one deeper than that.
+///
+/// Valid markup is formatted from the CST (structural depth per line).
+/// Malformed markup keeps the old scanner-driven behaviour.
 pub fn formatMarkup(a: std.mem.Allocator, markup: []const u8, base_indent: usize, opts: Options) ![]const u8 {
+    const idx = diag.LineIndex.build(a, markup) catch return formatMarkupScan(a, markup, base_indent, opts);
+    var list = diag.List.init(a);
+    const root = cst.parse(a, markup, 0, "<fmt>", idx, &list) catch return formatMarkupScan(a, markup, base_indent, opts);
+    if (list.count() != 0) return formatMarkupScan(a, markup, base_indent, opts);
+    return formatMarkupCst(a, markup, base_indent, opts, root);
+}
+
+/// Nesting depth at a structural byte offset, derived from CST containment.
+/// Returns null for text/expression lines and multiline-tag continuations:
+/// those are preserved byte-exact, matching the legacy formatter.
+fn cstDepthAt(node: cst.Node, base: usize, off: usize, src: []const u8) ?usize {
+    switch (node.kind) {
+        .block => {
+            for (node.children) |c| {
+                if (off >= c.span.off and off < c.span.end) return cstDepthAt(c, base + 1, off, src);
+            }
+            return null;
+        },
+        .element, .fragment, .control_if, .control_for, .control_switch => {
+            if (off == node.span.off) return base;
+            if (off < node.span.off or off >= node.span.end) return null;
+            // Children own their closer line: recurse first so a nested
+            // `</Card>` is attributed to the inner Card.
+            for (node.children) |c| {
+                if (off < c.span.off or off >= c.span.end) continue;
+                if (c.kind == .control_close and off == c.span.off) return base;
+                if (cstDepthAt(c, base + 1, off, src)) |d| return d;
+            }
+            // No child owns it: this node's own closer sits at its depth.
+            if (isOwnCloser(node, off, src)) return base;
+            return null;
+        },
+        .branch => return if (off == node.span.off) base else null,
+        .text, .expression, .control_close, .error_token => return null,
+    }
+}
+
+fn isOwnCloser(node: cst.Node, off: usize, src: []const u8) bool {
+    const rest = src[off..];
+    switch (node.kind) {
+        .element, .fragment => {
+            if (!std.mem.startsWith(u8, rest, "</")) return false;
+            const after = rest[2..];
+            const end = std.mem.indexOfScalar(u8, after, '>') orelse return false;
+            return std.mem.eql(u8, after[0..end], node.tag);
+        },
+        .control_if, .control_for, .control_switch => {
+            if (!std.mem.startsWith(u8, rest, "{/")) return false;
+            const after = rest[2..];
+            const end = std.mem.indexOfScalar(u8, after, '}') orelse return false;
+            const want = switch (node.kind) {
+                .control_if => "if",
+                .control_for => "for",
+                .control_switch => "switch",
+                else => unreachable,
+            };
+            return std.mem.eql(u8, after[0..end], want);
+        },
+        else => return false,
+    }
+}
+
+fn formatMarkupCst(
+    a: std.mem.Allocator,
+    markup: []const u8,
+    base_indent: usize,
+    opts: Options,
+    root: cst.Node,
+) ![]const u8 {
+    const base_level = base_indent / opts.indent;
+    var lines = std.array_list.Managed(Line).init(a);
+    var it = std.mem.splitScalar(u8, markup, '\n');
+    var line_start: usize = 0;
+    while (it.next()) |raw| {
+        try lines.append(.{
+            .raw = raw,
+            .toks = &.{},
+            .blank = std.mem.trim(u8, raw, " \t\r").len == 0,
+        });
+        line_start += raw.len + 1;
+    }
+
+    var emitted = try a.alloc([]const u8, lines.items.len);
+    line_start = 0;
+    for (lines.items, 0..) |line, li| {
+        defer line_start += line.raw.len + 1;
+        if (line.blank) {
+            emitted[li] = "";
+            continue;
+        }
+        var lead: usize = 0;
+        while (lead < line.raw.len and (line.raw[lead] == ' ' or line.raw[lead] == '\t')) lead += 1;
+        const off = line_start + lead;
+        const depth = cstDepthAt(root, base_level, off, markup) orelse {
+            emitted[li] = line.raw;
+            continue;
+        };
+
+        var buf = std.array_list.Managed(u8).init(a);
+        try buf.appendNTimes(' ', depth * opts.indent);
+        try buf.appendSlice(std.mem.trim(u8, line.raw, " \t\r"));
+        emitted[li] = buf.items;
+    }
+
+    var start: usize = 0;
+    var end: usize = emitted.len;
+    while (start < end and lines.items[start].blank) start += 1;
+    while (end > start and lines.items[end - 1].blank) end -= 1;
+
+    var kept = std.array_list.Managed(u8).init(a);
+    for (emitted[start..end], 0..) |l, i| {
+        if (i != 0) try kept.appendSlice("\n");
+        try kept.appendSlice(l);
+    }
+    return kept.items;
+}
+
+fn formatMarkupScan(a: std.mem.Allocator, markup: []const u8, base_indent: usize, opts: Options) ![]const u8 {
     var scanner = scan.Scanner.init(a, markup, 0);
     const toks = try scanner.run();
 
@@ -121,6 +246,13 @@ pub fn formatMarkup(a: std.mem.Allocator, markup: []const u8, base_indent: usize
     for (lines.items, 0..) |line, li| {
         if (line.blank) {
             emitted[li] = "";
+            continue;
+        }
+
+        // A continuation line of a multi-line opening tag carries no token
+        // start of its own; leave it byte-exact instead of crashing.
+        if (line.toks.len == 0) {
+            emitted[li] = line.raw;
             continue;
         }
 
@@ -382,4 +514,16 @@ test "fmt: self-closing tags do not change depth" {
         \\    </row>
         \\}
     );
+}
+
+test "fmt: multiline control openers stay idempotent" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const src = "<row>{if\nctx.flag}{ctx.value}{/if}{for ctx.items as\nitem}{item}{/for}</row>";
+    const once = try formatMarkup(a, src, 0, .{});
+    const twice = try formatMarkup(a, once, 0, .{});
+    try std.testing.expectEqualStrings(once, twice);
+    const third = try formatMarkup(a, twice, 0, .{});
+    try std.testing.expectEqualStrings(twice, third);
 }
