@@ -1,6 +1,6 @@
 .{
     .name = .zsx,
-    .version = "0.3.0",
+    .version = "0.4.0",
     .dependencies = .{
         .dvui = .{
             .url = "git+https://github.com/david-vanderson/dvui#d33935989e166d8340c9dd2888ad8aff0265c4ba",
